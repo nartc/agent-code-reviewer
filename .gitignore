@@ -45,3 +45,4 @@ Thumbs.db
 
 # ralph
 ./ralph.yml
+.ralph/
