@@ -1,3 +1,7 @@
 {
-  "singleQuote": true
+    "singleQuote": true,
+    "tabWidth": 4,
+    "printWidth": 120,
+    "htmlWhitespaceSensitivity": "ignore",
+    "plugins": ["prettier-plugin-organize-imports"]
 }
