@@ -1,7 +1,30 @@
 import { Hono } from 'hono';
+import { vi } from 'vitest';
 import { createApp } from '../app.js';
 import { initInMemoryDatabase } from '../db/client.js';
 import { DbService } from '../services/db.service.js';
+import type { SseService } from '../services/sse.service.js';
+import type { WatcherService } from '../services/watcher.service.js';
+
+function createMockSseService(): SseService {
+    return {
+        addConnection: vi.fn(),
+        removeConnection: vi.fn(),
+        broadcast: vi.fn(),
+        getConnectionCount: vi.fn().mockReturnValue(0),
+        shutdown: vi.fn(),
+    } as unknown as SseService;
+}
+
+function createMockWatcherService(): WatcherService {
+    return {
+        startWatching: vi.fn(),
+        stopWatching: vi.fn(),
+        captureSnapshot: vi.fn(),
+        isWatching: vi.fn().mockReturnValue(false),
+        stopAll: vi.fn().mockResolvedValue(undefined),
+    } as unknown as WatcherService;
+}
 
 describe('App Integration', () => {
     let app: Hono;
@@ -17,7 +40,11 @@ describe('App Integration', () => {
             shutdownHooks: false,
         });
 
-        app = createApp({ dbService });
+        app = createApp({
+            dbService,
+            sseService: createMockSseService(),
+            watcherService: createMockWatcherService(),
+        });
     });
 
     afterEach(() => {
@@ -28,7 +55,7 @@ describe('App Integration', () => {
         }
     });
 
-    it('health check returns 200 ok', async () => {
+    it('health check returns 200 ok (AC-3.6)', async () => {
         const res = await app.request('/api/health');
         expect(res.status).toBe(200);
         const body = await res.json();
@@ -49,7 +76,6 @@ describe('App Integration', () => {
     });
 
     it('error handler catches thrown errors', async () => {
-        // Add a test route that throws
         app.get('/api/test-error', () => {
             throw new Error('test explosion');
         });
@@ -58,5 +84,11 @@ describe('App Integration', () => {
         const body = (await res.json()) as { error: { type: string; message: string } };
         expect(body.error).toBeDefined();
         expect(body.error.type).toBe('INTERNAL');
+    });
+
+    it('SSE endpoint returns event stream (AC-3.1)', async () => {
+        const res = await app.request('/api/sse/sessions/test-id');
+        expect(res.status).toBe(200);
+        expect(res.headers.get('Content-Type')).toContain('text/event-stream');
     });
 });
