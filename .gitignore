@@ -46,3 +46,6 @@ Thumbs.db
 # ralph
 ./ralph.yml
 .ralph/
+
+# sql.js in-memory DB artifacts from tests
+:memory:
