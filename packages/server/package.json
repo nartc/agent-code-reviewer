@@ -1,32 +1,48 @@
 {
-  "name": "@agent-code-reviewer/server",
-  "version": "0.0.0",
-  "private": true,
-  "type": "module",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
-  "scripts": {
-    "test": "vitest run"
-  },
-  "dependencies": {
-    "@agent-code-reviewer/shared": "workspace:*",
-    "@hono/node-server": "^1.x",
-    "@hono/zod-validator": "^0.x",
-    "chokidar": "^4.x",
-    "hono": "^4.x",
-    "nanoid": "^5.x",
-    "neverthrow": "^8.x",
-    "simple-git": "^3.x",
-    "sql.js": "^1.x",
-    "zod": "^3.x"
-  },
-  "devDependencies": {
-    "tsx": "^4.x",
-    "vitest": "^4.0.8",
-    "@types/node": "^22.x",
-    "typescript": "~5.9.3"
-  },
-  "nx": {
-    "name": "server"
-  }
+    "name": "@agent-code-reviewer/server",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "main": "./src/index.ts",
+    "types": "./src/index.ts",
+    "scripts": {
+        "test": "vitest run"
+    },
+    "dependencies": {
+        "@agent-code-reviewer/shared": "workspace:*",
+        "@hono/node-server": "^1.x",
+        "@hono/zod-validator": "^0.x",
+        "chokidar": "^4.x",
+        "hono": "^4.x",
+        "nanoid": "^5.x",
+        "neverthrow": "^8.x",
+        "simple-git": "^3.x",
+        "sql.js": "^1.x",
+        "zod": "^3.x"
+    },
+    "devDependencies": {
+        "tsx": "^4.x",
+        "vitest": "^4.0.8",
+        "@types/node": "^22.x",
+        "typescript": "~5.9.3"
+    },
+    "nx": {
+        "name": "server",
+        "projectType": "application",
+        "sourceRoot": "packages/server/src",
+        "targets": {
+            "serve": {
+                "command": "tsx watch packages/server/src/index.ts",
+                "options": {
+                    "cwd": "{workspaceRoot}"
+                }
+            },
+            "test": {
+                "command": "vitest run",
+                "options": {
+                    "cwd": "packages/server"
+                }
+            }
+        }
+    }
 }
