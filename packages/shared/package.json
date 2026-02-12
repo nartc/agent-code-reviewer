@@ -12,8 +12,7 @@
         "nanoid": "^5.x"
     },
     "devDependencies": {
-        "vitest": "^4.0.8",
-        "typescript": "~5.9.3"
+        "vitest": "^4.0.8"
     },
     "nx": {
         "name": "shared"

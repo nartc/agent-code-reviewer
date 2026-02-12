@@ -21,10 +21,8 @@
         "zod": "^3.x"
     },
     "devDependencies": {
-        "tsx": "^4.x",
         "vitest": "^4.0.8",
-        "@types/node": "^22.x",
-        "typescript": "~5.9.3"
+        "@types/node": "^22.x"
     },
     "nx": {
         "name": "server",
@@ -35,12 +33,6 @@
                 "command": "tsx watch packages/server/src/index.ts",
                 "options": {
                     "cwd": "{workspaceRoot}"
-                }
-            },
-            "test": {
-                "command": "vitest run",
-                "options": {
-                    "cwd": "packages/server"
                 }
             }
         }
