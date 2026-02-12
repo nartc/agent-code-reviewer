@@ -1,5 +1,6 @@
 import { okAsync } from 'neverthrow';
 import { vi } from 'vitest';
+import { expectErr, expectOk } from '../../__tests__/helpers.js';
 import { initInMemoryDatabase } from '../../db/client.js';
 import { DbService } from '../db.service.js';
 import type { GitService } from '../git.service.js';
@@ -27,8 +28,7 @@ describe('RepoService', () => {
 
 	beforeEach(async () => {
 		const dbResult = await initInMemoryDatabase();
-		expect(dbResult.isOk()).toBe(true);
-		const db = dbResult._unsafeUnwrap();
+		const db = expectOk(dbResult);
 		dbService = new DbService(db, ':memory:', { autoSave: false, shutdownHooks: false });
 		gitService = createMockGitService();
 		service = new RepoService(dbService, gitService);
@@ -46,8 +46,7 @@ describe('RepoService', () => {
 		it('creates new repo + path when not in DB', async () => {
 			const result = await service.createOrGetFromPath('/home/user/my-app');
 
-			expect(result.isOk()).toBe(true);
-			const { repo, repoPath, isNew } = result._unsafeUnwrap();
+			const { repo, repoPath, isNew } = expectOk(result);
 			expect(isNew).toBe(true);
 			expect(repo.name).toBe('my-app');
 			expect(repo.remote_url).toBe('https://github.com/user/repo.git');
@@ -63,8 +62,7 @@ describe('RepoService', () => {
 			// Second call from different path with same remote
 			const result = await service.createOrGetFromPath('/tmp/my-app-clone');
 
-			expect(result.isOk()).toBe(true);
-			const { repo, repoPath, isNew } = result._unsafeUnwrap();
+			const { repo, repoPath, isNew } = expectOk(result);
 			expect(isNew).toBe(false);
 			expect(repo.remote_url).toBe('https://github.com/user/repo.git');
 			expect(repoPath.path).toBe('/tmp/my-app-clone');
@@ -74,8 +72,7 @@ describe('RepoService', () => {
 			await service.createOrGetFromPath('/home/user/my-app');
 			const result = await service.createOrGetFromPath('/home/user/my-app');
 
-			expect(result.isOk()).toBe(true);
-			const { isNew } = result._unsafeUnwrap();
+			const { isNew } = expectOk(result);
 			expect(isNew).toBe(false);
 		});
 
@@ -86,8 +83,9 @@ describe('RepoService', () => {
 
 			const result = await service.createOrGetFromPath('/not/a/repo');
 
-			expect(result.isErr()).toBe(true);
-			expect(result._unsafeUnwrapErr().type).toBe('NOT_A_GIT_REPO');
+			const error = expectErr(result);
+			expect(error.type).toBe('GIT_ERROR');
+			expect((error as any).code).toBe('NOT_A_GIT_REPO');
 		});
 
 		it('handles null remote_url with path-based lookup', async () => {
@@ -96,13 +94,11 @@ describe('RepoService', () => {
 			);
 
 			const result1 = await service.createOrGetFromPath('/home/user/local-repo');
-			expect(result1.isOk()).toBe(true);
-			expect(result1._unsafeUnwrap().isNew).toBe(true);
+			expect(expectOk(result1).isNew).toBe(true);
 
 			// Same path again should find it
 			const result2 = await service.createOrGetFromPath('/home/user/local-repo');
-			expect(result2.isOk()).toBe(true);
-			expect(result2._unsafeUnwrap().isNew).toBe(false);
+			expect(expectOk(result2).isNew).toBe(false);
 		});
 	});
 
@@ -123,8 +119,7 @@ describe('RepoService', () => {
 			await service.createOrGetFromPath('/tmp/app-a-clone');
 
 			const result = service.listRepos();
-			expect(result.isOk()).toBe(true);
-			const repos = result._unsafeUnwrap();
+			const repos = expectOk(result);
 			expect(repos).toHaveLength(2);
 
 			// Find the repo with 2 paths
@@ -139,69 +134,65 @@ describe('RepoService', () => {
 
 		it('returns empty array for empty DB', () => {
 			const result = service.listRepos();
-			expect(result.isOk()).toBe(true);
-			expect(result._unsafeUnwrap()).toEqual([]);
+			expect(expectOk(result)).toEqual([]);
 		});
 	});
 
 	describe('deleteRepo', () => {
 		it('removes repo and cascading paths', async () => {
 			const createResult = await service.createOrGetFromPath('/home/user/my-app');
-			const { repo } = createResult._unsafeUnwrap();
+			const { repo } = expectOk(createResult);
 
 			const deleteResult = service.deleteRepo(repo.id);
 			expect(deleteResult.isOk()).toBe(true);
 
 			// Verify repo is gone
 			const repos = service.listRepos();
-			expect(repos._unsafeUnwrap()).toHaveLength(0);
+			expect(expectOk(repos)).toHaveLength(0);
 
 			// Verify paths are gone
 			const paths = service.getRepoPaths(repo.id);
-			expect(paths._unsafeUnwrap()).toHaveLength(0);
+			expect(expectOk(paths)).toHaveLength(0);
 		});
 
 		it('returns NOT_FOUND for nonexistent ID', () => {
 			const result = service.deleteRepo('nonexistent');
-			expect(result.isErr()).toBe(true);
-			expect(result._unsafeUnwrapErr().type).toBe('NOT_FOUND');
+			const error = expectErr(result);
+			expect(error.type).toBe('NOT_FOUND');
 		});
 	});
 
 	describe('updateRepo', () => {
 		it('changes base_branch', async () => {
 			const createResult = await service.createOrGetFromPath('/home/user/my-app');
-			const { repo } = createResult._unsafeUnwrap();
+			const { repo } = expectOk(createResult);
 
 			const updateResult = service.updateRepo(repo.id, { baseBranch: 'develop' });
-			expect(updateResult.isOk()).toBe(true);
-			expect(updateResult._unsafeUnwrap().base_branch).toBe('develop');
+			expect(expectOk(updateResult).base_branch).toBe('develop');
 		});
 
 		it('returns NOT_FOUND for nonexistent ID', () => {
 			const result = service.updateRepo('nonexistent', { baseBranch: 'develop' });
-			expect(result.isErr()).toBe(true);
-			expect(result._unsafeUnwrapErr().type).toBe('NOT_FOUND');
+			const error = expectErr(result);
+			expect(error.type).toBe('NOT_FOUND');
 		});
 	});
 
 	describe('getRepoPaths', () => {
 		it('returns paths for given repoId', async () => {
 			const createResult = await service.createOrGetFromPath('/home/user/my-app');
-			const { repo } = createResult._unsafeUnwrap();
+			const { repo } = expectOk(createResult);
 
 			// Add second path
 			await service.createOrGetFromPath('/tmp/my-app-clone');
 
 			const result = service.getRepoPaths(repo.id);
-			expect(result.isOk()).toBe(true);
-			expect(result._unsafeUnwrap()).toHaveLength(2);
+			expect(expectOk(result)).toHaveLength(2);
 		});
 
 		it('returns empty array for repo with no paths', () => {
 			const result = service.getRepoPaths('nonexistent-repo');
-			expect(result.isOk()).toBe(true);
-			expect(result._unsafeUnwrap()).toEqual([]);
+			expect(expectOk(result)).toEqual([]);
 		});
 	});
 });

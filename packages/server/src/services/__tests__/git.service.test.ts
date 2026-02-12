@@ -1,5 +1,6 @@
 import { simpleGit } from 'simple-git';
 import { vi } from 'vitest';
+import { expectErr, expectOk } from '../../__tests__/helpers.js';
 import { GitService } from '../git.service.js';
 
 vi.mock('simple-git');
@@ -38,8 +39,7 @@ describe('GitService', () => {
 
 			const result = await service.isGitRepo('/some/path');
 
-			expect(result.isOk()).toBe(true);
-			expect(result._unsafeUnwrap()).toBe(true);
+			expect(expectOk(result)).toBe(true);
 		});
 
 		it('returns false for a non-git directory', async () => {
@@ -47,8 +47,7 @@ describe('GitService', () => {
 
 			const result = await service.isGitRepo('/not/a/repo');
 
-			expect(result.isOk()).toBe(true);
-			expect(result._unsafeUnwrap()).toBe(false);
+			expect(expectOk(result)).toBe(false);
 		});
 
 		it('returns false when path does not exist', async () => {
@@ -56,8 +55,7 @@ describe('GitService', () => {
 
 			const result = await service.isGitRepo('/nonexistent');
 
-			expect(result.isOk()).toBe(true);
-			expect(result._unsafeUnwrap()).toBe(false);
+			expect(expectOk(result)).toBe(false);
 		});
 	});
 
@@ -74,21 +72,21 @@ describe('GitService', () => {
 
 			const result = await service.getInfo('/repo');
 
-			expect(result.isOk()).toBe(true);
-			const info = result._unsafeUnwrap();
+			const info = expectOk(result);
 			expect(info.remoteUrl).toBe('git@github.com:user/repo.git');
 			expect(info.currentBranch).toBe('main');
 			expect(info.defaultBranch).toBe('main');
 			expect(info.headCommit).toBe('abc123def');
 		});
 
-		it('returns NOT_A_GIT_REPO error for non-repo', async () => {
+		it('returns GIT_ERROR with NOT_A_GIT_REPO code for non-repo', async () => {
 			gitStub.checkIsRepo.mockResolvedValue(false);
 
 			const result = await service.getInfo('/not/repo');
 
-			expect(result.isErr()).toBe(true);
-			expect(result._unsafeUnwrapErr().type).toBe('NOT_A_GIT_REPO');
+			const error = expectErr(result);
+			expect(error.type).toBe('GIT_ERROR');
+			expect(error.code).toBe('NOT_A_GIT_REPO');
 		});
 	});
 
@@ -106,8 +104,7 @@ describe('GitService', () => {
 
 			const result = await service.getDiff('/repo', 'main');
 
-			expect(result.isOk()).toBe(true);
-			const { rawDiff, files } = result._unsafeUnwrap();
+			const { rawDiff, files } = expectOk(result);
 			expect(rawDiff).toContain('diff --git');
 			expect(files).toHaveLength(4);
 			expect(files[0]).toEqual({ path: 'src/foo.ts', status: 'modified', additions: 5, deletions: 2 });
@@ -121,9 +118,9 @@ describe('GitService', () => {
 
 			const result = await service.getDiff('/repo', 'main');
 
-			expect(result.isErr()).toBe(true);
-			expect(result._unsafeUnwrapErr().type).toBe('GIT_ERROR');
-			expect(result._unsafeUnwrapErr().message).toContain('git diff failed');
+			const error = expectErr(result);
+			expect(error.type).toBe('GIT_ERROR');
+			expect(error.message).toContain('git diff failed');
 		});
 	});
 
@@ -133,8 +130,7 @@ describe('GitService', () => {
 
 			const result = await service.getCurrentBranch('/repo');
 
-			expect(result.isOk()).toBe(true);
-			expect(result._unsafeUnwrap()).toBe('feature/foo');
+			expect(expectOk(result)).toBe('feature/foo');
 		});
 	});
 
@@ -144,8 +140,7 @@ describe('GitService', () => {
 
 			const result = await service.getDefaultBranch('/repo');
 
-			expect(result.isOk()).toBe(true);
-			expect(result._unsafeUnwrap()).toBe('main');
+			expect(expectOk(result)).toBe('main');
 		});
 
 		it('falls back to master when symbolic-ref fails and master exists', async () => {
@@ -154,8 +149,7 @@ describe('GitService', () => {
 
 			const result = await service.getDefaultBranch('/repo');
 
-			expect(result.isOk()).toBe(true);
-			expect(result._unsafeUnwrap()).toBe('master');
+			expect(expectOk(result)).toBe('master');
 		});
 
 		it('falls back to main when no recognizable branch', async () => {
@@ -164,8 +158,7 @@ describe('GitService', () => {
 
 			const result = await service.getDefaultBranch('/repo');
 
-			expect(result.isOk()).toBe(true);
-			expect(result._unsafeUnwrap()).toBe('main');
+			expect(expectOk(result)).toBe('main');
 		});
 	});
 
@@ -175,8 +168,7 @@ describe('GitService', () => {
 
 			const result = await service.getRemoteUrl('/repo');
 
-			expect(result.isOk()).toBe(true);
-			expect(result._unsafeUnwrap()).toBe('https://github.com/user/repo.git');
+			expect(expectOk(result)).toBe('https://github.com/user/repo.git');
 		});
 
 		it('returns null when no remote', async () => {
@@ -184,8 +176,7 @@ describe('GitService', () => {
 
 			const result = await service.getRemoteUrl('/repo');
 
-			expect(result.isOk()).toBe(true);
-			expect(result._unsafeUnwrap()).toBeNull();
+			expect(expectOk(result)).toBeNull();
 		});
 
 		it('returns null for empty remote', async () => {
@@ -193,8 +184,7 @@ describe('GitService', () => {
 
 			const result = await service.getRemoteUrl('/repo');
 
-			expect(result.isOk()).toBe(true);
-			expect(result._unsafeUnwrap()).toBeNull();
+			expect(expectOk(result)).toBeNull();
 		});
 	});
 
@@ -207,8 +197,7 @@ describe('GitService', () => {
 
 			const result = await service.listBranches('/repo');
 
-			expect(result.isOk()).toBe(true);
-			expect(result._unsafeUnwrap()).toEqual(['main', 'feature/x', 'remotes/origin/main']);
+			expect(expectOk(result)).toEqual(['main', 'feature/x', 'remotes/origin/main']);
 		});
 	});
 
@@ -218,23 +207,21 @@ describe('GitService', () => {
 
 			const result = await service.getHeadCommit('/repo');
 
-			expect(result.isOk()).toBe(true);
-			expect(result._unsafeUnwrap()).toBe('abc123def456789');
+			expect(expectOk(result)).toBe('abc123def456789');
 		});
 	});
 
 	describe('error mapping', () => {
-		it('maps simple-git Error to GIT_ERROR AppError with message preserved', async () => {
+		it('maps simple-git Error to GIT_ERROR with message preserved', async () => {
 			const originalError = new Error('authentication failed');
 			gitStub.revparse.mockRejectedValue(originalError);
 
 			const result = await service.getHeadCommit('/repo');
 
-			expect(result.isErr()).toBe(true);
-			const appError = result._unsafeUnwrapErr();
-			expect(appError.type).toBe('GIT_ERROR');
-			expect(appError.message).toBe('authentication failed');
-			expect(appError.cause).toBe(originalError);
+			const gitError = expectErr(result);
+			expect(gitError.type).toBe('GIT_ERROR');
+			expect(gitError.message).toBe('authentication failed');
+			expect(gitError.cause).toBe(originalError);
 		});
 	});
 

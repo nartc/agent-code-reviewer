@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { expectErr, expectOk } from '../../__tests__/helpers.js';
 import { initDatabase, initInMemoryDatabase } from '../client.js';
 
 describe('Database Client', () => {
@@ -10,7 +11,7 @@ describe('Database Client', () => {
             const result = await initInMemoryDatabase();
             expect(result.isOk()).toBe(true);
 
-            const db = result._unsafeUnwrap();
+            const db = expectOk(result);
             const tables = db.exec("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name");
             const tableNames = tables[0].values.map((row: any[]) => row[0]);
 
@@ -27,9 +28,8 @@ describe('Database Client', () => {
 
         it('creates all 9 indexes', async () => {
             const result = await initInMemoryDatabase();
-            expect(result.isOk()).toBe(true);
 
-            const db = result._unsafeUnwrap();
+            const db = expectOk(result);
             const indexes = db.exec(
                 "SELECT name FROM sqlite_master WHERE type='index' AND name LIKE 'idx_%' ORDER BY name",
             );
@@ -52,9 +52,8 @@ describe('Database Client', () => {
 
         it('enforces foreign key constraints', async () => {
             const result = await initInMemoryDatabase();
-            expect(result.isOk()).toBe(true);
 
-            const db = result._unsafeUnwrap();
+            const db = expectOk(result);
 
             expect(() => {
                 db.run("INSERT INTO sessions (id, repo_id, branch) VALUES ('s1', 'nonexistent', 'main')");
@@ -65,9 +64,8 @@ describe('Database Client', () => {
 
         it('tracks migration version', async () => {
             const result = await initInMemoryDatabase();
-            expect(result.isOk()).toBe(true);
 
-            const db = result._unsafeUnwrap();
+            const db = expectOk(result);
             const version = db.exec("SELECT value FROM app_config WHERE key = 'schema_version'");
 
             expect(version[0].values[0][0]).toBe('1');
@@ -77,9 +75,8 @@ describe('Database Client', () => {
 
         it('applies schema idempotently', async () => {
             const result = await initInMemoryDatabase();
-            expect(result.isOk()).toBe(true);
 
-            const db = result._unsafeUnwrap();
+            const db = expectOk(result);
 
             // Run schema again — should not throw
             const schemaPath = new URL('../schema.sql', import.meta.url);
@@ -112,7 +109,7 @@ describe('Database Client', () => {
             const result = await initDatabase(tmpPath);
             expect(result.isOk()).toBe(true);
 
-            const db = result._unsafeUnwrap();
+            const db = expectOk(result);
 
             // Export and write to verify persistence
             const data = db.export();
@@ -128,7 +125,7 @@ describe('Database Client', () => {
         it('returns error for invalid path', async () => {
             const result = await initDatabase('/dev/null/impossible/path.db');
             expect(result.isErr()).toBe(true);
-            expect(result._unsafeUnwrapErr().type).toBe('DATABASE_ERROR');
+            expect(expectErr(result).type).toBe('DATABASE_ERROR');
         });
     });
 });

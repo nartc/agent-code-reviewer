@@ -1,6 +1,7 @@
-import { type AppError, gitError, notAGitRepo } from '@agent-code-reviewer/shared';
+import { type GitError, gitError, notAGitRepo } from '@agent-code-reviewer/shared';
 import type { FileSummary } from '@agent-code-reviewer/shared';
-import { ResultAsync, errAsync, ok } from 'neverthrow';
+import type { Dirent } from 'node:fs';
+import { ResultAsync, errAsync, okAsync } from 'neverthrow';
 import { readdir } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import { simpleGit } from 'simple-git';
@@ -18,7 +19,7 @@ export interface ScannedRepo {
 	remoteUrl: string | null;
 }
 
-function mapToGitError(e: unknown): AppError {
+function mapToGitError(e: unknown): GitError {
 	const message = e instanceof Error ? e.message : String(e);
 	return gitError(message, e);
 }
@@ -27,38 +28,37 @@ export class GitService {
 	isGitRepo(path: string): ResultAsync<boolean, never> {
 		return ResultAsync.fromPromise(
 			simpleGit(path).checkIsRepo(),
-			() => undefined as never,
-		).orElse(() => ok(false)) as ResultAsync<boolean, never>;
+			(e) => e,
+		).orElse((error) => {
+			console.error(`[git] isGitRepo check failed for ${path}:`, error);
+			return okAsync(false);
+		}) as ResultAsync<boolean, never>;
 	}
 
-	getInfo(path: string): ResultAsync<GitInfo, AppError> {
+	getInfo(path: string): ResultAsync<GitInfo, GitError> {
 		return this.isGitRepo(path).andThen((isRepo) => {
 			if (!isRepo) {
 				return errAsync(notAGitRepo(path));
 			}
 
-			return ResultAsync.fromPromise(
-				Promise.all([
-					this.getRemoteUrl(path),
-					this.getCurrentBranch(path),
-					this.getDefaultBranch(path),
-					this.getHeadCommit(path),
-				]).then(([remoteUrlResult, branchResult, defaultBranchResult, headResult]) => {
-					const remoteUrl = remoteUrlResult._unsafeUnwrap();
-					const currentBranch = branchResult._unsafeUnwrap();
-					const defaultBranch = defaultBranchResult._unsafeUnwrap();
-					const headCommit = headResult._unsafeUnwrap();
-					return { remoteUrl, currentBranch, defaultBranch, headCommit };
-				}),
-				mapToGitError,
-			);
+			return ResultAsync.combine([
+				this.getRemoteUrl(path),
+				this.getCurrentBranch(path),
+				this.getDefaultBranch(path),
+				this.getHeadCommit(path),
+			]).map(([remoteUrl, currentBranch, defaultBranch, headCommit]) => ({
+				remoteUrl,
+				currentBranch,
+				defaultBranch,
+				headCommit,
+			}));
 		});
 	}
 
 	getDiff(
 		path: string,
 		baseBranch: string,
-	): ResultAsync<{ rawDiff: string; files: FileSummary[] }, AppError> {
+	): ResultAsync<{ rawDiff: string; files: FileSummary[] }, GitError> {
 		return ResultAsync.fromPromise(
 			Promise.all([
 				simpleGit(path).diff([baseBranch]),
@@ -92,7 +92,7 @@ export class GitService {
 		);
 	}
 
-	getCurrentBranch(path: string): ResultAsync<string, AppError> {
+	getCurrentBranch(path: string): ResultAsync<string, GitError> {
 		return ResultAsync.fromPromise(
 			simpleGit(path)
 				.revparse(['--abbrev-ref', 'HEAD'])
@@ -101,7 +101,7 @@ export class GitService {
 		);
 	}
 
-	getDefaultBranch(path: string): ResultAsync<string, AppError> {
+	getDefaultBranch(path: string): ResultAsync<string, GitError> {
 		return ResultAsync.fromPromise(
 			simpleGit(path)
 				.raw(['symbolic-ref', '--short', 'refs/remotes/origin/HEAD'])
@@ -110,7 +110,7 @@ export class GitService {
 					const parts = trimmed.split('/');
 					return parts[parts.length - 1];
 				}),
-			() => null as unknown as AppError,
+			() => null as unknown as GitError,
 		).orElse(() =>
 			ResultAsync.fromPromise(
 				simpleGit(path)
@@ -125,7 +125,7 @@ export class GitService {
 		);
 	}
 
-	getRemoteUrl(path: string): ResultAsync<string | null, AppError> {
+	getRemoteUrl(path: string): ResultAsync<string | null, GitError> {
 		return ResultAsync.fromPromise(
 			simpleGit(path)
 				.listRemote(['--get-url'])
@@ -138,7 +138,7 @@ export class GitService {
 		);
 	}
 
-	listBranches(path: string): ResultAsync<string[], AppError> {
+	listBranches(path: string): ResultAsync<string[], GitError> {
 		return ResultAsync.fromPromise(
 			simpleGit(path)
 				.branch()
@@ -147,7 +147,7 @@ export class GitService {
 		);
 	}
 
-	getHeadCommit(path: string): ResultAsync<string, AppError> {
+	getHeadCommit(path: string): ResultAsync<string, GitError> {
 		return ResultAsync.fromPromise(
 			simpleGit(path)
 				.revparse(['HEAD'])
@@ -172,8 +172,8 @@ export class GitService {
 	): AsyncGenerator<ScannedRepo> {
 		if (currentDepth > maxDepth) return;
 
-		const isRepo = await this.isGitRepo(dir);
-		if (isRepo._unsafeUnwrap()) {
+		const isRepoResult = await this.isGitRepo(dir);
+		if (isRepoResult.isOk() && isRepoResult.value) {
 			let remoteUrl: string | null = null;
 			try {
 				const result = await this.getRemoteUrl(dir);
@@ -192,7 +192,7 @@ export class GitService {
 			return; // don't recurse into git repos
 		}
 
-		let entries: import('node:fs').Dirent[];
+		let entries: Dirent[];
 		try {
 			entries = await readdir(dir, { withFileTypes: true });
 		} catch {

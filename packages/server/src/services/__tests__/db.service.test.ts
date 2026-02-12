@@ -5,6 +5,7 @@ import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import initSqlJs from 'sql.js';
+import { expectErr, expectOk } from '../../__tests__/helpers.js';
 import { initInMemoryDatabase } from '../../db/client.js';
 import { DbService } from '../db.service.js';
 
@@ -20,7 +21,7 @@ describe('DbService', () => {
         const result = await initInMemoryDatabase();
         expect(result.isOk()).toBe(true);
 
-        const db = result._unsafeUnwrap();
+        const db = expectOk(result);
         service = new DbService(db, tmpPath, {
             autoSave: false,
             shutdownHooks: false,
@@ -46,8 +47,7 @@ describe('DbService', () => {
 
             const result = service.query<{ id: string; name: string }>('SELECT id, name FROM repos');
 
-            expect(result.isOk()).toBe(true);
-            const rows = result._unsafeUnwrap();
+            const rows = expectOk(result);
             expect(rows).toHaveLength(3);
             expect(rows[0]).toHaveProperty('id');
             expect(rows[0]).toHaveProperty('name');
@@ -56,8 +56,7 @@ describe('DbService', () => {
         it('returns empty array for no matches', () => {
             const result = service.query('SELECT * FROM repos WHERE id = $id', { $id: 'nonexistent' });
 
-            expect(result.isOk()).toBe(true);
-            expect(result._unsafeUnwrap()).toEqual([]);
+            expect(expectOk(result)).toEqual([]);
         });
     });
 
@@ -69,8 +68,7 @@ describe('DbService', () => {
                 $id: 'r1',
             });
 
-            expect(result.isOk()).toBe(true);
-            const row = result._unsafeUnwrap();
+            const row = expectOk(result);
             expect(row).toBeDefined();
             expect(row!.id).toBe('r1');
             expect(row!.name).toBe('test');
@@ -79,8 +77,7 @@ describe('DbService', () => {
         it('returns undefined for no match', () => {
             const result = service.queryOne('SELECT * FROM repos WHERE id = $id', { $id: 'nope' });
 
-            expect(result.isOk()).toBe(true);
-            expect(result._unsafeUnwrap()).toBeUndefined();
+            expect(expectOk(result)).toBeUndefined();
         });
     });
 
@@ -88,15 +85,13 @@ describe('DbService', () => {
         it('returns changes count', () => {
             const result = service.execute("INSERT INTO repos (id, name) VALUES ('r1', 'test')");
 
-            expect(result.isOk()).toBe(true);
-            expect(result._unsafeUnwrap()).toEqual({ changes: 1 });
+            expect(expectOk(result)).toEqual({ changes: 1 });
         });
 
         it('returns error for invalid SQL', () => {
             const result = service.execute('INVALID SQL STATEMENT');
 
-            expect(result.isErr()).toBe(true);
-            expect(result._unsafeUnwrapErr().type).toBe('DATABASE_ERROR');
+            expect(expectErr(result).type).toBe('DATABASE_ERROR');
         });
     });
 
@@ -107,12 +102,11 @@ describe('DbService', () => {
                 return ok('done');
             });
 
-            expect(result.isOk()).toBe(true);
-            expect(result._unsafeUnwrap()).toBe('done');
+            expect(expectOk(result)).toBe('done');
 
             // Verify data is committed
             const query = service.queryOne<{ id: string }>("SELECT * FROM repos WHERE id = 'r1'");
-            expect(query._unsafeUnwrap()).toBeDefined();
+            expect(expectOk(query)).toBeDefined();
         });
 
         it('rolls back on error', () => {
@@ -125,7 +119,7 @@ describe('DbService', () => {
 
             // Verify data is NOT in database
             const query = service.queryOne<{ id: string }>("SELECT * FROM repos WHERE id = 'r1'");
-            expect(query._unsafeUnwrap()).toBeUndefined();
+            expect(expectOk(query)).toBeUndefined();
         });
     });
 
@@ -165,7 +159,7 @@ describe('DbService', () => {
     describe('shutdown hooks', () => {
         it('registers and removes SIGINT/SIGTERM handlers', async () => {
             const dbResult = await initInMemoryDatabase();
-            const db = dbResult._unsafeUnwrap();
+            const db = expectOk(dbResult);
 
             const initialSigint = process.listenerCount('SIGINT');
             const initialSigterm = process.listenerCount('SIGTERM');

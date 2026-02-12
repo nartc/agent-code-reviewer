@@ -1,6 +1,7 @@
 import { generateId } from '@agent-code-reviewer/shared';
 import { okAsync } from 'neverthrow';
 import { vi } from 'vitest';
+import { expectErr, expectOk } from '../../__tests__/helpers.js';
 import { initInMemoryDatabase } from '../../db/client.js';
 import { DbService } from '../db.service.js';
 import type { GitService } from '../git.service.js';
@@ -30,7 +31,7 @@ describe('SessionService', () => {
 	beforeEach(async () => {
 		const dbResult = await initInMemoryDatabase();
 		expect(dbResult.isOk()).toBe(true);
-		const db = dbResult._unsafeUnwrap();
+		const db = expectOk(dbResult);
 		dbService = new DbService(db, ':memory:', { autoSave: false, shutdownHooks: false });
 		gitService = createMockGitService();
 		service = new SessionService(dbService, gitService);
@@ -60,8 +61,7 @@ describe('SessionService', () => {
 		it('creates new session for new branch', async () => {
 			const result = await service.getOrCreateSession(repoId, '/home/user/test-repo');
 
-			expect(result.isOk()).toBe(true);
-			const session = result._unsafeUnwrap();
+			const session = expectOk(result);
 			expect(session.repo_id).toBe(repoId);
 			expect(session.branch).toBe('feature/x');
 			expect(session.is_watching).toBe(false);
@@ -72,9 +72,7 @@ describe('SessionService', () => {
 			const first = await service.getOrCreateSession(repoId, '/home/user/test-repo');
 			const second = await service.getOrCreateSession(repoId, '/home/user/test-repo');
 
-			expect(first.isOk()).toBe(true);
-			expect(second.isOk()).toBe(true);
-			expect(first._unsafeUnwrap().id).toBe(second._unsafeUnwrap().id);
+			expect(expectOk(first).id).toBe(expectOk(second).id);
 		});
 
 		it('creates separate sessions for different branches on same repo', async () => {
@@ -87,23 +85,22 @@ describe('SessionService', () => {
 
 			const result2 = await service.getOrCreateSession(repoId, '/home/user/test-repo');
 
-			expect(result1.isOk()).toBe(true);
-			expect(result2.isOk()).toBe(true);
-			expect(result1._unsafeUnwrap().id).not.toBe(result2._unsafeUnwrap().id);
-			expect(result1._unsafeUnwrap().branch).toBe('feature/x');
-			expect(result2._unsafeUnwrap().branch).toBe('main');
+			const session1 = expectOk(result1);
+			const session2 = expectOk(result2);
+			expect(session1.id).not.toBe(session2.id);
+			expect(session1.branch).toBe('feature/x');
+			expect(session2.branch).toBe('main');
 		});
 	});
 
 	describe('getSession', () => {
 		it('returns SessionWithRepo with nested repo fields', async () => {
 			const createResult = await service.getOrCreateSession(repoId, '/home/user/test-repo');
-			const sessionId = createResult._unsafeUnwrap().id;
+			const sessionId = expectOk(createResult).id;
 
 			const result = service.getSession(sessionId);
 
-			expect(result.isOk()).toBe(true);
-			const sessionWithRepo = result._unsafeUnwrap();
+			const sessionWithRepo = expectOk(result);
 			expect(sessionWithRepo.id).toBe(sessionId);
 			expect(sessionWithRepo.branch).toBe('feature/x');
 			expect(sessionWithRepo.repo.name).toBe('test-repo');
@@ -115,27 +112,26 @@ describe('SessionService', () => {
 		it('returns NOT_FOUND for nonexistent ID', () => {
 			const result = service.getSession('nonexistent');
 
-			expect(result.isErr()).toBe(true);
-			expect(result._unsafeUnwrapErr().type).toBe('NOT_FOUND');
+			const error = expectErr(result);
+			expect(error.type).toBe('NOT_FOUND');
 		});
 	});
 
 	describe('updateBaseBranch', () => {
 		it('updates base_branch field', async () => {
 			const createResult = await service.getOrCreateSession(repoId, '/home/user/test-repo');
-			const sessionId = createResult._unsafeUnwrap().id;
+			const sessionId = expectOk(createResult).id;
 
 			const result = service.updateBaseBranch(sessionId, 'develop');
 
-			expect(result.isOk()).toBe(true);
-			expect(result._unsafeUnwrap().base_branch).toBe('develop');
+			expect(expectOk(result).base_branch).toBe('develop');
 		});
 
 		it('returns NOT_FOUND for nonexistent ID', () => {
 			const result = service.updateBaseBranch('nonexistent', 'develop');
 
-			expect(result.isErr()).toBe(true);
-			expect(result._unsafeUnwrapErr().type).toBe('NOT_FOUND');
+			const error = expectErr(result);
+			expect(error.type).toBe('NOT_FOUND');
 		});
 	});
 
@@ -162,8 +158,7 @@ describe('SessionService', () => {
 			await service.getOrCreateSession(repoId2, '/home/user/repo2');
 
 			const result = service.listSessions(repoId);
-			expect(result.isOk()).toBe(true);
-			expect(result._unsafeUnwrap()).toHaveLength(2);
+			expect(expectOk(result)).toHaveLength(2);
 		});
 
 		it('returns all when no filter', async () => {
@@ -181,21 +176,19 @@ describe('SessionService', () => {
 			await service.getOrCreateSession(repoId2, '/home/user/repo2');
 
 			const result = service.listSessions();
-			expect(result.isOk()).toBe(true);
-			expect(result._unsafeUnwrap()).toHaveLength(2);
+			expect(expectOk(result)).toHaveLength(2);
 		});
 
 		it('returns empty array for empty DB', () => {
 			const result = service.listSessions();
-			expect(result.isOk()).toBe(true);
-			expect(result._unsafeUnwrap()).toEqual([]);
+			expect(expectOk(result)).toEqual([]);
 		});
 	});
 
 	describe('is_watching casting', () => {
 		it('casts is_watching from INTEGER to boolean in all methods', async () => {
 			const createResult = await service.getOrCreateSession(repoId, '/home/user/test-repo');
-			const session = createResult._unsafeUnwrap();
+			const session = expectOk(createResult);
 
 			// getOrCreateSession
 			expect(typeof session.is_watching).toBe('boolean');
@@ -203,15 +196,15 @@ describe('SessionService', () => {
 
 			// getSession
 			const getResult = service.getSession(session.id);
-			expect(typeof getResult._unsafeUnwrap().is_watching).toBe('boolean');
+			expect(typeof expectOk(getResult).is_watching).toBe('boolean');
 
 			// updateBaseBranch
 			const updateResult = service.updateBaseBranch(session.id, 'develop');
-			expect(typeof updateResult._unsafeUnwrap().is_watching).toBe('boolean');
+			expect(typeof expectOk(updateResult).is_watching).toBe('boolean');
 
 			// listSessions
 			const listResult = service.listSessions();
-			for (const s of listResult._unsafeUnwrap()) {
+			for (const s of expectOk(listResult)) {
 				expect(typeof s.is_watching).toBe('boolean');
 			}
 		});

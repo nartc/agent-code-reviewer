@@ -1,5 +1,7 @@
 import {
-	type AppError,
+	type DatabaseError,
+	type GitError,
+	type NotFoundError,
 	type Session,
 	type SessionWithRepo,
 	generateId,
@@ -71,7 +73,7 @@ export class SessionService {
 		private gitService: GitService,
 	) {}
 
-	getSession(id: string): Result<SessionWithRepo, AppError> {
+	getSession(id: string): Result<SessionWithRepo, DatabaseError | NotFoundError> {
 		const result = this.dbService.queryOne<SessionWithRepoRow>(
 			`SELECT s.*, r.remote_url as repo_remote_url, r.name as repo_name,
 				r.base_branch as repo_base_branch, r.created_at as repo_created_at,
@@ -95,7 +97,7 @@ export class SessionService {
 	getOrCreateSession(
 		repoId: string,
 		repoPath: string,
-	): ResultAsync<Session, AppError> {
+	): ResultAsync<Session, GitError | DatabaseError> {
 		return this.gitService.getCurrentBranch(repoPath).andThen((branch) => {
 			const id = generateId();
 
@@ -118,7 +120,7 @@ export class SessionService {
 	updateBaseBranch(
 		id: string,
 		baseBranch: string,
-	): Result<Session, AppError> {
+	): Result<Session, DatabaseError | NotFoundError> {
 		const existing = this.dbService.queryOne<SessionRow>(
 			'SELECT * FROM sessions WHERE id = $id',
 			{ $id: id },
@@ -141,8 +143,8 @@ export class SessionService {
 		return ok(castSession(updated.value!));
 	}
 
-	listSessions(repoId?: string): Result<Session[], AppError> {
-		let result: Result<SessionRow[], AppError>;
+	listSessions(repoId?: string): Result<Session[], DatabaseError> {
+		let result: Result<SessionRow[], DatabaseError>;
 
 		if (repoId) {
 			result = this.dbService.query<SessionRow>(

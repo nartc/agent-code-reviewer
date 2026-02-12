@@ -6,16 +6,16 @@ export function formatCommentsForTransport(comments: CommentPayload[]): string {
     }
 
     // Group by file_path
-    const grouped = new Map<string, CommentPayload[]>();
+    const grouped: Record<string, CommentPayload[]> = {};
     for (const c of comments) {
-        const group = grouped.get(c.file_path) ?? [];
+        const group = grouped[c.file_path] ?? [];
         group.push(c);
-        grouped.set(c.file_path, group);
+        grouped[c.file_path] = group;
     }
 
     const lines: string[] = ['## Code Review Comments', ''];
 
-    for (const [filePath, fileComments] of grouped) {
+    for (const [filePath, fileComments] of Object.entries(grouped)) {
         lines.push(`### ${filePath}`);
         for (const c of fileComments) {
             // Line reference
@@ -46,7 +46,7 @@ export function formatCommentsForTransport(comments: CommentPayload[]): string {
 
     lines.push('---');
     lines.push(
-        `${comments.length} comment${comments.length !== 1 ? 's' : ''} across ${grouped.size} file${grouped.size !== 1 ? 's' : ''}`,
+        `${comments.length} comment${comments.length !== 1 ? 's' : ''} across ${Object.keys(grouped).length} file${Object.keys(grouped).length !== 1 ? 's' : ''}`,
     );
 
     return lines.join('\n');

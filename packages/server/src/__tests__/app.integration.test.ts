@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { vi } from 'vitest';
+import { expectOk } from './helpers.js';
 import { createApp } from '../app.js';
 import { initInMemoryDatabase } from '../db/client.js';
 import { DbService } from '../services/db.service.js';
@@ -32,9 +33,7 @@ describe('App Integration', () => {
 
     beforeEach(async () => {
         const result = await initInMemoryDatabase();
-        expect(result.isOk()).toBe(true);
-
-        const db = result._unsafeUnwrap();
+        const db = expectOk(result);
         dbService = new DbService(db, '/tmp/test-app.db', {
             autoSave: false,
             shutdownHooks: false,
@@ -81,9 +80,9 @@ describe('App Integration', () => {
         });
 
         const res = await app.request('/api/test-error');
-        const body = (await res.json()) as { error: { type: string; message: string } };
+        const body = (await res.json()) as { error: { code: string; message: string } };
         expect(body.error).toBeDefined();
-        expect(body.error.type).toBe('INTERNAL');
+        expect(body.error.code).toBe('INTERNAL');
     });
 
     it('SSE endpoint returns event stream (AC-3.1)', async () => {

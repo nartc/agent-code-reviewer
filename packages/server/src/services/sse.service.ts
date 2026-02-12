@@ -8,30 +8,30 @@ export interface SseConnection {
 }
 
 export class SseService {
-	private connections: Map<string, Set<SseConnection>> = new Map();
-	private heartbeatTimers: Map<string, NodeJS.Timeout> = new Map();
+	private connections: Record<string, Set<SseConnection>> = {};
+	private heartbeatTimers: Record<string, NodeJS.Timeout> = {};
 
 	addConnection(sessionId: string, connection: SseConnection): void {
-		let sessionConnections = this.connections.get(sessionId);
+		let sessionConnections = this.connections[sessionId];
 		if (!sessionConnections) {
 			sessionConnections = new Set();
-			this.connections.set(sessionId, sessionConnections);
+			this.connections[sessionId] = sessionConnections;
 		}
 		sessionConnections.add(connection);
 
-		if (!this.heartbeatTimers.has(sessionId)) {
+		if (this.heartbeatTimers[sessionId] === undefined) {
 			const timer = setInterval(() => {
 				this.broadcast(sessionId, {
 					type: 'heartbeat',
 					data: { timestamp: new Date().toISOString() },
 				});
 			}, HEARTBEAT_INTERVAL_MS);
-			this.heartbeatTimers.set(sessionId, timer);
+			this.heartbeatTimers[sessionId] = timer;
 		}
 	}
 
 	removeConnection(sessionId: string, connectionId: string): void {
-		const sessionConnections = this.connections.get(sessionId);
+		const sessionConnections = this.connections[sessionId];
 		if (!sessionConnections) return;
 
 		for (const conn of sessionConnections) {
@@ -42,17 +42,17 @@ export class SseService {
 		}
 
 		if (sessionConnections.size === 0) {
-			this.connections.delete(sessionId);
-			const timer = this.heartbeatTimers.get(sessionId);
+			delete this.connections[sessionId];
+			const timer = this.heartbeatTimers[sessionId];
 			if (timer) {
 				clearInterval(timer);
-				this.heartbeatTimers.delete(sessionId);
+				delete this.heartbeatTimers[sessionId];
 			}
 		}
 	}
 
 	broadcast(sessionId: string, event: SseEvent): void {
-		const sessionConnections = this.connections.get(sessionId);
+		const sessionConnections = this.connections[sessionId];
 		if (!sessionConnections) return;
 
 		for (const conn of sessionConnections) {
@@ -66,26 +66,26 @@ export class SseService {
 
 	getConnectionCount(sessionId?: string): number {
 		if (sessionId !== undefined) {
-			const sessionConnections = this.connections.get(sessionId);
+			const sessionConnections = this.connections[sessionId];
 			return sessionConnections ? sessionConnections.size : 0;
 		}
 
 		let total = 0;
-		for (const connections of this.connections.values()) {
+		for (const connections of Object.values(this.connections)) {
 			total += connections.size;
 		}
 		return total;
 	}
 
 	shutdown(): void {
-		for (const timer of this.heartbeatTimers.values()) {
+		for (const timer of Object.values(this.heartbeatTimers)) {
 			clearInterval(timer);
 		}
-		this.heartbeatTimers.clear();
+		this.heartbeatTimers = {};
 
-		for (const connections of this.connections.values()) {
+		for (const connections of Object.values(this.connections)) {
 			connections.clear();
 		}
-		this.connections.clear();
+		this.connections = {};
 	}
 }

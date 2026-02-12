@@ -13,7 +13,7 @@ describe('errorHandler', () => {
         expect(res.status).toBe(404);
         const body = await res.json();
         expect(body).toEqual({
-            error: { type: 'NOT_FOUND', message: 'gone' },
+            error: { code: 'NOT_FOUND', message: 'gone' },
         });
     });
 
@@ -28,7 +28,7 @@ describe('errorHandler', () => {
         expect(res.status).toBe(500);
         const body = await res.json();
         expect(body).toEqual({
-            error: { type: 'INTERNAL', message: 'Internal server error' },
+            error: { code: 'INTERNAL', message: 'Internal server error' },
         });
     });
 
@@ -43,10 +43,10 @@ describe('errorHandler', () => {
         });
 
         const res = await app.request('/test');
-        const body = (await res.json()) as { error: { type: string; message: string } };
-        expect(body.error).toHaveProperty('type');
+        const body = (await res.json()) as { error: { code: string; message: string } };
+        expect(body.error).toHaveProperty('code');
         expect(body.error).toHaveProperty('message');
-        expect(typeof body.error.type).toBe('string');
+        expect(typeof body.error.code).toBe('string');
         expect(typeof body.error.message).toBe('string');
     });
 });

@@ -36,7 +36,7 @@ describe('resultToResponse', () => {
         expect(res.status).toBe(404);
         const body = await res.json();
         expect(body).toEqual({
-            error: { type: 'NOT_FOUND', message: 'Repo not found' },
+            error: { code: 'NOT_FOUND', message: 'Repo not found' },
         });
     });
 
@@ -50,7 +50,7 @@ describe('resultToResponse', () => {
         expect(res.status).toBe(400);
         const body = await res.json();
         expect(body).toEqual({
-            error: { type: 'VALIDATION', message: 'Invalid input' },
+            error: { code: 'VALIDATION', message: 'Invalid input' },
         });
     });
 

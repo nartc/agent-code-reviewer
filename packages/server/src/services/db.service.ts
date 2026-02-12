@@ -1,4 +1,4 @@
-import { type AppError, databaseError } from '@agent-code-reviewer/shared';
+import { type DatabaseError, databaseError } from '@agent-code-reviewer/shared';
 import { err, ok, type Result } from 'neverthrow';
 import { writeFileSync } from 'node:fs';
 import type { BindParams, Database } from 'sql.js';
@@ -25,7 +25,7 @@ export class DbService {
      * Execute a SELECT query and return all matching rows as typed objects.
      * Statement is prepared, bound, stepped through, and freed within this call.
      */
-    query<T>(sql: string, params?: BindParams): Result<T[], AppError> {
+    query<T>(sql: string, params?: BindParams): Result<T[], DatabaseError> {
         try {
             const stmt = this.db.prepare(sql);
             if (params) stmt.bind(params);
@@ -44,7 +44,7 @@ export class DbService {
     /**
      * Execute a SELECT query and return the first matching row, or undefined.
      */
-    queryOne<T>(sql: string, params?: BindParams): Result<T | undefined, AppError> {
+    queryOne<T>(sql: string, params?: BindParams): Result<T | undefined, DatabaseError> {
         try {
             const stmt = this.db.prepare(sql);
             if (params) stmt.bind(params);
@@ -63,7 +63,7 @@ export class DbService {
     /**
      * Execute an INSERT/UPDATE/DELETE statement and return the number of rows modified.
      */
-    execute(sql: string, params?: BindParams): Result<{ changes: number }, AppError> {
+    execute(sql: string, params?: BindParams): Result<{ changes: number }, DatabaseError> {
         try {
             this.db.run(sql, params as any);
             return ok({ changes: this.db.getRowsModified() });
@@ -76,7 +76,7 @@ export class DbService {
      * Execute a function within a transaction.
      * BEGIN → fn() → COMMIT on ok / ROLLBACK on err.
      */
-    transaction<T>(fn: () => Result<T, AppError>): Result<T, AppError> {
+    transaction<T>(fn: () => Result<T, DatabaseError>): Result<T, DatabaseError> {
         try {
             this.db.run('BEGIN');
         } catch (e) {
@@ -114,7 +114,8 @@ export class DbService {
      * WARNING: db.export() frees all open prepared statements.
      * Ensure no statements are held open when calling save().
      */
-    save(): Result<void, AppError> {
+    save(): Result<void, DatabaseError> {
+        if (this.dbPath === ':memory:') return ok(undefined);
         try {
             const data = this.db.export();
             writeFileSync(this.dbPath, Buffer.from(data));
@@ -127,7 +128,7 @@ export class DbService {
     /**
      * Clear auto-save timer, save, and close the database.
      */
-    close(): Result<void, AppError> {
+    close(): Result<void, DatabaseError> {
         this.clearAutoSave();
         this.removeShutdownHooks();
 

@@ -1,11 +1,16 @@
 import {
-	type AppError,
+	type DatabaseError,
 	type FileSummary,
+	type GitError,
+	type NotFoundError,
 	type Snapshot,
 	type SnapshotSummary,
 	type SnapshotTrigger,
+	type WatcherError,
 	generateId,
+	watcherError,
 } from '@agent-code-reviewer/shared';
+import type { Stats } from 'node:fs';
 import { ResultAsync, errAsync, okAsync } from 'neverthrow';
 import type { FSWatcher } from 'chokidar';
 import type { DbService } from './db.service.js';
@@ -36,14 +41,14 @@ interface SnapshotRow {
 	created_at: string;
 }
 
-function createIgnoreFunction(): (path: string, stats?: import('node:fs').Stats) => boolean {
+function createIgnoreFunction(): (path: string, stats?: Stats) => boolean {
 	const ignoredDirs = new Set([
 		'node_modules', '.git', 'dist', 'build', '.next',
 		'.cache', 'coverage', '__pycache__', '.venv',
 	]);
 	const ignoredFiles = new Set(['.DS_Store']);
 
-	return (filePath: string, _stats?: import('node:fs').Stats): boolean => {
+	return (filePath: string, _stats?: Stats): boolean => {
 		const segments = filePath.split('/');
 		for (const segment of segments) {
 			if (ignoredDirs.has(segment)) return true;
@@ -57,15 +62,15 @@ function computeChangedFiles(current: FileSummary[], previous: FileSummary[]): s
 	if (previous.length === 0) return [];
 
 	const changed: string[] = [];
-	const previousMap = new Map<string, FileSummary>();
+	const previousMap: Record<string, FileSummary> = {};
 	for (const file of previous) {
-		previousMap.set(file.path, file);
+		previousMap[file.path] = file;
 	}
 
 	const currentPaths = new Set<string>();
 	for (const file of current) {
 		currentPaths.add(file.path);
-		const prev = previousMap.get(file.path);
+		const prev = previousMap[file.path];
 		if (!prev) {
 			changed.push(file.path);
 		} else if (
@@ -89,7 +94,7 @@ function computeChangedFiles(current: FileSummary[], previous: FileSummary[]): s
 export { createIgnoreFunction, computeChangedFiles };
 
 export class WatcherService {
-	private activeWatchers: Map<string, ActiveWatcher> = new Map();
+	private activeWatchers: Record<string, ActiveWatcher> = {};
 
 	constructor(
 		private dbService: DbService,
@@ -98,11 +103,11 @@ export class WatcherService {
 		private sseService: SseService,
 	) {}
 
-	startWatching(sessionId: string, repoPath: string): ResultAsync<void, AppError> {
+	startWatching(sessionId: string, repoPath: string): ResultAsync<void, WatcherError | DatabaseError | NotFoundError> {
 		const sessionResult = this.sessionService.getSession(sessionId);
 		if (sessionResult.isErr()) return errAsync(sessionResult.error);
 
-		if (this.activeWatchers.has(sessionId)) return okAsync(undefined);
+		if (this.activeWatchers[sessionId]) return okAsync(undefined);
 
 		return ResultAsync.fromPromise(
 			import('chokidar').then(({ watch }) => {
@@ -123,7 +128,7 @@ export class WatcherService {
 					debounceTimer: null,
 					lastSnapshotAt: 0,
 				};
-				this.activeWatchers.set(sessionId, active);
+				this.activeWatchers[sessionId] = active;
 
 				const dbResult = this.dbService.execute(
 					'UPDATE sessions SET is_watching = 1 WHERE id = $id',
@@ -131,7 +136,7 @@ export class WatcherService {
 				);
 				if (dbResult.isErr()) {
 					watcher.close();
-					this.activeWatchers.delete(sessionId);
+					delete this.activeWatchers[sessionId];
 					throw dbResult.error;
 				}
 
@@ -140,20 +145,20 @@ export class WatcherService {
 					data: { session_id: sessionId, is_watching: true },
 				});
 			}),
-			(e) => e as AppError,
+			(e) => watcherError('Failed to start file watcher', e),
 		);
 	}
 
-	stopWatching(sessionId: string): ResultAsync<void, AppError> {
-		const active = this.activeWatchers.get(sessionId);
+	stopWatching(sessionId: string): ResultAsync<void, WatcherError | DatabaseError> {
+		const active = this.activeWatchers[sessionId];
 		if (!active) return okAsync(undefined);
 
 		return ResultAsync.fromPromise(
 			active.watcher.close(),
-			(e) => e as AppError,
+			(e) => watcherError('Failed to stop file watcher', e),
 		).andThen(() => {
 			if (active.debounceTimer) clearTimeout(active.debounceTimer);
-			this.activeWatchers.delete(sessionId);
+			delete this.activeWatchers[sessionId];
 
 			const dbResult = this.dbService.execute(
 				'UPDATE sessions SET is_watching = 0 WHERE id = $id',
@@ -170,7 +175,7 @@ export class WatcherService {
 		});
 	}
 
-	captureSnapshot(sessionId: string, repoPath: string, trigger: SnapshotTrigger): ResultAsync<Snapshot, AppError> {
+	captureSnapshot(sessionId: string, repoPath: string, trigger: SnapshotTrigger): ResultAsync<Snapshot, GitError | DatabaseError | NotFoundError> {
 		const sessionResult = this.sessionService.getSession(sessionId);
 		if (sessionResult.isErr()) return errAsync(sessionResult.error);
 
@@ -232,21 +237,21 @@ export class WatcherService {
 	}
 
 	isWatching(sessionId: string): boolean {
-		return this.activeWatchers.has(sessionId);
+		return this.activeWatchers[sessionId] !== undefined;
 	}
 
 	async stopAll(): Promise<void> {
 		const closePromises: Promise<void>[] = [];
-		for (const [, active] of this.activeWatchers) {
+		for (const active of Object.values(this.activeWatchers)) {
 			if (active.debounceTimer) clearTimeout(active.debounceTimer);
 			closePromises.push(active.watcher.close());
 		}
 		await Promise.all(closePromises);
-		this.activeWatchers.clear();
+		this.activeWatchers = {};
 	}
 
 	private handleFileChange(sessionId: string, repoPath: string): void {
-		const active = this.activeWatchers.get(sessionId);
+		const active = this.activeWatchers[sessionId];
 		if (!active) return;
 
 		if (active.debounceTimer) clearTimeout(active.debounceTimer);

@@ -1,5 +1,7 @@
 import {
-	type AppError,
+	type DatabaseError,
+	type GitError,
+	type NotFoundError,
 	type Repo,
 	type RepoPath,
 	type RepoWithPaths,
@@ -20,7 +22,7 @@ export class RepoService {
 		private gitService: GitService,
 	) {}
 
-	listRepos(): Result<RepoWithPaths[], AppError> {
+	listRepos(): Result<RepoWithPaths[], DatabaseError> {
 		const reposResult = this.dbService.query<Repo>(
 			'SELECT * FROM repos ORDER BY created_at DESC',
 		);
@@ -41,10 +43,10 @@ export class RepoService {
 		return ok(result);
 	}
 
-	createOrGetFromPath(path: string): ResultAsync<CreateOrGetResult, AppError> {
+	createOrGetFromPath(path: string): ResultAsync<CreateOrGetResult, GitError | DatabaseError> {
 		return this.gitService.isGitRepo(path).andThen((isRepo) => {
 			if (!isRepo) {
-				return errAsync<CreateOrGetResult, AppError>(notAGitRepo(path));
+				return errAsync<CreateOrGetResult, GitError | DatabaseError>(notAGitRepo(path));
 			}
 
 			return this.gitService.getRemoteUrl(path).andThen((remoteUrl) => {
@@ -56,7 +58,7 @@ export class RepoService {
 		});
 	}
 
-	deleteRepo(id: string): Result<void, AppError> {
+	deleteRepo(id: string): Result<void, DatabaseError | NotFoundError> {
 		const existing = this.dbService.queryOne<Repo>(
 			'SELECT * FROM repos WHERE id = $id',
 			{ $id: id },
@@ -76,7 +78,7 @@ export class RepoService {
 	updateRepo(
 		id: string,
 		update: { baseBranch: string },
-	): Result<Repo, AppError> {
+	): Result<Repo, DatabaseError | NotFoundError> {
 		const existing = this.dbService.queryOne<Repo>(
 			'SELECT * FROM repos WHERE id = $id',
 			{ $id: id },
@@ -99,7 +101,7 @@ export class RepoService {
 		return ok(updated.value!);
 	}
 
-	getRepoPaths(repoId: string): Result<RepoPath[], AppError> {
+	getRepoPaths(repoId: string): Result<RepoPath[], DatabaseError> {
 		return this.dbService.query<RepoPath>(
 			'SELECT * FROM repo_paths WHERE repo_id = $repoId',
 			{ $repoId: repoId },
@@ -109,7 +111,7 @@ export class RepoService {
 	private findOrCreateByRemoteUrl(
 		path: string,
 		remoteUrl: string,
-	): ResultAsync<CreateOrGetResult, AppError> {
+	): ResultAsync<CreateOrGetResult, GitError | DatabaseError> {
 		const existingRepo = this.dbService.queryOne<Repo>(
 			'SELECT * FROM repos WHERE remote_url = $url',
 			{ $url: remoteUrl },
@@ -126,7 +128,7 @@ export class RepoService {
 
 	private findOrCreateByPath(
 		path: string,
-	): ResultAsync<CreateOrGetResult, AppError> {
+	): ResultAsync<CreateOrGetResult, GitError | DatabaseError> {
 		const existingRepo = this.dbService.queryOne<Repo>(
 			'SELECT r.* FROM repos r JOIN repo_paths rp ON r.id = rp.repo_id WHERE rp.path = $path',
 			{ $path: path },
@@ -145,7 +147,7 @@ export class RepoService {
 		repo: Repo,
 		path: string,
 		isNew: boolean,
-	): ResultAsync<CreateOrGetResult, AppError> {
+	): ResultAsync<CreateOrGetResult, DatabaseError> {
 		const existingPath = this.dbService.queryOne<RepoPath>(
 			'SELECT * FROM repo_paths WHERE repo_id = $repoId AND path = $path',
 			{ $repoId: repo.id, $path: path },
@@ -178,7 +180,7 @@ export class RepoService {
 	private createNewRepo(
 		path: string,
 		remoteUrl: string | null,
-	): ResultAsync<CreateOrGetResult, AppError> {
+	): ResultAsync<CreateOrGetResult, GitError | DatabaseError> {
 		return this.gitService.getDefaultBranch(path).andThen((baseBranch) => {
 			const repoId = generateId();
 			const pathId = generateId();

@@ -1,60 +1,82 @@
-export type AppErrorType =
-    | 'NOT_FOUND'
-    | 'VALIDATION'
-    | 'GIT_ERROR'
-    | 'NOT_A_GIT_REPO'
-    | 'TRANSPORT_ERROR'
-    | 'TRANSPORT_UNAVAILABLE'
-    | 'DATABASE_ERROR'
-    | 'WATCHER_ERROR';
-
-export interface AppError {
-    type: AppErrorType;
-    message: string;
-    cause?: unknown;
+export interface NotFoundError {
+    readonly type: 'NOT_FOUND';
+    readonly message: string;
 }
 
-export const notFound = (message: string): AppError => ({ type: 'NOT_FOUND', message });
+export interface ValidationError {
+    readonly type: 'VALIDATION';
+    readonly message: string;
+}
 
-export const validation = (message: string): AppError => ({ type: 'VALIDATION', message });
+export type GitErrorCode = 'NOT_A_GIT_REPO' | 'OPERATION_FAILED';
 
-export const gitError = (message: string, cause?: unknown): AppError => ({ type: 'GIT_ERROR', message, cause });
+export interface GitError {
+    readonly type: 'GIT_ERROR';
+    readonly code: GitErrorCode;
+    readonly message: string;
+    readonly cause?: unknown;
+}
 
-export const notAGitRepo = (path: string): AppError => ({
-    type: 'NOT_A_GIT_REPO',
-    message: `Not a git repository: ${path}`,
-});
+export interface DatabaseError {
+    readonly type: 'DATABASE_ERROR';
+    readonly message: string;
+    readonly cause?: unknown;
+}
 
-export const transportError = (message: string, cause?: unknown): AppError => ({
-    type: 'TRANSPORT_ERROR',
-    message,
-    cause,
-});
+export interface WatcherError {
+    readonly type: 'WATCHER_ERROR';
+    readonly message: string;
+    readonly cause?: unknown;
+}
 
-export const transportUnavailable = (transport: string): AppError => ({
-    type: 'TRANSPORT_UNAVAILABLE',
-    message: `Transport unavailable: ${transport}`,
-});
+export interface TransportError {
+    readonly type: 'TRANSPORT_ERROR';
+    readonly message: string;
+    readonly cause?: unknown;
+}
 
-export const databaseError = (message: string, cause?: unknown): AppError => ({
-    type: 'DATABASE_ERROR',
-    message,
-    cause,
-});
+export interface TransportUnavailableError {
+    readonly type: 'TRANSPORT_UNAVAILABLE';
+    readonly message: string;
+}
 
-export const watcherError = (message: string, cause?: unknown): AppError => ({ type: 'WATCHER_ERROR', message, cause });
+export type AppError =
+    | NotFoundError
+    | ValidationError
+    | GitError
+    | DatabaseError
+    | WatcherError
+    | TransportError
+    | TransportUnavailableError;
 
-export function errorToStatus(error: AppError): number {
-    switch (error.type) {
-        case 'NOT_FOUND':
-            return 404;
-        case 'VALIDATION':
-            return 400;
-        case 'NOT_A_GIT_REPO':
-            return 422;
-        case 'TRANSPORT_UNAVAILABLE':
-            return 503;
-        default:
-            return 500;
-    }
+export function notFound(message: string): NotFoundError {
+    return { type: 'NOT_FOUND', message };
+}
+
+export function validation(message: string): ValidationError {
+    return { type: 'VALIDATION', message };
+}
+
+export function gitError(message: string, cause?: unknown): GitError {
+    return { type: 'GIT_ERROR', code: 'OPERATION_FAILED', message, cause };
+}
+
+export function notAGitRepo(path: string): GitError {
+    return { type: 'GIT_ERROR', code: 'NOT_A_GIT_REPO', message: `Not a git repository: ${path}` };
+}
+
+export function transportError(message: string, cause?: unknown): TransportError {
+    return { type: 'TRANSPORT_ERROR', message, cause };
+}
+
+export function transportUnavailable(transport: string): TransportUnavailableError {
+    return { type: 'TRANSPORT_UNAVAILABLE', message: `Transport unavailable: ${transport}` };
+}
+
+export function databaseError(message: string, cause?: unknown): DatabaseError {
+    return { type: 'DATABASE_ERROR', message, cause };
+}
+
+export function watcherError(message: string, cause?: unknown): WatcherError {
+    return { type: 'WATCHER_ERROR', message, cause };
 }

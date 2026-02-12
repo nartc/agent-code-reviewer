@@ -1,6 +1,7 @@
-import { type AppError, type FileSummary, generateId } from '@agent-code-reviewer/shared';
+import { type FileSummary, type GitError, generateId } from '@agent-code-reviewer/shared';
 import { errAsync, okAsync } from 'neverthrow';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { expectErr, expectOk } from '../../__tests__/helpers.js';
 import { initInMemoryDatabase } from '../../db/client.js';
 import { DbService } from '../db.service.js';
 import type { GitService } from '../git.service.js';
@@ -74,7 +75,7 @@ describe('WatcherService', () => {
 
 		const dbResult = await initInMemoryDatabase();
 		expect(dbResult.isOk()).toBe(true);
-		const db = dbResult._unsafeUnwrap();
+		const db = expectOk(dbResult);
 		dbService = new DbService(db, ':memory:', { autoSave: false, shutdownHooks: false });
 
 		gitService = createMockGitService();
@@ -96,7 +97,7 @@ describe('WatcherService', () => {
 		);
 
 		const sessionResult = await sessionService.getOrCreateSession(repoId, '/repo');
-		sessionId = sessionResult._unsafeUnwrap().id;
+		sessionId = expectOk(sessionResult).id;
 	});
 
 	afterEach(async () => {
@@ -121,7 +122,7 @@ describe('WatcherService', () => {
 				'SELECT is_watching FROM sessions WHERE id = $id',
 				{ $id: sessionId },
 			);
-			expect(dbRow._unsafeUnwrap()!.is_watching).toBe(1);
+			expect(expectOk(dbRow)!.is_watching).toBe(1);
 
 			// Verify SSE broadcast
 			expect(sseService.broadcast).toHaveBeenCalledWith(sessionId, {
@@ -144,7 +145,7 @@ describe('WatcherService', () => {
 			const result = await service.startWatching('sess-999', '/repo');
 
 			expect(result.isErr()).toBe(true);
-			expect(result._unsafeUnwrapErr().type).toBe('NOT_FOUND');
+			expect(expectErr(result).type).toBe('NOT_FOUND');
 		});
 	});
 
@@ -161,7 +162,7 @@ describe('WatcherService', () => {
 				'SELECT is_watching FROM sessions WHERE id = $id',
 				{ $id: sessionId },
 			);
-			expect(dbRow._unsafeUnwrap()!.is_watching).toBe(0);
+			expect(expectOk(dbRow)!.is_watching).toBe(0);
 
 			expect(sseService.broadcast).toHaveBeenCalledWith(sessionId, {
 				type: 'watcher-status',
@@ -196,8 +197,9 @@ describe('WatcherService', () => {
 				'SELECT session_id, trigger FROM snapshots WHERE session_id = $sessionId',
 				{ $sessionId: sessionId },
 			);
-			expect(rows._unsafeUnwrap()).toHaveLength(1);
-			expect(rows._unsafeUnwrap()[0].trigger).toBe('fs_watch');
+			const rowData = expectOk(rows);
+			expect(rowData).toHaveLength(1);
+			expect(rowData[0].trigger).toBe('fs_watch');
 		});
 
 		it('debounce resets on rapid changes (AC-2.7)', async () => {
@@ -253,8 +255,7 @@ describe('WatcherService', () => {
 		it('persists correct data (AC-2.9)', async () => {
 			const result = await service.captureSnapshot(sessionId, '/repo', 'manual');
 
-			expect(result.isOk()).toBe(true);
-			const snapshot = result._unsafeUnwrap();
+			const snapshot = expectOk(result);
 			expect(snapshot.session_id).toBe(sessionId);
 			expect(snapshot.trigger).toBe('manual');
 			expect(snapshot.head_commit).toBe('abc123');
@@ -265,7 +266,7 @@ describe('WatcherService', () => {
 				'SELECT * FROM snapshots WHERE session_id = $sessionId',
 				{ $sessionId: sessionId },
 			);
-			const row = dbRow._unsafeUnwrap()!;
+			const row = expectOk(dbRow)!;
 			expect(row.session_id).toBe(sessionId);
 			expect(row.raw_diff).toContain('diff --git');
 			expect(row.head_commit).toBe('abc123');
@@ -297,8 +298,7 @@ describe('WatcherService', () => {
 			}));
 			const result = await service.captureSnapshot(sessionId, '/repo', 'manual');
 
-			expect(result.isOk()).toBe(true);
-			const snapshot = result._unsafeUnwrap();
+			const snapshot = expectOk(result);
 			expect(snapshot.changed_files).toEqual(expect.arrayContaining(['b.ts', 'c.ts']));
 			expect(snapshot.changed_files).toHaveLength(2);
 		});
@@ -306,8 +306,7 @@ describe('WatcherService', () => {
 		it('returns null changed_files for first snapshot (AC-2.11)', async () => {
 			const result = await service.captureSnapshot(sessionId, '/repo', 'manual');
 
-			expect(result.isOk()).toBe(true);
-			expect(result._unsafeUnwrap().changed_files).toBeNull();
+			expect(expectOk(result).changed_files).toBeNull();
 		});
 
 		it('broadcasts SSE event without raw_diff (AC-2.12)', async () => {
@@ -328,20 +327,19 @@ describe('WatcherService', () => {
 
 		it('handles git error (AC-2.13)', async () => {
 			(gitService.getDiff as any).mockReturnValue(
-				errAsync({ type: 'GIT_ERROR', message: 'git failed' } as AppError),
+				errAsync({ type: 'GIT_ERROR', code: 'OPERATION_FAILED', message: 'git failed' } as GitError),
 			);
 
 			const result = await service.captureSnapshot(sessionId, '/repo', 'manual');
 
-			expect(result.isErr()).toBe(true);
-			expect(result._unsafeUnwrapErr().type).toBe('GIT_ERROR');
+			expect(expectErr(result).type).toBe('GIT_ERROR');
 
 			// No snapshot inserted
 			const rows = dbService.query<{ id: string }>(
 				'SELECT id FROM snapshots WHERE session_id = $sessionId',
 				{ $sessionId: sessionId },
 			);
-			expect(rows._unsafeUnwrap()).toHaveLength(0);
+			expect(expectOk(rows)).toHaveLength(0);
 		});
 
 		it('handles DB insert error (AC-2.14)', async () => {
@@ -350,8 +348,7 @@ describe('WatcherService', () => {
 
 			const result = await service.captureSnapshot(sessionId, '/repo', 'manual');
 
-			expect(result.isErr()).toBe(true);
-			expect(result._unsafeUnwrapErr().type).toBe('DATABASE_ERROR');
+			expect(expectErr(result).type).toBe('DATABASE_ERROR');
 
 			// No SSE broadcast for snapshot
 			expect(sseService.broadcast).not.toHaveBeenCalledWith(
@@ -392,7 +389,7 @@ describe('WatcherService', () => {
 				{ $id: generateId(), $repoId: repoId2, $path: '/repo2' },
 			);
 			const session2Result = await sessionService.getOrCreateSession(repoId2, '/repo2');
-			const sessionId2 = session2Result._unsafeUnwrap().id;
+			const sessionId2 = expectOk(session2Result).id;
 
 			await service.startWatching(sessionId, '/repo');
 			await service.startWatching(sessionId2, '/repo2');
