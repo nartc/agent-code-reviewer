@@ -5,7 +5,7 @@ import { basename } from 'node:path';
 import type { GitService } from '../services/git.service.js';
 import type { AppConfig } from '../lib/config.js';
 import { asyncResultToResponse } from '../lib/result-to-response.js';
-import { gitInfoQuerySchema, gitBranchesQuerySchema, gitScanQuerySchema } from './schemas.js';
+import { gitInfoQuerySchema, gitBranchesQuerySchema, gitScanQuerySchema } from '@agent-code-reviewer/shared';
 
 export function createGitRoutes(gitService: GitService, config: AppConfig): Hono {
     const app = new Hono();

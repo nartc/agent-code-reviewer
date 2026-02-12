@@ -1,6 +1,9 @@
+import { z } from 'zod';
 import type { CommentAuthor, CommentSide, CommentStatus } from './comment.js';
 
-export type TransportType = 'tmux' | 'mcp' | 'clipboard';
+export const transportTypeSchema = z.enum(['tmux', 'mcp', 'clipboard']);
+
+export type TransportType = z.infer<typeof transportTypeSchema>;
 
 export interface Target {
     id: string;

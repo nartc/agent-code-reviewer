@@ -9,7 +9,8 @@
         "test": "vitest run"
     },
     "dependencies": {
-        "nanoid": "^5.x"
+        "nanoid": "^5.x",
+        "zod": "^3.x"
     },
     "devDependencies": {
         "vitest": "^4.0.8"

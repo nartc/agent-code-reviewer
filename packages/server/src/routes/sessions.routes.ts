@@ -3,7 +3,8 @@ import { zValidator } from '@hono/zod-validator';
 import type { SessionService } from '../services/session.service.js';
 import type { WatcherService } from '../services/watcher.service.js';
 import { resultToResponse, asyncResultToResponse } from '../lib/result-to-response.js';
-import { createSessionSchema, updateSessionSchema, idParamSchema } from './schemas.js';
+import { createSessionSchema, updateSessionSchema } from '@agent-code-reviewer/shared';
+import { idParamSchema } from './params.js';
 
 export function createSessionRoutes(
     sessionService: SessionService,

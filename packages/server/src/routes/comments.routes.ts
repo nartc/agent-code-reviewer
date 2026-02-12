@@ -10,8 +10,8 @@ import {
     sendCommentsSchema,
     replyToCommentSchema,
     listCommentsQuerySchema,
-    idParamSchema,
-} from './schemas.js';
+} from '@agent-code-reviewer/shared';
+import { idParamSchema } from './params.js';
 
 function buildPayload(comment: Comment): CommentPayload {
     return {

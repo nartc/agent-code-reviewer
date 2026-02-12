@@ -7,7 +7,8 @@ import type { DbService } from '../services/db.service.js';
 import type { WatcherService } from '../services/watcher.service.js';
 import type { SessionService } from '../services/session.service.js';
 import { resultToResponse, asyncResultToResponse } from '../lib/result-to-response.js';
-import { idParamSchema, listSnapshotsQuerySchema } from './schemas.js';
+import { listSnapshotsQuerySchema } from '@agent-code-reviewer/shared';
+import { idParamSchema } from './params.js';
 
 interface SnapshotRow {
     id: string;

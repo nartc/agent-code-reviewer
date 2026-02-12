@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import type { TransportService } from '../services/transport.service.js';
 import { resultToResponse, asyncResultToResponse } from '../lib/result-to-response.js';
-import { updateTransportConfigSchema } from './schemas.js';
+import { updateTransportConfigSchema } from '@agent-code-reviewer/shared';
 
 export function createTransportRoutes(transportService: TransportService): Hono {
     const app = new Hono();

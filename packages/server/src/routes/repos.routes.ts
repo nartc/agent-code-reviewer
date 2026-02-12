@@ -2,7 +2,8 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import type { RepoService } from '../services/repo.service.js';
 import { resultToResponse } from '../lib/result-to-response.js';
-import { createRepoSchema, updateRepoSchema, idParamSchema } from './schemas.js';
+import { createRepoSchema, updateRepoSchema } from '@agent-code-reviewer/shared';
+import { idParamSchema } from './params.js';
 
 export function createRepoRoutes(repoService: RepoService): Hono {
     const app = new Hono();
