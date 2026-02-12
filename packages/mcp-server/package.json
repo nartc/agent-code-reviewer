@@ -1,0 +1,29 @@
+{
+    "name": "@agent-code-reviewer/mcp-server",
+    "version": "0.0.1",
+    "private": true,
+    "type": "module",
+    "main": "./src/index.ts",
+    "types": "./src/index.ts",
+    "scripts": {
+        "start": "node dist/index.js",
+        "test": "vitest run"
+    },
+    "dependencies": {
+        "@agent-code-reviewer/shared": "workspace:*",
+        "@modelcontextprotocol/sdk": "^1.26.0",
+        "neverthrow": "^8.x",
+        "sql.js": "^1.x",
+        "zod": "^3.25"
+    },
+    "devDependencies": {
+        "tsx": "^4.x",
+        "vitest": "^4.0.8",
+        "@types/node": "^22.x"
+    },
+    "nx": {
+        "name": "mcp-server",
+        "projectType": "application",
+        "sourceRoot": "packages/mcp-server/src"
+    }
+}

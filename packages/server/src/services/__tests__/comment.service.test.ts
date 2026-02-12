@@ -187,7 +187,7 @@ describe('CommentService', () => {
                 content: 'Test',
             });
             const error = expectErr(result);
-            expect(error.type).toBe('VALIDATION');
+            expect(error.type).toBe('NOT_FOUND');
             expect(error.message).toBe('Snapshot not found');
         });
 
