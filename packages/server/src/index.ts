@@ -2,11 +2,16 @@ import { serve } from '@hono/node-server';
 import { createApp } from './app.js';
 import { initDatabase } from './db/client.js';
 import { loadConfig } from './lib/config.js';
+import { CommentService } from './services/comment.service.js';
 import { DbService } from './services/db.service.js';
 import { GitService } from './services/git.service.js';
+import { RepoService } from './services/repo.service.js';
 import { SessionService } from './services/session.service.js';
 import { SseService } from './services/sse.service.js';
+import { TransportService } from './services/transport.service.js';
 import { WatcherService } from './services/watcher.service.js';
+import { ClipboardTransport } from './transport/clipboard.transport.js';
+import { TmuxTransport } from './transport/tmux.transport.js';
 
 async function main() {
     const config = loadConfig();
@@ -20,13 +25,34 @@ async function main() {
     }
 
     const db = dbResult.value;
+
+    // Infrastructure
     const dbService = new DbService(db, config.dbPath);
     const sseService = new SseService();
     const gitService = new GitService();
+
+    // Domain services
+    const repoService = new RepoService(dbService, gitService);
     const sessionService = new SessionService(dbService, gitService);
+    const commentService = new CommentService(dbService, sseService);
     const watcherService = new WatcherService(dbService, gitService, sessionService, sseService);
 
-    const app = createApp({ dbService, sseService, watcherService });
+    // Transport
+    const tmuxTransport = new TmuxTransport();
+    const clipboardTransport = new ClipboardTransport();
+    const transportService = new TransportService([tmuxTransport, clipboardTransport], dbService);
+
+    const app = createApp({
+        dbService,
+        sseService,
+        watcherService,
+        repoService,
+        sessionService,
+        commentService,
+        transportService,
+        gitService,
+        config,
+    });
 
     const shutdown = async () => {
         console.log('[server] Shutting down...');

@@ -4,8 +4,14 @@ import { expectOk } from './helpers.js';
 import { createApp } from '../app.js';
 import { initInMemoryDatabase } from '../db/client.js';
 import { DbService } from '../services/db.service.js';
+import { GitService } from '../services/git.service.js';
+import { RepoService } from '../services/repo.service.js';
+import { SessionService } from '../services/session.service.js';
+import { CommentService } from '../services/comment.service.js';
+import { TransportService } from '../services/transport.service.js';
 import type { SseService } from '../services/sse.service.js';
 import type { WatcherService } from '../services/watcher.service.js';
+import type { Transport } from '../transport/transport.interface.js';
 
 function createMockSseService(): SseService {
     return {
@@ -27,6 +33,20 @@ function createMockWatcherService(): WatcherService {
     } as unknown as WatcherService;
 }
 
+function createMockGitService(): GitService {
+    return {
+        isGitRepo: vi.fn(),
+        getRemoteUrl: vi.fn(),
+        getCurrentBranch: vi.fn(),
+        getDefaultBranch: vi.fn(),
+        getHeadCommit: vi.fn(),
+        getDiff: vi.fn(),
+        getInfo: vi.fn(),
+        listBranches: vi.fn(),
+        scanForRepos: vi.fn(),
+    } as unknown as GitService;
+}
+
 describe('App Integration', () => {
     let app: Hono;
     let dbService: DbService;
@@ -39,10 +59,31 @@ describe('App Integration', () => {
             shutdownHooks: false,
         });
 
+        const sseService = createMockSseService();
+        const gitService = createMockGitService();
+        const repoService = new RepoService(dbService, gitService);
+        const sessionService = new SessionService(dbService, gitService);
+        const commentService = new CommentService(dbService, sseService);
+        const watcherService = createMockWatcherService();
+        const mockTransport = {
+            type: 'clipboard',
+            isAvailable: vi.fn(),
+            listTargets: vi.fn(),
+            sendComments: vi.fn(),
+            getStatus: vi.fn(),
+        } as unknown as Transport;
+        const transportService = new TransportService([mockTransport], dbService);
+
         app = createApp({
             dbService,
-            sseService: createMockSseService(),
-            watcherService: createMockWatcherService(),
+            sseService,
+            watcherService,
+            repoService,
+            sessionService,
+            commentService,
+            transportService,
+            gitService,
+            config: { port: 3847, dbPath: ':memory:', scanRoots: ['/tmp'], scanMaxDepth: 2 },
         });
     });
 
