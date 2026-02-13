@@ -10,12 +10,17 @@
     },
     "private": true,
     "dependencies": {
+        "@agent-code-reviewer/shared": "workspace:*",
+        "@angular/cdk": "^21.1.4",
         "@angular/common": "^21.1.0",
         "@angular/compiler": "^21.1.0",
         "@angular/core": "^21.1.0",
         "@angular/forms": "^21.1.0",
         "@angular/platform-browser": "^21.1.0",
         "@angular/router": "^21.1.0",
+        "@ngrx/signals": "^21.0.1",
+        "@pierre/diffs": "^1.0.10",
+        "daisyui": "^5.5.18",
         "rxjs": "~7.8.0",
         "tslib": "^2.3.0"
     },
