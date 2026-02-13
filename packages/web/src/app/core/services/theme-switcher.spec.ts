@@ -1,6 +1,6 @@
-import { TestBed } from '@angular/core/testing';
 import { DOCUMENT } from '@angular/common';
 import { provideZonelessChangeDetection } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
 import { ThemeSwitcher } from './theme-switcher';
 
 describe('ThemeSwitcher', () => {
@@ -43,9 +43,9 @@ describe('ThemeSwitcher', () => {
 
     it('sets data-theme attribute on documentElement', () => {
         service = TestBed.inject(ThemeSwitcher);
-        TestBed.flushEffects();
+        TestBed.tick();
         service.setTheme('dark');
-        TestBed.flushEffects();
+        TestBed.tick();
         expect(doc.documentElement.getAttribute('data-theme')).toBe('dark');
     });
 

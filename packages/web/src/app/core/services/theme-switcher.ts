@@ -1,5 +1,5 @@
 import { DOCUMENT } from '@angular/common';
-import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, computed, effect, inject, signal } from '@angular/core';
 
 export type Theme = 'light' | 'dark' | 'system';
 
@@ -15,13 +15,15 @@ function readStoredTheme(): Theme {
 
 @Injectable({ providedIn: 'root' })
 export class ThemeSwitcher {
+    readonly #destroyRef = inject(DestroyRef);
     readonly #document = inject(DOCUMENT);
+    readonly #window = this.#document.defaultView;
 
     readonly theme = signal<Theme>(readStoredTheme());
 
     readonly #systemPrefersDark = signal(
-        typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-            ? window.matchMedia('(prefers-color-scheme: dark)').matches
+        this.#window != null && typeof this.#window.matchMedia === 'function'
+            ? this.#window.matchMedia('(prefers-color-scheme: dark)').matches
             : false,
     );
 
@@ -33,11 +35,15 @@ export class ThemeSwitcher {
     });
 
     constructor() {
-        if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
-            const mq = window.matchMedia('(prefers-color-scheme: dark)');
-            mq.addEventListener('change', (e) => {
+        if (this.#window != null && typeof this.#window.matchMedia === 'function') {
+            const mq = this.#window.matchMedia('(prefers-color-scheme: dark)');
+
+            const cb = (e: MediaQueryListEvent) => {
                 this.#systemPrefersDark.set(e.matches);
-            });
+            };
+
+            mq.addEventListener('change', cb);
+            this.#destroyRef.onDestroy(() => mq.removeEventListener('change', cb));
         }
 
         effect(() => {

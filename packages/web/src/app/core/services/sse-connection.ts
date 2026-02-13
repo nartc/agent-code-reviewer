@@ -1,6 +1,6 @@
+import type { SseEvent } from '@agent-code-reviewer/shared';
 import { Injectable } from '@angular/core';
 import { Observable, share } from 'rxjs';
-import type { SseEvent } from '@agent-code-reviewer/shared';
 
 const SSE_EVENT_TYPES = ['connected', 'snapshot', 'comment-update', 'watcher-status', 'heartbeat'] as const;
 

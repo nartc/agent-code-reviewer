@@ -1,7 +1,9 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { RouterOutlet, RouterLink } from '@angular/router';
-import { ThemeSwitcher } from '../../core/services/theme-switcher';
+import { RouterLink, RouterOutlet } from '@angular/router';
 import type { Theme } from '../../core/services/theme-switcher';
+import { ThemeSwitcher } from '../../core/services/theme-switcher';
+
+const themes: Theme[] = ['light', 'dark', 'system'];
 
 @Component({
     selector: 'acr-layout',
@@ -36,7 +38,6 @@ export class Layout {
     protected readonly themeSwitcher = inject(ThemeSwitcher);
 
     protected cycleTheme(): void {
-        const themes: Theme[] = ['light', 'dark', 'system'];
         const current = this.themeSwitcher.theme();
         const next = themes[(themes.indexOf(current) + 1) % themes.length];
         this.themeSwitcher.setTheme(next);
