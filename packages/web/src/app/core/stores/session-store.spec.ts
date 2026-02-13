@@ -1,4 +1,7 @@
+import { provideZonelessChangeDetection } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideHttpClient } from '@angular/common/http';
 import { of } from 'rxjs';
 import { SessionStore } from './session-store';
 import { ApiClient } from '../services/api-client';
@@ -42,14 +45,14 @@ const mockSnapshots: SnapshotSummary[] = [
 
 describe('SessionStore', () => {
     let store: SessionStore;
-    let apiSpy: { getSession: ReturnType<typeof vi.fn>; listSnapshots: ReturnType<typeof vi.fn>; getSnapshotDiff: ReturnType<typeof vi.fn> };
+    let httpMock: HttpTestingController;
+    let apiSpy: { getSession: ReturnType<typeof vi.fn>; listSnapshots: ReturnType<typeof vi.fn> };
     let sseSpy: { connect: ReturnType<typeof vi.fn>; disconnect: ReturnType<typeof vi.fn> };
 
     beforeEach(() => {
         apiSpy = {
             getSession: vi.fn().mockReturnValue(of({ session: mockSession })),
             listSnapshots: vi.fn().mockReturnValue(of({ snapshots: mockSnapshots })),
-            getSnapshotDiff: vi.fn().mockReturnValue(of({ snapshot: mockSnapshot })),
         };
         sseSpy = {
             connect: vi.fn().mockReturnValue(of()),
@@ -58,29 +61,53 @@ describe('SessionStore', () => {
 
         TestBed.configureTestingModule({
             providers: [
+                provideZonelessChangeDetection(),
+                provideHttpClient(),
+                provideHttpClientTesting(),
                 { provide: ApiClient, useValue: apiSpy },
                 { provide: SseConnection, useValue: sseSpy },
             ],
         });
         store = TestBed.inject(SessionStore);
+        httpMock = TestBed.inject(HttpTestingController);
     });
 
-    it('loadSession sets session, snapshots, and activeSnapshotId', () => {
+    afterEach(() => {
+        httpMock.verify();
+    });
+
+    async function loadSessionAndFlush() {
         store.loadSession('s1');
+        // First tick: triggers rxResource effects (session + snapshots resolve via of())
+        // linkedSignal picks up snapshots and sets activeSnapshotId to snap3
+        TestBed.tick();
+        // Drain microtasks from rxResource async loadEffect
+        await new Promise((r) => setTimeout(r, 0));
+        // Second tick: rxResource state resolves; httpResource for diff reacts to activeSnapshotId, schedules HTTP request
+        TestBed.tick();
+        httpMock.expectOne('/api/snapshots/snap3/diff').flush({ snapshot: mockSnapshot });
+        // Drain microtasks from httpResource async loadEffect
+        await new Promise((r) => setTimeout(r, 0));
+        // Third tick: process the HTTP response, update resource value
+        TestBed.tick();
+    }
+
+    it('loadSession sets session, snapshots, and activeSnapshotId', async () => {
+        await loadSessionAndFlush();
         expect(store.currentSession()).toEqual(mockSession);
         expect(store.snapshots().length).toBe(3);
         expect(store.activeSnapshotId()).toBe('snap3');
     });
 
-    it('loadSnapshotDiff sets currentDiff, files, and resets activeFileIndex', () => {
-        store.loadSession('s1');
+    it('diff resource sets currentDiff, files', async () => {
+        await loadSessionAndFlush();
         expect(store.currentDiff()).toEqual(mockSnapshot);
         expect(store.files().length).toBe(3);
         expect(store.activeFileIndex()).toBe(0);
     });
 
-    it('nextFile wraps around', () => {
-        store.loadSession('s1');
+    it('nextFile wraps around', async () => {
+        await loadSessionAndFlush();
         expect(store.activeFileIndex()).toBe(0);
         store.nextFile();
         expect(store.activeFileIndex()).toBe(1);
@@ -90,37 +117,37 @@ describe('SessionStore', () => {
         expect(store.activeFileIndex()).toBe(0);
     });
 
-    it('prevFile wraps around', () => {
-        store.loadSession('s1');
+    it('prevFile wraps around', async () => {
+        await loadSessionAndFlush();
         expect(store.activeFileIndex()).toBe(0);
         store.prevFile();
         expect(store.activeFileIndex()).toBe(2);
     });
 
-    it('setActiveFile clamps out-of-range index', () => {
-        store.loadSession('s1');
+    it('setActiveFile clamps out-of-range index', async () => {
+        await loadSessionAndFlush();
         store.setActiveFile(10);
         expect(store.activeFileIndex()).toBe(2);
     });
 
-    it('setActiveFile clamps negative index', () => {
-        store.loadSession('s1');
+    it('setActiveFile clamps negative index', async () => {
+        await loadSessionAndFlush();
         store.setActiveFile(-5);
         expect(store.activeFileIndex()).toBe(0);
     });
 
-    it('computed activeSnapshot returns correct snapshot', () => {
-        store.loadSession('s1');
+    it('computed activeSnapshot returns correct snapshot', async () => {
+        await loadSessionAndFlush();
         expect(store.activeSnapshot()?.id).toBe('snap3');
     });
 
-    it('computed isViewingLatest is true when viewing first snapshot', () => {
-        store.loadSession('s1');
+    it('computed isViewingLatest is true when viewing first snapshot', async () => {
+        await loadSessionAndFlush();
         expect(store.isViewingLatest()).toBe(true);
     });
 
-    it('computed hasNewChanges is false when viewing latest', () => {
-        store.loadSession('s1');
+    it('computed hasNewChanges is false when viewing latest', async () => {
+        await loadSessionAndFlush();
         expect(store.hasNewChanges()).toBe(false);
     });
 
@@ -132,13 +159,13 @@ describe('SessionStore', () => {
         expect(store.activeFileIndex()).toBe(0);
     });
 
-    it('computed activeFile returns correct file', () => {
-        store.loadSession('s1');
+    it('computed activeFile returns correct file', async () => {
+        await loadSessionAndFlush();
         expect(store.activeFile()?.path).toBe('a.ts');
     });
 
-    it('computed totalFiles returns files length', () => {
-        store.loadSession('s1');
+    it('computed totalFiles returns files length', async () => {
+        await loadSessionAndFlush();
         expect(store.totalFiles()).toBe(3);
     });
 });

@@ -1,3 +1,4 @@
+import { DOCUMENT } from '@angular/common';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
@@ -37,6 +38,8 @@ import type {
 @Injectable({ providedIn: 'root' })
 export class ApiClient {
     readonly #http = inject(HttpClient);
+    readonly #document = inject(DOCUMENT);
+    readonly #window = this.#document.defaultView;
 
     listRepos(): Observable<ListReposResponse> {
         return this.#http.get<ListReposResponse>('/api/repos');
@@ -146,7 +149,7 @@ export class ApiClient {
 
     scanRepos(params?: GitScanParams): Observable<ScannedRepo> {
         return new Observable<ScannedRepo>((subscriber) => {
-            const url = new URL('/api/git/scan', window.location.origin);
+            const url = new URL('/api/git/scan', this.#window?.location?.origin ?? 'http://localhost');
             if (params?.roots) url.searchParams.set('roots', params.roots);
             if (params?.max_depth) url.searchParams.set('max_depth', params.max_depth);
 

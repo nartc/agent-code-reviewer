@@ -1,3 +1,4 @@
+import { provideZonelessChangeDetection } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { CommentStore } from './comment-store';
@@ -48,33 +49,40 @@ describe('CommentStore', () => {
         };
 
         TestBed.configureTestingModule({
-            providers: [{ provide: ApiClient, useValue: apiSpy }],
+            providers: [provideZonelessChangeDetection(), { provide: ApiClient, useValue: apiSpy }],
         });
         store = TestBed.inject(CommentStore);
     });
 
-    it('loadComments sets comments and computed filters', () => {
+    async function loadAndFlush() {
         store.loadComments({ session_id: 's1' });
+        TestBed.tick();
+        await new Promise((r) => setTimeout(r, 0));
+        TestBed.tick();
+    }
+
+    it('loadComments sets comments and computed filters', async () => {
+        await loadAndFlush();
         expect(store.comments().length).toBe(5);
         expect(store.draftComments().length).toBe(2);
         expect(store.sentComments().length).toBe(2);
         expect(store.resolvedComments().length).toBe(1);
     });
 
-    it('createComment appends new thread', () => {
-        store.loadComments({ session_id: 's1' });
+    it('createComment appends new thread', async () => {
+        await loadAndFlush();
         store.createComment({ session_id: 's1', snapshot_id: 'snap1', file_path: 'b.ts', content: 'new' });
         expect(store.comments().length).toBe(6);
     });
 
-    it('deleteComment removes parent thread', () => {
-        store.loadComments({ session_id: 's1' });
+    it('deleteComment removes parent thread', async () => {
+        await loadAndFlush();
         store.deleteComment('c1');
         expect(store.comments().find((t) => t.comment.id === 'c1')).toBeUndefined();
     });
 
-    it('sendComments updates status to sent', () => {
-        store.loadComments({ session_id: 's1' });
+    it('sendComments updates status to sent', async () => {
+        await loadAndFlush();
         store.sendComments({ comment_ids: ['c1', 'c2'], target_id: 't1', transport_type: 'tmux' });
         const c1 = store.comments().find((t) => t.comment.id === 'c1');
         const c2 = store.comments().find((t) => t.comment.id === 'c2');
@@ -82,22 +90,26 @@ describe('CommentStore', () => {
         expect(c2?.comment.status).toBe('sent');
     });
 
-    it('createReply appends reply to correct thread', () => {
-        store.loadComments({ session_id: 's1' });
+    it('createReply appends reply to correct thread', async () => {
+        await loadAndFlush();
         store.createReply('c1', { content: 'reply text' });
         const thread = store.comments().find((t) => t.comment.id === 'c1');
         expect(thread?.replies.length).toBe(1);
     });
 
-    it('onSseCommentUpdate calls loadComments', () => {
+    it('onSseCommentUpdate calls loadComments', async () => {
         store.onSseCommentUpdate('s1');
+        TestBed.tick();
+        await new Promise((r) => setTimeout(r, 0));
         expect(apiSpy['listComments']).toHaveBeenCalledWith({ session_id: 's1' });
     });
 
-    it('isLoading is set correctly during load', () => {
+    it('isLoading is set correctly during load', async () => {
         expect(store.isLoading()).toBe(false);
         store.loadComments({ session_id: 's1' });
-        // After subscribe resolves synchronously with of(), isLoading is false again
+        TestBed.tick();
+        await new Promise((r) => setTimeout(r, 0));
+        TestBed.tick();
         expect(store.isLoading()).toBe(false);
     });
 });

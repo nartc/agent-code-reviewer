@@ -1,6 +1,9 @@
-import { DestroyRef, Injectable, computed, inject } from '@angular/core';
+import { DestroyRef, Injectable, computed, inject, linkedSignal, signal } from '@angular/core';
+import { rxResource } from '@angular/core/rxjs-interop';
+import { httpResource } from '@angular/common/http';
+import { map } from 'rxjs';
 import { signalState, patchState } from '@ngrx/signals';
-import type { SessionWithRepo, SnapshotSummary, Snapshot, FileSummary } from '@agent-code-reviewer/shared';
+import type { SessionWithRepo, SnapshotSummary, Snapshot, FileSummary, SnapshotDiffResponse } from '@agent-code-reviewer/shared';
 import { ApiClient } from '../services/api-client';
 import { SseConnection } from '../services/sse-connection';
 
@@ -10,23 +13,39 @@ export class SessionStore {
     readonly #sse = inject(SseConnection);
     readonly #destroyRef = inject(DestroyRef);
 
-    readonly #state = signalState({
-        currentSession: null as SessionWithRepo | null,
-        snapshots: [] as SnapshotSummary[],
-        activeSnapshotId: null as string | null,
-        currentDiff: null as Snapshot | null,
-        files: [] as FileSummary[],
-        activeFileIndex: 0,
-        isLoading: false,
+    readonly #sessionId = signal<string | undefined>(undefined);
+
+    readonly #sessionResource = rxResource<SessionWithRepo | null, string | undefined>({
+        params: () => this.#sessionId(),
+        stream: ({ params }) => this.#api.getSession(params).pipe(map((r) => r.session)),
+        defaultValue: null,
     });
 
-    readonly currentSession = this.#state.currentSession;
-    readonly snapshots = this.#state.snapshots;
-    readonly activeSnapshotId = this.#state.activeSnapshotId;
-    readonly currentDiff = this.#state.currentDiff;
-    readonly files = this.#state.files;
-    readonly activeFileIndex = this.#state.activeFileIndex;
-    readonly isLoading = this.#state.isLoading;
+    readonly #snapshotsResource = rxResource<SnapshotSummary[], string | undefined>({
+        params: () => this.#sessionId(),
+        stream: ({ params }) => this.#api.listSnapshots(params).pipe(map((r) => r.snapshots)),
+        defaultValue: [],
+    });
+
+    readonly #activeSnapshotId = linkedSignal<string | null>(() => {
+        const snaps = this.#snapshotsResource.value();
+        return snaps.length > 0 ? snaps[0].id : null;
+    });
+
+    readonly #diffResource = httpResource<SnapshotDiffResponse>(() => {
+        const snapId = this.#activeSnapshotId();
+        return snapId ? `/api/snapshots/${snapId}/diff` : undefined;
+    });
+
+    readonly #nav = signalState({ activeFileIndex: 0 });
+
+    readonly currentSession = this.#sessionResource.value;
+    readonly snapshots = this.#snapshotsResource.value;
+    readonly activeSnapshotId = this.#activeSnapshotId.asReadonly();
+    readonly currentDiff = computed(() => this.#diffResource.value()?.snapshot ?? null);
+    readonly files = computed<FileSummary[]>(() => this.currentDiff()?.files_summary ?? []);
+    readonly activeFileIndex = this.#nav.activeFileIndex;
+    readonly isLoading = computed(() => this.#sessionResource.isLoading() || this.#snapshotsResource.isLoading());
 
     readonly activeSnapshot = computed(() => this.snapshots().find((s) => s.id === this.activeSnapshotId()) ?? null);
 
@@ -46,37 +65,15 @@ export class SessionStore {
     readonly totalFiles = computed(() => this.files().length);
 
     loadSession(id: string): void {
-        patchState(this.#state, { isLoading: true });
-
-        this.#api.getSession(id).subscribe({
-            next: ({ session }) => {
-                patchState(this.#state, { currentSession: session });
-            },
-        });
-
-        this.#api.listSnapshots(id).subscribe({
-            next: ({ snapshots }) => {
-                const activeId = snapshots.length > 0 ? snapshots[0].id : null;
-                patchState(this.#state, { snapshots, activeSnapshotId: activeId, isLoading: false });
-                if (activeId) {
-                    this.loadSnapshotDiff(activeId);
-                }
-            },
-            error: () => {
-                patchState(this.#state, { isLoading: false });
-            },
-        });
+        this.#sessionId.set(id);
 
         const sse$ = this.#sse.connect(id);
         const sub = sse$.subscribe((event) => {
             if (event.type === 'snapshot') {
                 const wasViewingLatest = this.isViewingLatest();
-                patchState(this.#state, (s) => ({
-                    snapshots: [event.data, ...s.snapshots],
-                }));
+                this.#snapshotsResource.update((snaps) => [event.data, ...snaps]);
                 if (wasViewingLatest) {
-                    patchState(this.#state, { activeSnapshotId: event.data.id });
-                    this.loadSnapshotDiff(event.data.id);
+                    this.#activeSnapshotId.set(event.data.id);
                 }
             }
         });
@@ -87,27 +84,15 @@ export class SessionStore {
         });
     }
 
-    loadSnapshotDiff(snapshotId: string): void {
-        this.#api.getSnapshotDiff(snapshotId).subscribe({
-            next: ({ snapshot }) => {
-                patchState(this.#state, {
-                    currentDiff: snapshot,
-                    files: snapshot.files_summary,
-                    activeFileIndex: 0,
-                });
-            },
-        });
-    }
-
     setActiveSnapshot(snapshotId: string): void {
-        patchState(this.#state, { activeSnapshotId: snapshotId });
-        this.loadSnapshotDiff(snapshotId);
+        this.#activeSnapshotId.set(snapshotId);
+        patchState(this.#nav, { activeFileIndex: 0 });
     }
 
     nextFile(): void {
         const len = this.files().length;
         if (len === 0) return;
-        patchState(this.#state, (s) => ({
+        patchState(this.#nav, (s) => ({
             activeFileIndex: (s.activeFileIndex + 1) % len,
         }));
     }
@@ -115,7 +100,7 @@ export class SessionStore {
     prevFile(): void {
         const len = this.files().length;
         if (len === 0) return;
-        patchState(this.#state, (s) => ({
+        patchState(this.#nav, (s) => ({
             activeFileIndex: (s.activeFileIndex - 1 + len) % len,
         }));
     }
@@ -124,7 +109,7 @@ export class SessionStore {
         const len = this.files().length;
         if (len === 0) return;
         const clamped = Math.max(0, Math.min(index, len - 1));
-        patchState(this.#state, { activeFileIndex: clamped });
+        patchState(this.#nav, { activeFileIndex: clamped });
     }
 
     jumpToLatest(): void {
