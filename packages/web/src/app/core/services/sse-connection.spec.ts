@@ -1,6 +1,6 @@
+import type { SseEvent } from '@agent-code-reviewer/shared';
 import { TestBed } from '@angular/core/testing';
 import { SseConnection } from './sse-connection';
-import type { SseEvent } from '@agent-code-reviewer/shared';
 
 class MockEventSource {
     static instances: MockEventSource[] = [];
@@ -80,7 +80,13 @@ describe('SseConnection', () => {
         es.simulateEvent('watcher-status', { session_id: 's1', is_watching: true });
         es.simulateEvent('heartbeat', { timestamp: '2025-01-01T00:00:00Z' });
 
-        expect(events.map((e) => e.type)).toEqual(['connected', 'snapshot', 'comment-update', 'watcher-status', 'heartbeat']);
+        expect(events.map((e) => e.type)).toEqual([
+            'connected',
+            'snapshot',
+            'comment-update',
+            'watcher-status',
+            'heartbeat',
+        ]);
     });
 
     it('reconnects with exponential backoff on error', () => {

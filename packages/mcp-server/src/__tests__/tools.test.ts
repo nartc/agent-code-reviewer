@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import initSqlJs, { type Database } from 'sql.js';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 // We extract the handler logic by calling registerTool on a mock server
 import { registerCheckComments } from '../tools/check-comments.js';
@@ -81,7 +81,10 @@ CREATE TABLE IF NOT EXISTS app_config (
 
 type ToolHandler = (args: Record<string, unknown>) => Promise<{ content: Array<{ type: string; text: string }> }>;
 
-function createMockServer(): { registerTool: (name: string, config: unknown, cb: ToolHandler) => void; handlers: Record<string, ToolHandler> } {
+function createMockServer(): {
+    registerTool: (name: string, config: unknown, cb: ToolHandler) => void;
+    handlers: Record<string, ToolHandler>;
+} {
     const handlers: Record<string, ToolHandler> = {};
     return {
         registerTool(name: string, _config: unknown, cb: ToolHandler) {
@@ -115,7 +118,9 @@ describe('MCP Tools', () => {
         db.run("INSERT INTO repos (id, name, remote_url) VALUES ('repo1', 'my-app', 'https://github.com/test/my-app')");
         db.run("INSERT INTO repo_paths (id, repo_id, path) VALUES ('rp1', 'repo1', '/home/user/my-app')");
         db.run("INSERT INTO sessions (id, repo_id, branch) VALUES ('sess1', 'repo1', 'feature-branch')");
-        db.run("INSERT INTO snapshots (id, session_id, raw_diff, files_summary, trigger) VALUES ('snap1', 'sess1', 'diff content', '[]', 'manual')");
+        db.run(
+            "INSERT INTO snapshots (id, session_id, raw_diff, files_summary, trigger) VALUES ('snap1', 'sess1', 'diff content', '[]', 'manual')",
+        );
 
         // Sent comments
         db.run(`INSERT INTO comments (id, session_id, snapshot_id, file_path, line_start, line_end, side, author, content, status, sent_at)
@@ -217,7 +222,9 @@ describe('MCP Tools', () => {
             expect(text).toContain('draft');
 
             // Verify in DB
-            const stmt = db.prepare("SELECT * FROM comments WHERE reply_to_id = 'c1' AND content = 'Fixed in latest commit'");
+            const stmt = db.prepare(
+                "SELECT * FROM comments WHERE reply_to_id = 'c1' AND content = 'Fixed in latest commit'",
+            );
             expect(stmt.step()).toBe(true);
             const row = stmt.getAsObject();
             expect(row['author']).toBe('agent');

@@ -1,13 +1,12 @@
-import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
 import type { FileSummary, Snapshot, SnapshotSummary } from '@agent-code-reviewer/shared';
-import { notFound } from '@agent-code-reviewer/shared';
+import { listSnapshotsQuerySchema, notFound } from '@agent-code-reviewer/shared';
+import { zValidator } from '@hono/zod-validator';
+import { Hono } from 'hono';
 import { err, ok } from 'neverthrow';
+import { asyncResultToResponse, resultToResponse } from '../lib/result-to-response.js';
 import type { DbService } from '../services/db.service.js';
-import type { WatcherService } from '../services/watcher.service.js';
 import type { SessionService } from '../services/session.service.js';
-import { resultToResponse, asyncResultToResponse } from '../lib/result-to-response.js';
-import { listSnapshotsQuerySchema } from '@agent-code-reviewer/shared';
+import type { WatcherService } from '../services/watcher.service.js';
 import { idParamSchema } from './params.js';
 
 interface SnapshotRow {
@@ -50,34 +49,42 @@ export function createSnapshotRoutes(
     const app = new Hono();
 
     // GET /sessions/:id/snapshots — List summaries (paginated)
-    app.get('/sessions/:id/snapshots', zValidator('param', idParamSchema), zValidator('query', listSnapshotsQuerySchema), (c) => {
-        const { id } = c.req.valid('param');
-        const query = c.req.valid('query');
-        const limit = query.limit ? parseInt(query.limit, 10) : 50;
-        const before = query.before;
+    app.get(
+        '/sessions/:id/snapshots',
+        zValidator('param', idParamSchema),
+        zValidator('query', listSnapshotsQuerySchema),
+        (c) => {
+            const { id } = c.req.valid('param');
+            const query = c.req.valid('query');
+            const limit = query.limit ? parseInt(query.limit, 10) : 50;
+            const before = query.before;
 
-        let sql: string;
-        let params: Record<string, string | number | null>;
+            let sql: string;
+            let params: Record<string, string | number | null>;
 
-        if (before) {
-            sql = `SELECT id, session_id, files_summary, head_commit, trigger, changed_files, has_review_comments, created_at
+            if (before) {
+                sql = `SELECT id, session_id, files_summary, head_commit, trigger, changed_files, has_review_comments, created_at
                    FROM snapshots
                    WHERE session_id = $sessionId AND created_at < $before
                    ORDER BY created_at DESC
                    LIMIT $limit`;
-            params = { $sessionId: id, $before: before, $limit: limit };
-        } else {
-            sql = `SELECT id, session_id, files_summary, head_commit, trigger, changed_files, has_review_comments, created_at
+                params = { $sessionId: id, $before: before, $limit: limit };
+            } else {
+                sql = `SELECT id, session_id, files_summary, head_commit, trigger, changed_files, has_review_comments, created_at
                    FROM snapshots
                    WHERE session_id = $sessionId
                    ORDER BY created_at DESC
                    LIMIT $limit`;
-            params = { $sessionId: id, $limit: limit };
-        }
+                params = { $sessionId: id, $limit: limit };
+            }
 
-        const result = dbService.query<SnapshotRow>(sql, params);
-        return resultToResponse(c, result.map((rows) => ({ snapshots: rows.map(castSnapshotSummary) })));
-    });
+            const result = dbService.query<SnapshotRow>(sql, params);
+            return resultToResponse(
+                c,
+                result.map((rows) => ({ snapshots: rows.map(castSnapshotSummary) })),
+            );
+        },
+    );
 
     // GET /snapshots/:id/diff — Full snapshot with raw_diff
     app.get('/snapshots/:id/diff', zValidator('param', idParamSchema), (c) => {

@@ -1,10 +1,12 @@
-import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { Component, signal } from '@angular/core';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NotificationDot } from './notification-dot';
 
 @Component({
     imports: [NotificationDot],
-    template: `<acr-notification-dot [visible]="visible()" [count]="count()" />`,
+    template: `
+        <acr-notification-dot [visible]="visible()" [count]="count()" />
+    `,
 })
 class TestHost {
     visible = signal(false);

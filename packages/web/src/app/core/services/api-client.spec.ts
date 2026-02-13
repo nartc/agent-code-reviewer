@@ -1,6 +1,6 @@
-import { TestBed } from '@angular/core/testing';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { TestBed } from '@angular/core/testing';
 import { ApiClient } from './api-client';
 
 describe('ApiClient', () => {
@@ -213,7 +213,13 @@ describe('ApiClient', () => {
         const req = httpMock.expectOne((r) => r.url === '/api/git/info');
         expect(req.request.method).toBe('GET');
         expect(req.request.params.get('path')).toBe('/some/path');
-        req.flush({ is_git_repo: true, remote_url: null, current_branch: 'main', default_branch: 'main', repo_name: 'test' });
+        req.flush({
+            is_git_repo: true,
+            remote_url: null,
+            current_branch: 'main',
+            default_branch: 'main',
+            repo_name: 'test',
+        });
     });
 
     it('getBranches makes GET /api/git/branches with path param', () => {

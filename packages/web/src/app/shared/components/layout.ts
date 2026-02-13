@@ -1,6 +1,6 @@
+import { TitleCasePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink, RouterOutlet } from '@angular/router';
-import { TitleCasePipe } from '@angular/common';
 import type { Theme } from '../../core/services/theme-switcher';
 import { ThemeSwitcher } from '../../core/services/theme-switcher';
 

@@ -5,7 +5,9 @@ import initSqlJs, { type Database } from 'sql.js';
 
 export type { Database } from 'sql.js';
 
-export async function initMcpDatabase(dbPath: string): Promise<Result<Database, { type: 'DATABASE_ERROR'; message: string; cause?: unknown }>> {
+export async function initMcpDatabase(
+    dbPath: string,
+): Promise<Result<Database, { type: 'DATABASE_ERROR'; message: string; cause?: unknown }>> {
     try {
         if (!existsSync(dbPath)) {
             return err(databaseError(`Database file not found: ${dbPath}`));
@@ -17,10 +19,7 @@ export async function initMcpDatabase(dbPath: string): Promise<Result<Database, 
         return ok(db);
     } catch (e) {
         return err(
-            databaseError(
-                `Failed to open database at ${dbPath}: ${e instanceof Error ? e.message : String(e)}`,
-                e,
-            ),
+            databaseError(`Failed to open database at ${dbPath}: ${e instanceof Error ? e.message : String(e)}`, e),
         );
     }
 }

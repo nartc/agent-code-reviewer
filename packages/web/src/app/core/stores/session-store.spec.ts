@@ -1,12 +1,12 @@
+import type { FileSummary, SessionWithRepo, Snapshot, SnapshotSummary } from '@agent-code-reviewer/shared';
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { provideHttpClient } from '@angular/common/http';
 import { of } from 'rxjs';
-import { SessionStore } from './session-store';
 import { ApiClient } from '../services/api-client';
 import { SseConnection } from '../services/sse-connection';
-import type { SessionWithRepo, SnapshotSummary, Snapshot, FileSummary } from '@agent-code-reviewer/shared';
+import { SessionStore } from './session-store';
 
 const mockSession: SessionWithRepo = {
     id: 's1',
@@ -38,9 +38,36 @@ const mockSnapshot: Snapshot = {
 };
 
 const mockSnapshots: SnapshotSummary[] = [
-    { id: 'snap3', session_id: 's1', files_summary: [], head_commit: null, trigger: 'manual', changed_files: null, has_review_comments: false, created_at: '2025-01-03' },
-    { id: 'snap2', session_id: 's1', files_summary: [], head_commit: null, trigger: 'manual', changed_files: null, has_review_comments: false, created_at: '2025-01-02' },
-    { id: 'snap1', session_id: 's1', files_summary: [], head_commit: null, trigger: 'manual', changed_files: null, has_review_comments: false, created_at: '2025-01-01' },
+    {
+        id: 'snap3',
+        session_id: 's1',
+        files_summary: [],
+        head_commit: null,
+        trigger: 'manual',
+        changed_files: null,
+        has_review_comments: false,
+        created_at: '2025-01-03',
+    },
+    {
+        id: 'snap2',
+        session_id: 's1',
+        files_summary: [],
+        head_commit: null,
+        trigger: 'manual',
+        changed_files: null,
+        has_review_comments: false,
+        created_at: '2025-01-02',
+    },
+    {
+        id: 'snap1',
+        session_id: 's1',
+        files_summary: [],
+        head_commit: null,
+        trigger: 'manual',
+        changed_files: null,
+        has_review_comments: false,
+        created_at: '2025-01-01',
+    },
 ];
 
 describe('SessionStore', () => {

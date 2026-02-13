@@ -1,6 +1,11 @@
-import { Injectable, computed, inject } from '@angular/core';
+import type {
+    ListTargetsResponse,
+    TransportConfigResponse,
+    TransportStatusResponse,
+    TransportType,
+} from '@agent-code-reviewer/shared';
 import { httpResource } from '@angular/common/http';
-import type { ListTargetsResponse, TransportConfigResponse, TransportStatusResponse, TransportType } from '@agent-code-reviewer/shared';
+import { Injectable, computed, inject } from '@angular/core';
 import { ApiClient } from '../services/api-client';
 
 @Injectable({ providedIn: 'root' })

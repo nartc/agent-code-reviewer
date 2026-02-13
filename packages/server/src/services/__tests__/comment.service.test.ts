@@ -2,8 +2,8 @@ import { generateId } from '@agent-code-reviewer/shared';
 import { vi } from 'vitest';
 import { expectErr, expectOk } from '../../__tests__/helpers.js';
 import { initInMemoryDatabase } from '../../db/client.js';
-import { DbService } from '../db.service.js';
 import { CommentService } from '../comment.service.js';
+import { DbService } from '../db.service.js';
 import type { SseService } from '../sse.service.js';
 
 describe('CommentService', () => {
@@ -36,14 +36,11 @@ describe('CommentService', () => {
         snapB = generateId();
         snapC = generateId();
 
-        dbService.execute(
-            "INSERT INTO repos (id, name) VALUES ($id, 'test-repo')",
-            { $id: repoId },
-        );
-        dbService.execute(
-            "INSERT INTO sessions (id, repo_id, branch) VALUES ($id, $repoId, 'main')",
-            { $id: sessionId, $repoId: repoId },
-        );
+        dbService.execute("INSERT INTO repos (id, name) VALUES ($id, 'test-repo')", { $id: repoId });
+        dbService.execute("INSERT INTO sessions (id, repo_id, branch) VALUES ($id, $repoId, 'main')", {
+            $id: sessionId,
+            $repoId: repoId,
+        });
 
         const filesSummaryA = JSON.stringify([
             { path: 'src/app.ts', status: 'modified', additions: 5, deletions: 2 },
@@ -107,41 +104,49 @@ describe('CommentService', () => {
         });
 
         it('generates unique id', () => {
-            const r1 = expectOk(service.create({
-                session_id: sessionId,
-                snapshot_id: snapA,
-                file_path: 'src/app.ts',
-                content: 'Comment 1',
-            }));
-            const r2 = expectOk(service.create({
-                session_id: sessionId,
-                snapshot_id: snapA,
-                file_path: 'src/app.ts',
-                content: 'Comment 2',
-            }));
+            const r1 = expectOk(
+                service.create({
+                    session_id: sessionId,
+                    snapshot_id: snapA,
+                    file_path: 'src/app.ts',
+                    content: 'Comment 1',
+                }),
+            );
+            const r2 = expectOk(
+                service.create({
+                    session_id: sessionId,
+                    snapshot_id: snapA,
+                    file_path: 'src/app.ts',
+                    content: 'Comment 2',
+                }),
+            );
 
             expect(r1.id).not.toBe(r2.id);
         });
 
         it('defaults author to user', () => {
-            const result = expectOk(service.create({
-                session_id: sessionId,
-                snapshot_id: snapA,
-                file_path: 'src/app.ts',
-                content: 'Test',
-            }));
+            const result = expectOk(
+                service.create({
+                    session_id: sessionId,
+                    snapshot_id: snapA,
+                    file_path: 'src/app.ts',
+                    content: 'Test',
+                }),
+            );
 
             expect(result.author).toBe('user');
         });
 
         it('respects explicit author', () => {
-            const result = expectOk(service.create({
-                session_id: sessionId,
-                snapshot_id: snapA,
-                file_path: 'src/app.ts',
-                content: 'Test',
-                author: 'agent',
-            }));
+            const result = expectOk(
+                service.create({
+                    session_id: sessionId,
+                    snapshot_id: snapA,
+                    file_path: 'src/app.ts',
+                    content: 'Test',
+                    author: 'agent',
+                }),
+            );
 
             expect(result.author).toBe('agent');
         });
@@ -192,12 +197,14 @@ describe('CommentService', () => {
         });
 
         it('broadcasts created SSE event', () => {
-            const result = expectOk(service.create({
-                session_id: sessionId,
-                snapshot_id: snapA,
-                file_path: 'src/app.ts',
-                content: 'Test',
-            }));
+            const result = expectOk(
+                service.create({
+                    session_id: sessionId,
+                    snapshot_id: snapA,
+                    file_path: 'src/app.ts',
+                    content: 'Test',
+                }),
+            );
 
             expect(mockSse.broadcast).toHaveBeenCalledWith(sessionId, {
                 type: 'comment-update',
@@ -206,15 +213,17 @@ describe('CommentService', () => {
         });
 
         it('stores optional fields', () => {
-            const result = expectOk(service.create({
-                session_id: sessionId,
-                snapshot_id: snapA,
-                file_path: 'src/app.ts',
-                content: 'Test',
-                line_start: 10,
-                line_end: 15,
-                side: 'new',
-            }));
+            const result = expectOk(
+                service.create({
+                    session_id: sessionId,
+                    snapshot_id: snapA,
+                    file_path: 'src/app.ts',
+                    content: 'Test',
+                    line_start: 10,
+                    line_end: 15,
+                    side: 'new',
+                }),
+            );
 
             expect(result.line_start).toBe(10);
             expect(result.line_end).toBe(15);
@@ -222,12 +231,14 @@ describe('CommentService', () => {
         });
 
         it('handles null optional fields', () => {
-            const result = expectOk(service.create({
-                session_id: sessionId,
-                snapshot_id: snapA,
-                file_path: 'src/app.ts',
-                content: 'Test',
-            }));
+            const result = expectOk(
+                service.create({
+                    session_id: sessionId,
+                    snapshot_id: snapA,
+                    file_path: 'src/app.ts',
+                    content: 'Test',
+                }),
+            );
 
             expect(result.line_start).toBeNull();
             expect(result.line_end).toBeNull();
@@ -237,12 +248,14 @@ describe('CommentService', () => {
 
     describe('update', () => {
         it('changes content of draft comment', () => {
-            const created = expectOk(service.create({
-                session_id: sessionId,
-                snapshot_id: snapA,
-                file_path: 'src/app.ts',
-                content: 'Original',
-            }));
+            const created = expectOk(
+                service.create({
+                    session_id: sessionId,
+                    snapshot_id: snapA,
+                    file_path: 'src/app.ts',
+                    content: 'Original',
+                }),
+            );
 
             const updated = expectOk(service.update(created.id, 'Updated'));
             expect(updated.content).toBe('Updated');
@@ -256,16 +269,15 @@ describe('CommentService', () => {
         });
 
         it('rejects sent comment', () => {
-            const created = expectOk(service.create({
-                session_id: sessionId,
-                snapshot_id: snapA,
-                file_path: 'src/app.ts',
-                content: 'Test',
-            }));
-            dbService.execute(
-                "UPDATE comments SET status = 'sent' WHERE id = $id",
-                { $id: created.id },
+            const created = expectOk(
+                service.create({
+                    session_id: sessionId,
+                    snapshot_id: snapA,
+                    file_path: 'src/app.ts',
+                    content: 'Test',
+                }),
             );
+            dbService.execute("UPDATE comments SET status = 'sent' WHERE id = $id", { $id: created.id });
 
             const result = service.update(created.id, 'New content');
             const error = expectErr(result);
@@ -274,16 +286,15 @@ describe('CommentService', () => {
         });
 
         it('rejects resolved comment', () => {
-            const created = expectOk(service.create({
-                session_id: sessionId,
-                snapshot_id: snapA,
-                file_path: 'src/app.ts',
-                content: 'Test',
-            }));
-            dbService.execute(
-                "UPDATE comments SET status = 'resolved' WHERE id = $id",
-                { $id: created.id },
+            const created = expectOk(
+                service.create({
+                    session_id: sessionId,
+                    snapshot_id: snapA,
+                    file_path: 'src/app.ts',
+                    content: 'Test',
+                }),
             );
+            dbService.execute("UPDATE comments SET status = 'resolved' WHERE id = $id", { $id: created.id });
 
             const result = service.update(created.id, 'New content');
             const error = expectErr(result);
@@ -291,12 +302,14 @@ describe('CommentService', () => {
         });
 
         it('validates non-empty content', () => {
-            const created = expectOk(service.create({
-                session_id: sessionId,
-                snapshot_id: snapA,
-                file_path: 'src/app.ts',
-                content: 'Test',
-            }));
+            const created = expectOk(
+                service.create({
+                    session_id: sessionId,
+                    snapshot_id: snapA,
+                    file_path: 'src/app.ts',
+                    content: 'Test',
+                }),
+            );
 
             const result = service.update(created.id, '');
             const error = expectErr(result);
@@ -305,12 +318,14 @@ describe('CommentService', () => {
         });
 
         it('broadcasts updated SSE event', () => {
-            const created = expectOk(service.create({
-                session_id: sessionId,
-                snapshot_id: snapA,
-                file_path: 'src/app.ts',
-                content: 'Test',
-            }));
+            const created = expectOk(
+                service.create({
+                    session_id: sessionId,
+                    snapshot_id: snapA,
+                    file_path: 'src/app.ts',
+                    content: 'Test',
+                }),
+            );
             vi.mocked(mockSse.broadcast).mockClear();
 
             expectOk(service.update(created.id, 'Updated'));
@@ -324,19 +339,20 @@ describe('CommentService', () => {
 
     describe('delete', () => {
         it('removes draft comment', () => {
-            const created = expectOk(service.create({
-                session_id: sessionId,
-                snapshot_id: snapA,
-                file_path: 'src/app.ts',
-                content: 'Test',
-            }));
+            const created = expectOk(
+                service.create({
+                    session_id: sessionId,
+                    snapshot_id: snapA,
+                    file_path: 'src/app.ts',
+                    content: 'Test',
+                }),
+            );
 
             expectOk(service.delete(created.id));
 
-            const check = dbService.queryOne<{ id: string }>(
-                'SELECT id FROM comments WHERE id = $id',
-                { $id: created.id },
-            );
+            const check = dbService.queryOne<{ id: string }>('SELECT id FROM comments WHERE id = $id', {
+                $id: created.id,
+            });
             expect(expectOk(check)).toBeUndefined();
         });
 
@@ -347,16 +363,15 @@ describe('CommentService', () => {
         });
 
         it('rejects sent comment', () => {
-            const created = expectOk(service.create({
-                session_id: sessionId,
-                snapshot_id: snapA,
-                file_path: 'src/app.ts',
-                content: 'Test',
-            }));
-            dbService.execute(
-                "UPDATE comments SET status = 'sent' WHERE id = $id",
-                { $id: created.id },
+            const created = expectOk(
+                service.create({
+                    session_id: sessionId,
+                    snapshot_id: snapA,
+                    file_path: 'src/app.ts',
+                    content: 'Test',
+                }),
             );
+            dbService.execute("UPDATE comments SET status = 'sent' WHERE id = $id", { $id: created.id });
 
             const result = service.delete(created.id);
             const error = expectErr(result);
@@ -365,33 +380,34 @@ describe('CommentService', () => {
         });
 
         it('cascade deletes replies', () => {
-            const parent = expectOk(service.create({
-                session_id: sessionId,
-                snapshot_id: snapA,
-                file_path: 'src/app.ts',
-                content: 'Parent',
-            }));
+            const parent = expectOk(
+                service.create({
+                    session_id: sessionId,
+                    snapshot_id: snapA,
+                    file_path: 'src/app.ts',
+                    content: 'Parent',
+                }),
+            );
             const reply1 = expectOk(service.createReply(parent.id, 'Reply 1', 'user'));
             const reply2 = expectOk(service.createReply(parent.id, 'Reply 2', 'agent'));
 
             expectOk(service.delete(parent.id));
 
             for (const id of [parent.id, reply1.id, reply2.id]) {
-                const check = dbService.queryOne<{ id: string }>(
-                    'SELECT id FROM comments WHERE id = $id',
-                    { $id: id },
-                );
+                const check = dbService.queryOne<{ id: string }>('SELECT id FROM comments WHERE id = $id', { $id: id });
                 expect(expectOk(check)).toBeUndefined();
             }
         });
 
         it('broadcasts deleted SSE event', () => {
-            const created = expectOk(service.create({
-                session_id: sessionId,
-                snapshot_id: snapA,
-                file_path: 'src/app.ts',
-                content: 'Test',
-            }));
+            const created = expectOk(
+                service.create({
+                    session_id: sessionId,
+                    snapshot_id: snapA,
+                    file_path: 'src/app.ts',
+                    content: 'Test',
+                }),
+            );
             vi.mocked(mockSse.broadcast).mockClear();
 
             expectOk(service.delete(created.id));
@@ -414,16 +430,15 @@ describe('CommentService', () => {
                 });
             }
             for (let i = 0; i < 2; i++) {
-                const c = expectOk(service.create({
-                    session_id: sessionId,
-                    snapshot_id: snapA,
-                    file_path: 'src/app.ts',
-                    content: `Sent ${i}`,
-                }));
-                dbService.execute(
-                    "UPDATE comments SET status = 'sent' WHERE id = $id",
-                    { $id: c.id },
+                const c = expectOk(
+                    service.create({
+                        session_id: sessionId,
+                        snapshot_id: snapA,
+                        file_path: 'src/app.ts',
+                        content: `Sent ${i}`,
+                    }),
                 );
+                dbService.execute("UPDATE comments SET status = 'sent' WHERE id = $id", { $id: c.id });
             }
 
             const drafts = expectOk(service.getCommentsByStatus(sessionId, 'draft'));
@@ -437,10 +452,10 @@ describe('CommentService', () => {
 
         it('filters by sessionId', () => {
             const sessionId2 = generateId();
-            dbService.execute(
-                "INSERT INTO sessions (id, repo_id, branch) VALUES ($id, $repoId, 'feature')",
-                { $id: sessionId2, $repoId: repoId },
-            );
+            dbService.execute("INSERT INTO sessions (id, repo_id, branch) VALUES ($id, $repoId, 'feature')", {
+                $id: sessionId2,
+                $repoId: repoId,
+            });
 
             service.create({
                 session_id: sessionId,
@@ -463,27 +478,31 @@ describe('CommentService', () => {
 
     describe('createReply', () => {
         it('creates reply with reply_to_id set', () => {
-            const parent = expectOk(service.create({
-                session_id: sessionId,
-                snapshot_id: snapA,
-                file_path: 'src/app.ts',
-                content: 'Parent',
-            }));
+            const parent = expectOk(
+                service.create({
+                    session_id: sessionId,
+                    snapshot_id: snapA,
+                    file_path: 'src/app.ts',
+                    content: 'Parent',
+                }),
+            );
 
             const reply = expectOk(service.createReply(parent.id, 'Reply text', 'user'));
             expect(reply.reply_to_id).toBe(parent.id);
         });
 
         it('inherits parent file_path, line_start, line_end, side', () => {
-            const parent = expectOk(service.create({
-                session_id: sessionId,
-                snapshot_id: snapA,
-                file_path: 'src/app.ts',
-                line_start: 10,
-                line_end: 15,
-                side: 'new',
-                content: 'Parent',
-            }));
+            const parent = expectOk(
+                service.create({
+                    session_id: sessionId,
+                    snapshot_id: snapA,
+                    file_path: 'src/app.ts',
+                    line_start: 10,
+                    line_end: 15,
+                    side: 'new',
+                    content: 'Parent',
+                }),
+            );
 
             const reply = expectOk(service.createReply(parent.id, 'Reply', 'user'));
             expect(reply.file_path).toBe('src/app.ts');
@@ -493,12 +512,14 @@ describe('CommentService', () => {
         });
 
         it('inherits parent session_id, snapshot_id', () => {
-            const parent = expectOk(service.create({
-                session_id: sessionId,
-                snapshot_id: snapA,
-                file_path: 'src/app.ts',
-                content: 'Parent',
-            }));
+            const parent = expectOk(
+                service.create({
+                    session_id: sessionId,
+                    snapshot_id: snapA,
+                    file_path: 'src/app.ts',
+                    content: 'Parent',
+                }),
+            );
 
             const reply = expectOk(service.createReply(parent.id, 'Reply', 'user'));
             expect(reply.session_id).toBe(sessionId);
@@ -506,12 +527,14 @@ describe('CommentService', () => {
         });
 
         it('accepts agent author', () => {
-            const parent = expectOk(service.create({
-                session_id: sessionId,
-                snapshot_id: snapA,
-                file_path: 'src/app.ts',
-                content: 'Parent',
-            }));
+            const parent = expectOk(
+                service.create({
+                    session_id: sessionId,
+                    snapshot_id: snapA,
+                    file_path: 'src/app.ts',
+                    content: 'Parent',
+                }),
+            );
 
             const reply = expectOk(service.createReply(parent.id, 'Agent reply', 'agent'));
             expect(reply.author).toBe('agent');
@@ -525,12 +548,14 @@ describe('CommentService', () => {
         });
 
         it('broadcasts created SSE event', () => {
-            const parent = expectOk(service.create({
-                session_id: sessionId,
-                snapshot_id: snapA,
-                file_path: 'src/app.ts',
-                content: 'Parent',
-            }));
+            const parent = expectOk(
+                service.create({
+                    session_id: sessionId,
+                    snapshot_id: snapA,
+                    file_path: 'src/app.ts',
+                    content: 'Parent',
+                }),
+            );
             vi.mocked(mockSse.broadcast).mockClear();
 
             const reply = expectOk(service.createReply(parent.id, 'Reply', 'user'));
@@ -542,12 +567,14 @@ describe('CommentService', () => {
         });
 
         it('defaults status to draft', () => {
-            const parent = expectOk(service.create({
-                session_id: sessionId,
-                snapshot_id: snapA,
-                file_path: 'src/app.ts',
-                content: 'Parent',
-            }));
+            const parent = expectOk(
+                service.create({
+                    session_id: sessionId,
+                    snapshot_id: snapA,
+                    file_path: 'src/app.ts',
+                    content: 'Parent',
+                }),
+            );
 
             const reply = expectOk(service.createReply(parent.id, 'Reply', 'user'));
             expect(reply.status).toBe('draft');
@@ -556,18 +583,22 @@ describe('CommentService', () => {
 
     describe('getSessionComments', () => {
         it('returns threads with nested replies', () => {
-            const parentA = expectOk(service.create({
-                session_id: sessionId,
-                snapshot_id: snapA,
-                file_path: 'src/a.ts',
-                content: 'Parent A',
-            }));
-            const parentB = expectOk(service.create({
-                session_id: sessionId,
-                snapshot_id: snapA,
-                file_path: 'src/b.ts',
-                content: 'Parent B',
-            }));
+            const parentA = expectOk(
+                service.create({
+                    session_id: sessionId,
+                    snapshot_id: snapA,
+                    file_path: 'src/a.ts',
+                    content: 'Parent A',
+                }),
+            );
+            const parentB = expectOk(
+                service.create({
+                    session_id: sessionId,
+                    snapshot_id: snapA,
+                    file_path: 'src/b.ts',
+                    content: 'Parent B',
+                }),
+            );
             service.createReply(parentA.id, 'Reply A1', 'user');
             service.createReply(parentA.id, 'Reply A2', 'agent');
             service.createReply(parentB.id, 'Reply B1', 'user');
@@ -612,12 +643,14 @@ describe('CommentService', () => {
         });
 
         it('orders replies by created_at', () => {
-            const parent = expectOk(service.create({
-                session_id: sessionId,
-                snapshot_id: snapA,
-                file_path: 'src/app.ts',
-                content: 'Parent',
-            }));
+            const parent = expectOk(
+                service.create({
+                    session_id: sessionId,
+                    snapshot_id: snapA,
+                    file_path: 'src/app.ts',
+                    content: 'Parent',
+                }),
+            );
 
             const r1 = expectOk(service.createReply(parent.id, 'First', 'user'));
             const r2 = expectOk(service.createReply(parent.id, 'Second', 'agent'));
@@ -628,12 +661,14 @@ describe('CommentService', () => {
         });
 
         it('excludes orphan replies', () => {
-            const parent = expectOk(service.create({
-                session_id: sessionId,
-                snapshot_id: snapA,
-                file_path: 'src/app.ts',
-                content: 'Parent',
-            }));
+            const parent = expectOk(
+                service.create({
+                    session_id: sessionId,
+                    snapshot_id: snapA,
+                    file_path: 'src/app.ts',
+                    content: 'Parent',
+                }),
+            );
             service.createReply(parent.id, 'Reply', 'user');
 
             // Delete parent — cascade removes replies in DB, so orphan scenario
@@ -652,9 +687,15 @@ describe('CommentService', () => {
 
     describe('markSent', () => {
         it('transitions drafts to sent', () => {
-            const c1 = expectOk(service.create({ session_id: sessionId, snapshot_id: snapA, file_path: 'src/app.ts', content: 'C1' }));
-            const c2 = expectOk(service.create({ session_id: sessionId, snapshot_id: snapA, file_path: 'src/app.ts', content: 'C2' }));
-            const c3 = expectOk(service.create({ session_id: sessionId, snapshot_id: snapA, file_path: 'src/app.ts', content: 'C3' }));
+            const c1 = expectOk(
+                service.create({ session_id: sessionId, snapshot_id: snapA, file_path: 'src/app.ts', content: 'C1' }),
+            );
+            const c2 = expectOk(
+                service.create({ session_id: sessionId, snapshot_id: snapA, file_path: 'src/app.ts', content: 'C2' }),
+            );
+            const c3 = expectOk(
+                service.create({ session_id: sessionId, snapshot_id: snapA, file_path: 'src/app.ts', content: 'C3' }),
+            );
 
             const result = expectOk(service.markSent([c1.id, c2.id, c3.id]));
             expect(result).toHaveLength(3);
@@ -664,7 +705,9 @@ describe('CommentService', () => {
         });
 
         it('sets sent_at timestamp', () => {
-            const c = expectOk(service.create({ session_id: sessionId, snapshot_id: snapA, file_path: 'src/app.ts', content: 'C' }));
+            const c = expectOk(
+                service.create({ session_id: sessionId, snapshot_id: snapA, file_path: 'src/app.ts', content: 'C' }),
+            );
 
             const result = expectOk(service.markSent([c.id]));
             expect(result[0].sent_at).toBeTruthy();
@@ -672,35 +715,50 @@ describe('CommentService', () => {
         });
 
         it('updates has_review_comments on snapshots', () => {
-            const c1 = expectOk(service.create({ session_id: sessionId, snapshot_id: snapA, file_path: 'src/app.ts', content: 'C1' }));
-            const c2 = expectOk(service.create({ session_id: sessionId, snapshot_id: snapB, file_path: 'src/app.ts', content: 'C2' }));
+            const c1 = expectOk(
+                service.create({ session_id: sessionId, snapshot_id: snapA, file_path: 'src/app.ts', content: 'C1' }),
+            );
+            const c2 = expectOk(
+                service.create({ session_id: sessionId, snapshot_id: snapB, file_path: 'src/app.ts', content: 'C2' }),
+            );
 
             service.markSent([c1.id, c2.id]);
 
-            const snapARow = expectOk(dbService.queryOne<{ has_review_comments: number }>(
-                'SELECT has_review_comments FROM snapshots WHERE id = $id',
-                { $id: snapA },
-            ));
-            const snapBRow = expectOk(dbService.queryOne<{ has_review_comments: number }>(
-                'SELECT has_review_comments FROM snapshots WHERE id = $id',
-                { $id: snapB },
-            ));
+            const snapARow = expectOk(
+                dbService.queryOne<{ has_review_comments: number }>(
+                    'SELECT has_review_comments FROM snapshots WHERE id = $id',
+                    { $id: snapA },
+                ),
+            );
+            const snapBRow = expectOk(
+                dbService.queryOne<{ has_review_comments: number }>(
+                    'SELECT has_review_comments FROM snapshots WHERE id = $id',
+                    { $id: snapB },
+                ),
+            );
             expect(snapARow!.has_review_comments).toBe(1);
             expect(snapBRow!.has_review_comments).toBe(1);
         });
 
         it('broadcasts SSE per comment', () => {
-            const c1 = expectOk(service.create({ session_id: sessionId, snapshot_id: snapA, file_path: 'src/app.ts', content: 'C1' }));
-            const c2 = expectOk(service.create({ session_id: sessionId, snapshot_id: snapA, file_path: 'src/app.ts', content: 'C2' }));
+            const c1 = expectOk(
+                service.create({ session_id: sessionId, snapshot_id: snapA, file_path: 'src/app.ts', content: 'C1' }),
+            );
+            const c2 = expectOk(
+                service.create({ session_id: sessionId, snapshot_id: snapA, file_path: 'src/app.ts', content: 'C2' }),
+            );
             vi.mocked(mockSse.broadcast).mockClear();
 
             service.markSent([c1.id, c2.id]);
 
             expect(mockSse.broadcast).toHaveBeenCalledTimes(2);
-            expect(mockSse.broadcast).toHaveBeenCalledWith(sessionId, expect.objectContaining({
-                type: 'comment-update',
-                data: expect.objectContaining({ action: 'sent' }),
-            }));
+            expect(mockSse.broadcast).toHaveBeenCalledWith(
+                sessionId,
+                expect.objectContaining({
+                    type: 'comment-update',
+                    data: expect.objectContaining({ action: 'sent' }),
+                }),
+            );
         });
 
         it('returns empty for empty array', () => {
@@ -710,9 +768,15 @@ describe('CommentService', () => {
         });
 
         it('skips non-draft comments', () => {
-            const c1 = expectOk(service.create({ session_id: sessionId, snapshot_id: snapA, file_path: 'src/app.ts', content: 'C1' }));
-            const c2 = expectOk(service.create({ session_id: sessionId, snapshot_id: snapA, file_path: 'src/app.ts', content: 'C2' }));
-            const c3 = expectOk(service.create({ session_id: sessionId, snapshot_id: snapA, file_path: 'src/app.ts', content: 'C3' }));
+            const c1 = expectOk(
+                service.create({ session_id: sessionId, snapshot_id: snapA, file_path: 'src/app.ts', content: 'C1' }),
+            );
+            const c2 = expectOk(
+                service.create({ session_id: sessionId, snapshot_id: snapA, file_path: 'src/app.ts', content: 'C2' }),
+            );
+            const c3 = expectOk(
+                service.create({ session_id: sessionId, snapshot_id: snapA, file_path: 'src/app.ts', content: 'C3' }),
+            );
 
             dbService.execute("UPDATE comments SET status = 'sent' WHERE id = $id", { $id: c3.id });
             vi.mocked(mockSse.broadcast).mockClear();
@@ -725,7 +789,9 @@ describe('CommentService', () => {
         it('uses transaction', () => {
             const transactionSpy = vi.spyOn(dbService, 'transaction');
 
-            const c = expectOk(service.create({ session_id: sessionId, snapshot_id: snapA, file_path: 'src/app.ts', content: 'C' }));
+            const c = expectOk(
+                service.create({ session_id: sessionId, snapshot_id: snapA, file_path: 'src/app.ts', content: 'C' }),
+            );
             service.markSent([c.id]);
 
             expect(transactionSpy).toHaveBeenCalled();
@@ -734,7 +800,9 @@ describe('CommentService', () => {
 
     describe('resolve', () => {
         it('transitions sent to resolved', () => {
-            const c = expectOk(service.create({ session_id: sessionId, snapshot_id: snapA, file_path: 'src/app.ts', content: 'C' }));
+            const c = expectOk(
+                service.create({ session_id: sessionId, snapshot_id: snapA, file_path: 'src/app.ts', content: 'C' }),
+            );
             expectOk(service.markSent([c.id]));
 
             const resolved = expectOk(service.resolve(c.id));
@@ -742,7 +810,9 @@ describe('CommentService', () => {
         });
 
         it('sets resolved_at timestamp', () => {
-            const c = expectOk(service.create({ session_id: sessionId, snapshot_id: snapA, file_path: 'src/app.ts', content: 'C' }));
+            const c = expectOk(
+                service.create({ session_id: sessionId, snapshot_id: snapA, file_path: 'src/app.ts', content: 'C' }),
+            );
             expectOk(service.markSent([c.id]));
 
             const resolved = expectOk(service.resolve(c.id));
@@ -751,7 +821,9 @@ describe('CommentService', () => {
         });
 
         it('rejects draft comment', () => {
-            const c = expectOk(service.create({ session_id: sessionId, snapshot_id: snapA, file_path: 'src/app.ts', content: 'C' }));
+            const c = expectOk(
+                service.create({ session_id: sessionId, snapshot_id: snapA, file_path: 'src/app.ts', content: 'C' }),
+            );
 
             const result = service.resolve(c.id);
             const error = expectErr(result);
@@ -766,7 +838,9 @@ describe('CommentService', () => {
         });
 
         it('broadcasts resolved SSE event', () => {
-            const c = expectOk(service.create({ session_id: sessionId, snapshot_id: snapA, file_path: 'src/app.ts', content: 'C' }));
+            const c = expectOk(
+                service.create({ session_id: sessionId, snapshot_id: snapA, file_path: 'src/app.ts', content: 'C' }),
+            );
             expectOk(service.markSent([c.id]));
             vi.mocked(mockSse.broadcast).mockClear();
 
@@ -794,12 +868,14 @@ describe('CommentService', () => {
         });
 
         it('includes comments from same snapshot', () => {
-            const c = expectOk(service.create({
-                session_id: sessionId,
-                snapshot_id: snapB,
-                file_path: 'src/app.ts',
-                content: 'On snap B',
-            }));
+            const c = expectOk(
+                service.create({
+                    session_id: sessionId,
+                    snapshot_id: snapB,
+                    file_path: 'src/app.ts',
+                    content: 'On snap B',
+                }),
+            );
             dbService.execute("UPDATE comments SET status = 'sent' WHERE id = $id", { $id: c.id });
 
             const threads = expectOk(service.getCommentsForSnapshot(sessionId, snapB));
@@ -819,16 +895,17 @@ describe('CommentService', () => {
         });
 
         it('excludes resolved comments', () => {
-            const c = expectOk(service.create({
-                session_id: sessionId,
-                snapshot_id: snapA,
-                file_path: 'src/app.ts',
-                content: 'Resolved',
-            }));
-            dbService.execute(
-                "UPDATE comments SET status = 'resolved', resolved_at = datetime('now') WHERE id = $id",
-                { $id: c.id },
+            const c = expectOk(
+                service.create({
+                    session_id: sessionId,
+                    snapshot_id: snapA,
+                    file_path: 'src/app.ts',
+                    content: 'Resolved',
+                }),
             );
+            dbService.execute("UPDATE comments SET status = 'resolved', resolved_at = datetime('now') WHERE id = $id", {
+                $id: c.id,
+            });
 
             const threads = expectOk(service.getCommentsForSnapshot(sessionId, snapB));
             expect(threads).toHaveLength(0);
@@ -861,12 +938,14 @@ describe('CommentService', () => {
         });
 
         it('replies follow parent visibility', () => {
-            const parent = expectOk(service.create({
-                session_id: sessionId,
-                snapshot_id: snapA,
-                file_path: 'src/app.ts',
-                content: 'Parent',
-            }));
+            const parent = expectOk(
+                service.create({
+                    session_id: sessionId,
+                    snapshot_id: snapA,
+                    file_path: 'src/app.ts',
+                    content: 'Parent',
+                }),
+            );
             service.createReply(parent.id, 'Reply 1', 'user');
             service.createReply(parent.id, 'Reply 2', 'agent');
 

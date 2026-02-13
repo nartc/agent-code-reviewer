@@ -17,9 +17,7 @@ export class ClipboardTransport implements Transport {
     }
 
     listTargets(): ResultAsync<Target[], TransportError> {
-        return okAsync([
-            { id: 'clipboard', label: 'Copy to Clipboard', transport: 'clipboard' as const },
-        ]);
+        return okAsync([{ id: 'clipboard', label: 'Copy to Clipboard', transport: 'clipboard' as const }]);
     }
 
     sendComments(

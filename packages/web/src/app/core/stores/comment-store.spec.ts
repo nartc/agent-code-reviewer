@@ -1,9 +1,9 @@
+import type { Comment, CommentThread } from '@agent-code-reviewer/shared';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
-import { CommentStore } from './comment-store';
 import { ApiClient } from '../services/api-client';
-import type { CommentThread, Comment } from '@agent-code-reviewer/shared';
+import { CommentStore } from './comment-store';
 
 function makeComment(overrides: Partial<Comment> = {}): Comment {
     return {
@@ -43,7 +43,16 @@ describe('CommentStore', () => {
             createComment: vi.fn().mockReturnValue(of({ comment: makeComment({ id: 'c6' }) })),
             updateComment: vi.fn().mockReturnValue(of({ comment: makeComment({ id: 'c1', content: 'updated' }) })),
             deleteComment: vi.fn().mockReturnValue(of(undefined)),
-            sendComments: vi.fn().mockReturnValue(of({ comments: [makeComment({ id: 'c1', status: 'sent' }), makeComment({ id: 'c2', status: 'sent' })] })),
+            sendComments: vi
+                .fn()
+                .mockReturnValue(
+                    of({
+                        comments: [
+                            makeComment({ id: 'c1', status: 'sent' }),
+                            makeComment({ id: 'c2', status: 'sent' }),
+                        ],
+                    }),
+                ),
             resolveComment: vi.fn().mockReturnValue(of({ comment: makeComment({ id: 'c1', status: 'resolved' }) })),
             replyToComment: vi.fn().mockReturnValue(of({ comment: makeComment({ id: 'r1', reply_to_id: 'c1' }) })),
         };

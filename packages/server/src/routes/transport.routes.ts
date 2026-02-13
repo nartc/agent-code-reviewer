@@ -1,8 +1,8 @@
-import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
-import type { TransportService } from '../services/transport.service.js';
-import { resultToResponse, asyncResultToResponse } from '../lib/result-to-response.js';
 import { updateTransportConfigSchema } from '@agent-code-reviewer/shared';
+import { zValidator } from '@hono/zod-validator';
+import { Hono } from 'hono';
+import { asyncResultToResponse, resultToResponse } from '../lib/result-to-response.js';
+import type { TransportService } from '../services/transport.service.js';
 
 export function createTransportRoutes(transportService: TransportService): Hono {
     const app = new Hono();
@@ -33,7 +33,9 @@ export function createTransportRoutes(transportService: TransportService): Hono 
         const { active_transport, last_target_id } = c.req.valid('json');
         return resultToResponse(
             c,
-            transportService.saveActiveConfig(active_transport, last_target_id).map(() => ({ message: 'Config saved' })),
+            transportService
+                .saveActiveConfig(active_transport, last_target_id)
+                .map(() => ({ message: 'Config saved' })),
         );
     });
 

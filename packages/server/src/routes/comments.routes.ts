@@ -1,16 +1,16 @@
-import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
 import type { Comment, CommentPayload, CommentStatus } from '@agent-code-reviewer/shared';
-import type { CommentService } from '../services/comment.service.js';
-import type { TransportService } from '../services/transport.service.js';
-import { resultToResponse } from '../lib/result-to-response.js';
 import {
     createCommentSchema,
-    updateCommentSchema,
-    sendCommentsSchema,
-    replyToCommentSchema,
     listCommentsQuerySchema,
+    replyToCommentSchema,
+    sendCommentsSchema,
+    updateCommentSchema,
 } from '@agent-code-reviewer/shared';
+import { zValidator } from '@hono/zod-validator';
+import { Hono } from 'hono';
+import { resultToResponse } from '../lib/result-to-response.js';
+import type { CommentService } from '../services/comment.service.js';
+import type { TransportService } from '../services/transport.service.js';
 import { idParamSchema } from './params.js';
 
 function buildPayload(comment: Comment): CommentPayload {
@@ -25,10 +25,7 @@ function buildPayload(comment: Comment): CommentPayload {
     };
 }
 
-export function createCommentRoutes(
-    commentService: CommentService,
-    transportService: TransportService,
-): Hono {
+export function createCommentRoutes(commentService: CommentService, transportService: TransportService): Hono {
     const app = new Hono();
 
     // GET / — Query comments (flexible)
@@ -45,11 +42,9 @@ export function createCommentRoutes(
         if (status) {
             return resultToResponse(
                 c,
-                commentService
-                    .getCommentsByStatus(session_id, status as CommentStatus)
-                    .map((comments) => ({
-                        comments: comments.map((comment) => ({ comment, replies: [] })),
-                    })),
+                commentService.getCommentsByStatus(session_id, status as CommentStatus).map((comments) => ({
+                    comments: comments.map((comment) => ({ comment, replies: [] })),
+                })),
             );
         }
 

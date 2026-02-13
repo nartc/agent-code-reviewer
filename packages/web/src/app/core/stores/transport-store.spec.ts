@@ -1,11 +1,11 @@
+import type { Target, TransportStatus } from '@agent-code-reviewer/shared';
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { provideHttpClient } from '@angular/common/http';
 import { of } from 'rxjs';
-import { TransportStore } from './transport-store';
 import { ApiClient } from '../services/api-client';
-import type { Target, TransportStatus } from '@agent-code-reviewer/shared';
+import { TransportStore } from './transport-store';
 
 const mockTargets: Target[] = [
     { id: 't1', label: 'tmux-0', transport: 'tmux' },
@@ -30,7 +30,12 @@ describe('TransportStore', () => {
         };
 
         TestBed.configureTestingModule({
-            providers: [provideZonelessChangeDetection(), provideHttpClient(), provideHttpClientTesting(), { provide: ApiClient, useValue: apiSpy }],
+            providers: [
+                provideZonelessChangeDetection(),
+                provideHttpClient(),
+                provideHttpClientTesting(),
+                { provide: ApiClient, useValue: apiSpy },
+            ],
         });
         store = TestBed.inject(TransportStore);
         httpMock = TestBed.inject(HttpTestingController);
@@ -44,7 +49,9 @@ describe('TransportStore', () => {
         TestBed.tick();
         httpMock.expectOne('/api/transport/targets').flush({ targets: mockTargets });
         httpMock.expectOne('/api/transport/status').flush({ statuses: mockStatuses });
-        httpMock.expectOne('/api/transport/config').flush({ active_transport: 'tmux', last_target_id: 't1', settings: null });
+        httpMock
+            .expectOne('/api/transport/config')
+            .flush({ active_transport: 'tmux', last_target_id: 't1', settings: null });
         await new Promise((r) => setTimeout(r, 0));
         TestBed.tick();
     }
@@ -60,9 +67,14 @@ describe('TransportStore', () => {
     it('setActiveTransport calls API and reloads config', async () => {
         await flushInitialResources();
         store.setActiveTransport('clipboard');
-        expect(apiSpy['updateTransportConfig']).toHaveBeenCalledWith({ active_transport: 'clipboard', last_target_id: undefined });
+        expect(apiSpy['updateTransportConfig']).toHaveBeenCalledWith({
+            active_transport: 'clipboard',
+            last_target_id: undefined,
+        });
         TestBed.tick();
-        httpMock.expectOne('/api/transport/config').flush({ active_transport: 'clipboard', last_target_id: null, settings: null });
+        httpMock
+            .expectOne('/api/transport/config')
+            .flush({ active_transport: 'clipboard', last_target_id: null, settings: null });
         await new Promise((r) => setTimeout(r, 0));
         TestBed.tick();
         expect(store.activeTransport()).toBe('clipboard');
@@ -72,9 +84,14 @@ describe('TransportStore', () => {
     it('setActiveTransport with targetId', async () => {
         await flushInitialResources();
         store.setActiveTransport('tmux', 't2');
-        expect(apiSpy['updateTransportConfig']).toHaveBeenCalledWith({ active_transport: 'tmux', last_target_id: 't2' });
+        expect(apiSpy['updateTransportConfig']).toHaveBeenCalledWith({
+            active_transport: 'tmux',
+            last_target_id: 't2',
+        });
         TestBed.tick();
-        httpMock.expectOne('/api/transport/config').flush({ active_transport: 'tmux', last_target_id: 't2', settings: null });
+        httpMock
+            .expectOne('/api/transport/config')
+            .flush({ active_transport: 'tmux', last_target_id: 't2', settings: null });
         await new Promise((r) => setTimeout(r, 0));
         TestBed.tick();
         expect(store.activeTransport()).toBe('tmux');
@@ -98,7 +115,9 @@ describe('TransportStore', () => {
         expect(store.isLoading()).toBe(true);
         httpMock.expectOne('/api/transport/targets').flush({ targets: mockTargets });
         httpMock.expectOne('/api/transport/status').flush({ statuses: mockStatuses });
-        httpMock.expectOne('/api/transport/config').flush({ active_transport: 'tmux', last_target_id: 't1', settings: null });
+        httpMock
+            .expectOne('/api/transport/config')
+            .flush({ active_transport: 'tmux', last_target_id: 't1', settings: null });
         await new Promise((r) => setTimeout(r, 0));
         TestBed.tick();
         expect(store.isLoading()).toBe(false);

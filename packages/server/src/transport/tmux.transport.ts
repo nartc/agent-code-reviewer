@@ -79,11 +79,7 @@ export class TmuxTransport implements Transport {
 
         return ResultAsync.fromPromise(
             execFileAsync('tmux', ['load-buffer', '-b', bufferName, '-'], { input: formatted }),
-            (e) =>
-                transportError(
-                    `tmux load-buffer failed: ${e instanceof Error ? e.message : String(e)}`,
-                    e,
-                ),
+            (e) => transportError(`tmux load-buffer failed: ${e instanceof Error ? e.message : String(e)}`, e),
         )
             .andThen(() =>
                 ResultAsync.fromPromise(
@@ -96,22 +92,14 @@ export class TmuxTransport implements Transport {
                 ),
             )
             .andThen(() =>
-                ResultAsync.fromPromise(
-                    execFileAsync('tmux', ['delete-buffer', '-b', bufferName]),
-                    (e) => {
-                        console.error(`[tmux] delete-buffer warning: ${e instanceof Error ? e.message : String(e)}`);
-                        return transportError(`tmux delete-buffer failed`, e);
-                    },
-                ).orElse(() => okAsync({ stdout: '', stderr: '' })),
+                ResultAsync.fromPromise(execFileAsync('tmux', ['delete-buffer', '-b', bufferName]), (e) => {
+                    console.error(`[tmux] delete-buffer warning: ${e instanceof Error ? e.message : String(e)}`);
+                    return transportError(`tmux delete-buffer failed`, e);
+                }).orElse(() => okAsync({ stdout: '', stderr: '' })),
             )
             .andThen(() =>
-                ResultAsync.fromPromise(
-                    execFileAsync('tmux', ['send-keys', '-t', targetId, 'Enter']),
-                    (e) =>
-                        transportError(
-                            `tmux send-keys failed: ${e instanceof Error ? e.message : String(e)}`,
-                            e,
-                        ),
+                ResultAsync.fromPromise(execFileAsync('tmux', ['send-keys', '-t', targetId, 'Enter']), (e) =>
+                    transportError(`tmux send-keys failed: ${e instanceof Error ? e.message : String(e)}`, e),
                 ),
             )
             .map(() => ({ success: true }));

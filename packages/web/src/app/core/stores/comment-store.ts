@@ -1,14 +1,14 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
-import { rxResource } from '@angular/core/rxjs-interop';
-import { map } from 'rxjs';
 import type {
     CommentThread,
     CreateCommentInput,
-    UpdateCommentRequest,
-    SendCommentsRequest,
-    ReplyToCommentRequest,
     ListCommentsParams,
+    ReplyToCommentRequest,
+    SendCommentsRequest,
+    UpdateCommentRequest,
 } from '@agent-code-reviewer/shared';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { rxResource } from '@angular/core/rxjs-interop';
+import { map } from 'rxjs';
 import { ApiClient } from '../services/api-client';
 
 @Injectable({ providedIn: 'root' })

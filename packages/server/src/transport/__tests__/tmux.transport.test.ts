@@ -7,7 +7,9 @@ vi.mock('node:child_process', () => ({
 
 import { execFile } from 'node:child_process';
 
-function mockExecFile(impl: (cmd: string, args: string[], cb: (err: Error | null, stdout: string, stderr: string) => void) => void) {
+function mockExecFile(
+    impl: (cmd: string, args: string[], cb: (err: Error | null, stdout: string, stderr: string) => void) => void,
+) {
     (execFile as unknown as Mock).mockImplementation(impl);
 }
 
@@ -21,18 +23,20 @@ function mockExecFileSuccess(stdout = '') {
 
 function mockExecFileSequence(results: Array<{ stdout?: string; error?: Error }>) {
     let callIdx = 0;
-    (execFile as unknown as Mock).mockImplementation((_cmd: string, _args: string[], cb: (err: Error | null, stdout: string, stderr: string) => void) => {
-        const child = { stdin: { write: vi.fn(), end: vi.fn() } };
-        const result = results[callIdx++] ?? { stdout: '' };
-        queueMicrotask(() => {
-            if (result.error) {
-                cb(result.error, '', '');
-            } else {
-                cb(null, result.stdout ?? '', '');
-            }
-        });
-        return child;
-    });
+    (execFile as unknown as Mock).mockImplementation(
+        (_cmd: string, _args: string[], cb: (err: Error | null, stdout: string, stderr: string) => void) => {
+            const child = { stdin: { write: vi.fn(), end: vi.fn() } };
+            const result = results[callIdx++] ?? { stdout: '' };
+            queueMicrotask(() => {
+                if (result.error) {
+                    cb(result.error, '', '');
+                } else {
+                    cb(null, result.stdout ?? '', '');
+                }
+            });
+            return child;
+        },
+    );
 }
 
 describe('TmuxTransport', () => {
@@ -75,11 +79,7 @@ describe('TmuxTransport', () => {
 
     describe('listTargets', () => {
         it('parses 3-line tmux output into Target objects', async () => {
-            const tmuxOutput = [
-                'main:0.0 ~/project vim',
-                'main:0.1 ~/project zsh',
-                'work:1.0 ~/other node',
-            ].join('\n');
+            const tmuxOutput = ['main:0.0 ~/project vim', 'main:0.1 ~/project zsh', 'work:1.0 ~/other node'].join('\n');
             mockExecFileSuccess(tmuxOutput);
 
             const result = await transport.listTargets();
@@ -137,12 +137,14 @@ describe('TmuxTransport', () => {
 
         it('executes 4 tmux commands in order: load-buffer, paste-buffer, delete-buffer, send-keys', async () => {
             const calls: string[][] = [];
-            (execFile as unknown as Mock).mockImplementation((cmd: string, args: string[], cb: (err: Error | null, stdout: string, stderr: string) => void) => {
-                const child = { stdin: { write: vi.fn(), end: vi.fn() } };
-                calls.push([cmd, ...args]);
-                queueMicrotask(() => cb(null, '', ''));
-                return child;
-            });
+            (execFile as unknown as Mock).mockImplementation(
+                (cmd: string, args: string[], cb: (err: Error | null, stdout: string, stderr: string) => void) => {
+                    const child = { stdin: { write: vi.fn(), end: vi.fn() } };
+                    calls.push([cmd, ...args]);
+                    queueMicrotask(() => cb(null, '', ''));
+                    return child;
+                },
+            );
 
             const result = await transport.sendComments('main:0.1', payloads);
             expect(result.isOk()).toBe(true);
@@ -157,16 +159,18 @@ describe('TmuxTransport', () => {
 
         it('pipes formatted text to stdin of load-buffer', async () => {
             const stdinWrites: string[] = [];
-            (execFile as unknown as Mock).mockImplementation((_cmd: string, _args: string[], cb: (err: Error | null, stdout: string, stderr: string) => void) => {
-                const child = {
-                    stdin: {
-                        write: vi.fn((data: string) => stdinWrites.push(data)),
-                        end: vi.fn(),
-                    },
-                };
-                queueMicrotask(() => cb(null, '', ''));
-                return child;
-            });
+            (execFile as unknown as Mock).mockImplementation(
+                (_cmd: string, _args: string[], cb: (err: Error | null, stdout: string, stderr: string) => void) => {
+                    const child = {
+                        stdin: {
+                            write: vi.fn((data: string) => stdinWrites.push(data)),
+                            end: vi.fn(),
+                        },
+                    };
+                    queueMicrotask(() => cb(null, '', ''));
+                    return child;
+                },
+            );
 
             await transport.sendComments('main:0.1', payloads);
 
@@ -176,10 +180,7 @@ describe('TmuxTransport', () => {
         });
 
         it('returns TransportError when paste-buffer fails (invalid pane)', async () => {
-            mockExecFileSequence([
-                { stdout: '' },
-                { error: new Error("can't find pane: main:9.9") },
-            ]);
+            mockExecFileSequence([{ stdout: '' }, { error: new Error("can't find pane: main:9.9") }]);
 
             const result = await transport.sendComments('main:9.9', payloads);
             expect(result.isErr()).toBe(true);

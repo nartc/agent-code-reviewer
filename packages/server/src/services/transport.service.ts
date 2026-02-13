@@ -54,9 +54,7 @@ export class TransportService {
     }
 
     getActiveConfig(): Result<TransportConfigResponse, DatabaseError> {
-        const result = this.db.queryOne<TransportConfigRow>(
-            "SELECT * FROM transport_config WHERE id = 'default'",
-        );
+        const result = this.db.queryOne<TransportConfigRow>("SELECT * FROM transport_config WHERE id = 'default'");
         if (result.isErr()) return err(result.error);
 
         if (!result.value) {

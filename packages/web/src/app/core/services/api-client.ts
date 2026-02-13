@@ -1,8 +1,5 @@
-import { DOCUMENT } from '@angular/common';
-import { HttpClient, HttpParams } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
 import type {
+    Comment,
     CreateCommentInput,
     CreateRepoRequest,
     CreateRepoResponse,
@@ -17,6 +14,7 @@ import type {
     ListSnapshotsParams,
     ListSnapshotsResponse,
     ListTargetsResponse,
+    ReplyToCommentRequest,
     Repo,
     ScannedRepo,
     SendCommentsRequest,
@@ -31,9 +29,11 @@ import type {
     UpdateRepoRequest,
     UpdateSessionRequest,
     UpdateTransportConfigRequest,
-    Comment,
-    ReplyToCommentRequest,
 } from '@agent-code-reviewer/shared';
+import { DOCUMENT } from '@angular/common';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
+import { Observable } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
 export class ApiClient {

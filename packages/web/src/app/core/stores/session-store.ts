@@ -1,9 +1,9 @@
+import type { FileSummary, SessionWithRepo, SnapshotDiffResponse, SnapshotSummary } from '@agent-code-reviewer/shared';
+import { httpResource } from '@angular/common/http';
 import { DestroyRef, Injectable, computed, inject, linkedSignal, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
-import { httpResource } from '@angular/common/http';
+import { patchState, signalState } from '@ngrx/signals';
 import { map } from 'rxjs';
-import { signalState, patchState } from '@ngrx/signals';
-import type { SessionWithRepo, SnapshotSummary, Snapshot, FileSummary, SnapshotDiffResponse } from '@agent-code-reviewer/shared';
 import { ApiClient } from '../services/api-client';
 import { SseConnection } from '../services/sse-connection';
 

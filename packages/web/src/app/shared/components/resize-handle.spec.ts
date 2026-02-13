@@ -1,10 +1,12 @@
-import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { Component, signal } from '@angular/core';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ResizeHandle } from './resize-handle';
 
 @Component({
     imports: [ResizeHandle],
-    template: `<acr-resize-handle [direction]="direction()" (resized)="onResized($event)" />`,
+    template: `
+        <acr-resize-handle [direction]="direction()" (resized)="onResized($event)" />
+    `,
 })
 class TestHost {
     direction = signal<'horizontal' | 'vertical'>('horizontal');

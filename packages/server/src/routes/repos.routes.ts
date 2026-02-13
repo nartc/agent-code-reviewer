@@ -1,8 +1,8 @@
-import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
-import type { RepoService } from '../services/repo.service.js';
-import { resultToResponse } from '../lib/result-to-response.js';
 import { createRepoSchema, updateRepoSchema } from '@agent-code-reviewer/shared';
+import { zValidator } from '@hono/zod-validator';
+import { Hono } from 'hono';
+import { resultToResponse } from '../lib/result-to-response.js';
+import type { RepoService } from '../services/repo.service.js';
 import { idParamSchema } from './params.js';
 
 export function createRepoRoutes(repoService: RepoService): Hono {
@@ -10,7 +10,10 @@ export function createRepoRoutes(repoService: RepoService): Hono {
 
     // GET / — List repos
     app.get('/', (c) => {
-        return resultToResponse(c, repoService.listRepos().map((repos) => ({ repos })));
+        return resultToResponse(
+            c,
+            repoService.listRepos().map((repos) => ({ repos })),
+        );
     });
 
     // POST / — Register/get repo from path

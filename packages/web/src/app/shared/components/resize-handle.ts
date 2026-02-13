@@ -11,7 +11,9 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
         '[class.h-1]': "direction() === 'vertical'",
         '(pointerdown)': 'onPointerDown($event)',
     },
-    template: `<div class="divider m-0 h-full"></div>`,
+    template: `
+        <div class="divider m-0 h-full"></div>
+    `,
 })
 export class ResizeHandle {
     readonly direction = input<'horizontal' | 'vertical'>('horizontal');

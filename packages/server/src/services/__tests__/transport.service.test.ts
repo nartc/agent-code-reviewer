@@ -1,16 +1,13 @@
 import type { CommentPayload, Target } from '@agent-code-reviewer/shared';
 import { errAsync, okAsync } from 'neverthrow';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { expectErr, expectOk } from '../../__tests__/helpers.js';
 import { initInMemoryDatabase } from '../../db/client.js';
 import type { Transport } from '../../transport/transport.interface.js';
 import { DbService } from '../db.service.js';
 import { TransportService } from '../transport.service.js';
-import { expectErr, expectOk } from '../../__tests__/helpers.js';
 
-function createMockTransport(
-    type: 'tmux' | 'clipboard',
-    overrides: Partial<Transport> = {},
-): Transport {
+function createMockTransport(type: 'tmux' | 'clipboard', overrides: Partial<Transport> = {}): Transport {
     return {
         type,
         isAvailable: vi.fn(() => okAsync(true)),
@@ -44,9 +41,7 @@ describe('TransportService', () => {
 
         clipboard = createMockTransport('clipboard', {
             listTargets: vi.fn(() =>
-                okAsync([
-                    { id: 'clipboard', label: 'Copy to Clipboard', transport: 'clipboard' },
-                ] as Target[]),
+                okAsync([{ id: 'clipboard', label: 'Copy to Clipboard', transport: 'clipboard' }] as Target[]),
             ),
         });
 
@@ -72,9 +67,7 @@ describe('TransportService', () => {
 
         it('skips erroring transports gracefully', async () => {
             const errorTmux = createMockTransport('tmux', {
-                listTargets: vi.fn(() =>
-                    errAsync({ type: 'TRANSPORT_ERROR' as const, message: 'tmux not running' }),
-                ),
+                listTargets: vi.fn(() => errAsync({ type: 'TRANSPORT_ERROR' as const, message: 'tmux not running' })),
             });
 
             const svc = new TransportService([errorTmux, clipboard], dbService);
@@ -152,9 +145,7 @@ describe('TransportService', () => {
             expect(config.active_transport).toBe('clipboard');
             expect(config.last_target_id).toBeNull();
 
-            const countResult = dbService.query<{ cnt: number }>(
-                'SELECT count(*) as cnt FROM transport_config',
-            );
+            const countResult = dbService.query<{ cnt: number }>('SELECT count(*) as cnt FROM transport_config');
             const rows = expectOk(countResult);
             expect(rows[0].cnt).toBe(1);
         });

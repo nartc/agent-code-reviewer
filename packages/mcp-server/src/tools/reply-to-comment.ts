@@ -27,60 +27,69 @@ function queryRows<T>(db: Database, sql: string, params?: Record<string, SqlPara
 }
 
 export function registerReplyToComment(server: McpServer, db: Database): void {
-    server.registerTool('reply_to_comment', {
-        description: 'Create a threaded reply to a review comment as the agent',
-        inputSchema: {
-            comment_id: z.string().describe('The parent comment ID to reply to'),
-            content: z.string().describe('The reply content'),
+    server.registerTool(
+        'reply_to_comment',
+        {
+            description: 'Create a threaded reply to a review comment as the agent',
+            inputSchema: {
+                comment_id: z.string().describe('The parent comment ID to reply to'),
+                content: z.string().describe('The reply content'),
+            },
         },
-    }, async ({ comment_id, content }) => {
-        try {
-            const parents = queryRows<CommentRow>(
-                db,
-                'SELECT id, session_id, snapshot_id, file_path, line_start, line_end, side FROM comments WHERE id = $id',
-                { $id: comment_id },
-            );
+        async ({ comment_id, content }) => {
+            try {
+                const parents = queryRows<CommentRow>(
+                    db,
+                    'SELECT id, session_id, snapshot_id, file_path, line_start, line_end, side FROM comments WHERE id = $id',
+                    { $id: comment_id },
+                );
 
-            if (parents.length === 0) {
+                if (parents.length === 0) {
+                    return {
+                        content: [
+                            {
+                                type: 'text' as const,
+                                text: `Error: Comment "${comment_id}" not found. Cannot create reply.`,
+                            },
+                        ],
+                    };
+                }
+
+                const parent = parents[0];
+                const replyId = randomUUID();
+
+                db.run(
+                    `INSERT INTO comments (id, session_id, snapshot_id, reply_to_id, file_path, line_start, line_end, side, author, content, status, created_at)
+                 VALUES ($id, $sessionId, $snapshotId, $replyToId, $filePath, $lineStart, $lineEnd, $side, 'agent', $content, 'draft', datetime('now'))`,
+                    {
+                        $id: replyId,
+                        $sessionId: parent.session_id,
+                        $snapshotId: parent.snapshot_id,
+                        $replyToId: comment_id,
+                        $filePath: parent.file_path,
+                        $lineStart: parent.line_start,
+                        $lineEnd: parent.line_end,
+                        $side: parent.side,
+                        $content: content,
+                    },
+                );
+
+                const lines = [
+                    'Reply created successfully.',
+                    `  Reply ID: [${replyId}]`,
+                    `  Parent: [${comment_id}]`,
+                    '  Status: draft (use the review UI to send)',
+                ];
+
                 return {
-                    content: [{ type: 'text' as const, text: `Error: Comment "${comment_id}" not found. Cannot create reply.` }],
+                    content: [{ type: 'text' as const, text: lines.join('\n') }],
+                };
+            } catch (e) {
+                console.error('[mcp-server] reply_to_comment error:', e);
+                return {
+                    content: [{ type: 'text' as const, text: `Error: ${e instanceof Error ? e.message : String(e)}` }],
                 };
             }
-
-            const parent = parents[0];
-            const replyId = randomUUID();
-
-            db.run(
-                `INSERT INTO comments (id, session_id, snapshot_id, reply_to_id, file_path, line_start, line_end, side, author, content, status, created_at)
-                 VALUES ($id, $sessionId, $snapshotId, $replyToId, $filePath, $lineStart, $lineEnd, $side, 'agent', $content, 'draft', datetime('now'))`,
-                {
-                    $id: replyId,
-                    $sessionId: parent.session_id,
-                    $snapshotId: parent.snapshot_id,
-                    $replyToId: comment_id,
-                    $filePath: parent.file_path,
-                    $lineStart: parent.line_start,
-                    $lineEnd: parent.line_end,
-                    $side: parent.side,
-                    $content: content,
-                },
-            );
-
-            const lines = [
-                'Reply created successfully.',
-                `  Reply ID: [${replyId}]`,
-                `  Parent: [${comment_id}]`,
-                '  Status: draft (use the review UI to send)',
-            ];
-
-            return {
-                content: [{ type: 'text' as const, text: lines.join('\n') }],
-            };
-        } catch (e) {
-            console.error('[mcp-server] reply_to_comment error:', e);
-            return {
-                content: [{ type: 'text' as const, text: `Error: ${e instanceof Error ? e.message : String(e)}` }],
-            };
-        }
-    });
+        },
+    );
 }

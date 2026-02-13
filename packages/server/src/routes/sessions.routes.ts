@@ -1,15 +1,12 @@
-import { Hono } from 'hono';
+import { createSessionSchema, updateSessionSchema } from '@agent-code-reviewer/shared';
 import { zValidator } from '@hono/zod-validator';
+import { Hono } from 'hono';
+import { asyncResultToResponse, resultToResponse } from '../lib/result-to-response.js';
 import type { SessionService } from '../services/session.service.js';
 import type { WatcherService } from '../services/watcher.service.js';
-import { resultToResponse, asyncResultToResponse } from '../lib/result-to-response.js';
-import { createSessionSchema, updateSessionSchema } from '@agent-code-reviewer/shared';
 import { idParamSchema } from './params.js';
 
-export function createSessionRoutes(
-    sessionService: SessionService,
-    watcherService: WatcherService,
-): Hono {
+export function createSessionRoutes(sessionService: SessionService, watcherService: WatcherService): Hono {
     const app = new Hono();
 
     // GET /:id — Get session with repo
@@ -24,9 +21,7 @@ export function createSessionRoutes(
         const pipeline = sessionService
             .getOrCreateSession(repo_id, path)
             .andThen((session) =>
-                watcherService
-                    .captureSnapshot(session.id, path, 'initial')
-                    .map((snapshot) => ({ session, snapshot })),
+                watcherService.captureSnapshot(session.id, path, 'initial').map((snapshot) => ({ session, snapshot })),
             );
         return asyncResultToResponse(c, pipeline, 201);
     });

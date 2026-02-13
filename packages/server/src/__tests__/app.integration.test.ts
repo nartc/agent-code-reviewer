@@ -1,17 +1,17 @@
 import { Hono } from 'hono';
 import { vi } from 'vitest';
-import { expectOk } from './helpers.js';
 import { createApp } from '../app.js';
 import { initInMemoryDatabase } from '../db/client.js';
+import { CommentService } from '../services/comment.service.js';
 import { DbService } from '../services/db.service.js';
 import { GitService } from '../services/git.service.js';
 import { RepoService } from '../services/repo.service.js';
 import { SessionService } from '../services/session.service.js';
-import { CommentService } from '../services/comment.service.js';
-import { TransportService } from '../services/transport.service.js';
 import type { SseService } from '../services/sse.service.js';
+import { TransportService } from '../services/transport.service.js';
 import type { WatcherService } from '../services/watcher.service.js';
 import type { Transport } from '../transport/transport.interface.js';
+import { expectOk } from './helpers.js';
 
 function createMockSseService(): SseService {
     return {
