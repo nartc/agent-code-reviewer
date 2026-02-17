@@ -9,6 +9,12 @@ import { idParamSchema } from './params.js';
 export function createSessionRoutes(sessionService: SessionService, watcherService: WatcherService): Hono {
     const app = new Hono();
 
+    // GET / — List sessions (optionally filtered by repo_id)
+    app.get('/', (c) => {
+        const repoId = c.req.query('repo_id');
+        return resultToResponse(c, sessionService.listSessions(repoId).map((sessions) => ({ sessions })));
+    });
+
     // GET /:id — Get session with repo
     app.get('/:id', zValidator('param', idParamSchema), (c) => {
         const { id } = c.req.valid('param');

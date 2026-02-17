@@ -78,7 +78,7 @@ describe('SessionStore', () => {
 
     beforeEach(() => {
         apiSpy = {
-            getSession: vi.fn().mockReturnValue(of({ session: mockSession })),
+            getSession: vi.fn().mockReturnValue(of(mockSession)),
             listSnapshots: vi.fn().mockReturnValue(of({ snapshots: mockSnapshots })),
         };
         sseSpy = {

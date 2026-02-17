@@ -14,6 +14,8 @@ export class SessionStore {
     readonly #destroyRef = inject(DestroyRef);
 
     readonly #sessionId = signal<string | undefined>(undefined);
+    readonly #isConnected = signal(false);
+    readonly #isWatching = signal(false);
 
     readonly #sessionResource = rxResource<SessionWithRepo | null, string | undefined>({
         params: () => this.#sessionId(),
@@ -64,24 +66,37 @@ export class SessionStore {
 
     readonly activeFile = computed(() => this.files()[this.activeFileIndex()] ?? null);
     readonly totalFiles = computed(() => this.files().length);
+    readonly isConnected = this.#isConnected.asReadonly();
+    readonly isWatching = this.#isWatching.asReadonly();
 
     loadSession(id: string): void {
         this.#sessionId.set(id);
+        this.#isConnected.set(false);
 
         const sse$ = this.#sse.connect(id);
         const sub = sse$.subscribe((event) => {
-            if (event.type === 'snapshot') {
+            if (event.type === 'connected') {
+                this.#isConnected.set(true);
+                // sync isWatching from loaded session
+                const session = this.currentSession();
+                if (session) {
+                    this.#isWatching.set(session.is_watching);
+                }
+            } else if (event.type === 'snapshot') {
                 const wasViewingLatest = this.isViewingLatest();
                 this.#snapshotsResource.update((snaps) => [event.data, ...snaps]);
                 if (wasViewingLatest) {
                     this.#activeSnapshotId.set(event.data.id);
                 }
+            } else if (event.type === 'watcher-status') {
+                this.#isWatching.set(event.data.is_watching);
             }
         });
 
         this.#destroyRef.onDestroy(() => {
             sub.unsubscribe();
             this.#sse.disconnect();
+            this.#isConnected.set(false);
         });
     }
 

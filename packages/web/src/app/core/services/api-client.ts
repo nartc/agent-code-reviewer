@@ -11,6 +11,7 @@ import type {
     ListCommentsParams,
     ListCommentsResponse,
     ListReposResponse,
+    ListSessionsResponse,
     ListSnapshotsParams,
     ListSnapshotsResponse,
     ListTargetsResponse,
@@ -55,6 +56,10 @@ export class ApiClient {
 
     deleteRepo(id: string): Observable<void> {
         return this.#http.delete<void>(`/api/repos/${id}`);
+    }
+
+    listSessions(repoId: string): Observable<ListSessionsResponse> {
+        return this.#http.get<ListSessionsResponse>('/api/sessions', { params: new HttpParams().set('repo_id', repoId) });
     }
 
     getSession(id: string): Observable<SessionWithRepo> {
