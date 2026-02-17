@@ -1,4 +1,5 @@
 import type {
+    Comment,
     CommentThread,
     CreateCommentInput,
     ListCommentsParams,
@@ -34,10 +35,11 @@ export class CommentStore {
         this.#commentParams.set(params);
     }
 
-    createComment(body: CreateCommentInput): void {
+    createComment(body: CreateCommentInput, onCreated?: (comment: Comment) => void): void {
         this.#api.createComment(body).subscribe({
             next: ({ comment }) => {
                 this.#commentsResource.update((comments) => [...comments, { comment, replies: [] }]);
+                onCreated?.(comment);
             },
         });
     }

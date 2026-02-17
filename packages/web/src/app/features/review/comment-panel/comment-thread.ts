@@ -1,0 +1,101 @@
+import type { CommentThread } from '@agent-code-reviewer/shared';
+import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { CommentCard } from './comment-card';
+
+@Component({
+    selector: 'acr-comment-thread',
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    imports: [CommentCard, FormsModule],
+    template: `
+        <acr-comment-card
+            [comment]="thread().comment"
+            (edited)="commentEdited.emit($event)"
+            (deleted)="commentDeleted.emit($event)"
+            (resolved)="commentResolved.emit($event)"
+            (replyRequested)="onReplyRequested()"
+        />
+
+        @if (thread().replies.length > 0) {
+            @if (hasLongThread()) {
+                <div class="collapse collapse-arrow bg-base-100 ml-6 mt-1" role="group">
+                    <input type="checkbox" />
+                    <div class="collapse-title text-xs font-medium py-1 min-h-0">
+                        Show {{ thread().replies.length }} replies
+                    </div>
+                    <div class="collapse-content px-0">
+                        @for (reply of thread().replies; track reply.id) {
+                            <acr-comment-card
+                                class="mt-1"
+                                [comment]="reply"
+                                [isReply]="true"
+                                (edited)="commentEdited.emit($event)"
+                                (deleted)="commentDeleted.emit($event)"
+                                (resolved)="commentResolved.emit($event)"
+                                (replyRequested)="onReplyRequested()"
+                            />
+                        }
+                    </div>
+                </div>
+            } @else {
+                @for (reply of thread().replies; track reply.id) {
+                    <acr-comment-card
+                        class="mt-1"
+                        [comment]="reply"
+                        [isReply]="true"
+                        (edited)="commentEdited.emit($event)"
+                        (deleted)="commentDeleted.emit($event)"
+                        (resolved)="commentResolved.emit($event)"
+                        (replyRequested)="onReplyRequested()"
+                    />
+                }
+            }
+        }
+
+        @if (showReplyForm()) {
+            <div class="ml-6 mt-1">
+                <textarea
+                    class="textarea textarea-bordered textarea-sm w-full"
+                    rows="2"
+                    placeholder="Write a reply..."
+                    [(ngModel)]="replyContent"
+                ></textarea>
+                <div class="flex justify-end gap-1 mt-1">
+                    <button class="btn btn-xs btn-ghost" (click)="showReplyForm.set(false)">Cancel</button>
+                    <button
+                        class="btn btn-xs btn-primary"
+                        [disabled]="!replyContent().trim()"
+                        (click)="submitReply()"
+                    >
+                        Reply
+                    </button>
+                </div>
+            </div>
+        }
+    `,
+})
+export class AcrCommentThread {
+    readonly thread = input.required<CommentThread>();
+    readonly sessionId = input.required<string>();
+
+    readonly commentEdited = output<{ id: string; content: string }>();
+    readonly commentDeleted = output<string>();
+    readonly commentResolved = output<string>();
+    readonly replyCreated = output<{ parentId: string; content: string }>();
+
+    protected readonly showReplyForm = signal(false);
+    protected readonly replyContent = signal('');
+    protected readonly hasLongThread = computed(() => this.thread().replies.length > 3);
+
+    protected onReplyRequested(): void {
+        this.showReplyForm.set(true);
+    }
+
+    protected submitReply(): void {
+        const content = this.replyContent().trim();
+        if (!content) return;
+        this.replyCreated.emit({ parentId: this.thread().comment.id, content });
+        this.replyContent.set('');
+        this.showReplyForm.set(false);
+    }
+}

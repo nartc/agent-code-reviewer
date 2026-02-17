@@ -6,11 +6,13 @@ import { patchState, signalState } from '@ngrx/signals';
 import { map } from 'rxjs';
 import { ApiClient } from '../services/api-client';
 import { SseConnection } from '../services/sse-connection';
+import { CommentStore } from './comment-store';
 
 @Injectable({ providedIn: 'root' })
 export class SessionStore {
     readonly #api = inject(ApiClient);
     readonly #sse = inject(SseConnection);
+    readonly #commentStore = inject(CommentStore);
     readonly #destroyRef = inject(DestroyRef);
 
     readonly #sessionId = signal<string | undefined>(undefined);
@@ -88,6 +90,8 @@ export class SessionStore {
                 if (wasViewingLatest) {
                     this.#activeSnapshotId.set(event.data.id);
                 }
+            } else if (event.type === 'comment-update') {
+                this.#commentStore.onSseCommentUpdate(event.data.session_id);
             } else if (event.type === 'watcher-status') {
                 this.#isWatching.set(event.data.is_watching);
             }

@@ -1,7 +1,10 @@
-import type { FileDiffMetadata, OnDiffLineClickProps } from '@pierre/diffs';
+import type { Comment } from '@agent-code-reviewer/shared';
+import type { DiffLineAnnotation, FileDiffMetadata, OnDiffLineClickProps } from '@pierre/diffs';
 import { parsePatchFiles } from '@pierre/diffs';
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, viewChild } from '@angular/core';
+import { CommentStore } from '../../../core/stores/comment-store';
 import { SessionStore } from '../../../core/stores/session-store';
+import type { AnnotationMeta } from './annotation-meta';
 import { AcrFileDiff } from './file-diff';
 
 @Component({
@@ -51,7 +54,11 @@ import { AcrFileDiff } from './file-diff';
                 <acr-file-diff
                     [metadata]="meta"
                     [diffStyle]="diffStyle()"
-                    (lineClicked)="onLineClick($event)"
+                    [lineAnnotations]="annotations()"
+                    (lineNumberClicked)="onLineNumberClick($event)"
+                    (formSaved)="onFormSaved($event)"
+                    (formCancelled)="onFormCancelled()"
+                    (indicatorClicked)="onIndicatorClicked($event)"
                 />
             }
         }
@@ -61,6 +68,11 @@ export class DiffViewer {
     protected readonly store = inject(SessionStore);
     protected readonly diffStyle = signal<'unified' | 'split'>('unified');
 
+    readonly #commentStore = inject(CommentStore);
+    readonly #fileDiff = viewChild(AcrFileDiff);
+
+    readonly #activeForm = signal<AnnotationMeta | null>(null);
+
     protected readonly parsedFiles = computed<FileDiffMetadata[]>(() => {
         const diff = this.store.currentDiff();
         if (!diff?.raw_diff) return [];
@@ -69,8 +81,81 @@ export class DiffViewer {
 
     protected readonly activeMetadata = computed(() => this.parsedFiles()[this.store.activeFileIndex()] ?? null);
 
-    protected onLineClick(props: OnDiffLineClickProps): void {
-        // Phase 10: log only — comment integration in Phase 11
-        console.log('Line clicked:', props);
+    protected readonly annotations = computed<DiffLineAnnotation<AnnotationMeta>[]>(() => {
+        const meta = this.activeMetadata();
+        if (!meta) return [];
+
+        const fileName = meta.name;
+        const comments = this.#commentStore.comments();
+        const result: DiffLineAnnotation<AnnotationMeta>[] = [];
+
+        // Build indicator annotations from comments on this file
+        const lineMap = new Map<string, { count: number; ids: string[] }>();
+        for (const thread of comments) {
+            const c = thread.comment;
+            if (c.file_path !== fileName || c.line_start == null) continue;
+            const key = `${c.side ?? 'new'}-${c.line_start}`;
+            const existing = lineMap.get(key) ?? { count: 0, ids: [] };
+            existing.count++;
+            existing.ids.push(c.id);
+            lineMap.set(key, existing);
+        }
+
+        for (const [key, data] of lineMap) {
+            const [side, lineStr] = key.split('-');
+            result.push({
+                side: side === 'old' ? 'deletions' : 'additions',
+                lineNumber: Number(lineStr),
+                metadata: { type: 'indicator', count: data.count, commentIds: data.ids },
+            });
+        }
+
+        // Add active form annotation if present
+        const form = this.#activeForm();
+        if (form && form.type === 'form') {
+            result.push({
+                side: form.side === 'old' ? 'deletions' : 'additions',
+                lineNumber: form.lineStart,
+                metadata: form,
+            });
+        }
+
+        return result;
+    });
+
+    constructor() {
+        // Clear active form when file changes
+        effect(() => {
+            this.store.activeFileIndex();
+            this.#activeForm.set(null);
+        });
+    }
+
+    protected onLineNumberClick(event: { lineNumber: number; side: 'old' | 'new' }): void {
+        const snapshotId = this.store.activeSnapshotId();
+        const sessionId = this.store.currentSession()?.id;
+        const meta = this.activeMetadata();
+        if (!snapshotId || !sessionId || !meta) return;
+
+        this.#activeForm.set({
+            type: 'form',
+            filePath: meta.name,
+            lineStart: event.lineNumber,
+            side: event.side,
+            snapshotId,
+            sessionId,
+        });
+    }
+
+    protected onFormSaved(_comment: Comment): void {
+        this.#activeForm.set(null);
+    }
+
+    protected onFormCancelled(): void {
+        this.#activeForm.set(null);
+    }
+
+    protected onIndicatorClicked(_commentIds: string[]): void {
+        // Future: scroll to comment in panel, highlight
     }
 }

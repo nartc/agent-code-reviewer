@@ -1,8 +1,11 @@
 import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { ApiClient } from '../../core/services/api-client';
+import { CommentStore } from '../../core/stores/comment-store';
 import { SessionStore } from '../../core/stores/session-store';
+import { TransportStore } from '../../core/stores/transport-store';
 import { ResizeHandle } from '../../shared/components/resize-handle';
+import { CommentPanel } from './comment-panel/comment-panel';
 import { DiffViewer } from './diff-viewer/diff-viewer';
 import { FileExplorer } from './file-explorer/file-explorer';
 import { SessionSidebar } from './session-sidebar/session-sidebar';
@@ -11,7 +14,7 @@ import { SessionSidebar } from './session-sidebar/session-sidebar';
     selector: 'acr-review',
     changeDetection: ChangeDetectionStrategy.OnPush,
     host: { class: 'flex flex-col flex-1 overflow-hidden' },
-    imports: [ResizeHandle, DiffViewer, FileExplorer, SessionSidebar],
+    imports: [ResizeHandle, DiffViewer, FileExplorer, SessionSidebar, CommentPanel],
     template: `
         @let session = store.currentSession();
         @if (session) {
@@ -63,7 +66,13 @@ import { SessionSidebar } from './session-sidebar/session-sidebar';
 
                 <!-- Right panel -->
                 <div class="flex flex-col overflow-auto" [style.width.px]="rightWidth()">
-                    <div class="p-2 text-xs opacity-50">Comments panel — Phase 11</div>
+                    @if (store.activeSnapshotId(); as snapId) {
+                        <acr-comment-panel
+                            [sessionId]="sessionId()"
+                            [snapshotId]="snapId"
+                            (sendRequested)="onSendComments($event)"
+                        />
+                    }
                 </div>
             </div>
         } @else if (store.sessionError()) {
@@ -79,6 +88,8 @@ export class Review {
     protected readonly store = inject(SessionStore);
     readonly #api = inject(ApiClient);
     readonly #router = inject(Router);
+    readonly #commentStore = inject(CommentStore);
+    readonly #transportStore = inject(TransportStore);
     readonly sessionId = input.required<string>();
 
     protected readonly leftWidth = signal(250);
@@ -92,6 +103,15 @@ export class Review {
 
         effect(() => {
             this.isWatching.set(this.store.isWatching());
+        });
+
+        // Load comments when snapshot changes
+        effect(() => {
+            const snapId = this.store.activeSnapshotId();
+            const sessionId = this.sessionId();
+            if (snapId) {
+                this.#commentStore.loadComments({ session_id: sessionId });
+            }
         });
     }
 
@@ -118,5 +138,12 @@ export class Review {
 
     protected onSessionSelected(sessionId: string): void {
         this.#router.navigate(['/review', sessionId]);
+    }
+
+    protected onSendComments(commentIds: string[]): void {
+        const transport = this.#transportStore.activeTransport();
+        const targetId = this.#transportStore.lastTargetId();
+        if (!transport || !targetId) return;
+        this.#commentStore.sendComments({ comment_ids: commentIds, transport_type: transport, target_id: targetId });
     }
 }
