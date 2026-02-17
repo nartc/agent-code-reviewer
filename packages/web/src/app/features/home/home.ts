@@ -22,7 +22,7 @@ import { RepoCard } from './repo-card';
                 </div>
             } @else if (repos().length === 0) {
                 <div class="text-center py-12 opacity-60">
-                    <p>No repositories yet. Register one below.</p>
+                    <p>No repositories yet. Add one below.</p>
                 </div>
             } @else {
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -31,14 +31,13 @@ import { RepoCard } from './repo-card';
                             [repo]="repo"
                             (opened)="onRepoOpened($event)"
                             (deleted)="onRepoDeleted($event)"
-                            (baseBranchEdited)="onBaseBranchEdited($event)"
                         />
                     }
                 </div>
             }
 
             <section>
-                <acr-add-repo [registeredRepoPaths]="registeredPaths()" (repoAdded)="onRepoAdded()" />
+                <acr-add-repo [existingRepoPaths]="existingPaths()" (repoAdded)="onRepoAdded()" />
             </section>
         </div>
     `,
@@ -49,7 +48,7 @@ export class Home {
 
     readonly #reposResource = httpResource<ListReposResponse>(() => '/api/repos');
     readonly repos = computed(() => this.#reposResource.value()?.repos ?? []);
-    readonly registeredPaths = computed(() => this.repos().flatMap((r) => r.paths.map((p) => p.path)));
+    readonly existingPaths = computed(() => this.repos().flatMap((r) => r.paths.map((p) => p.path)));
     readonly isLoading = computed(() => this.#reposResource.isLoading());
 
     protected onRepoOpened(repo: RepoWithPaths): void {
@@ -78,17 +77,6 @@ export class Home {
             },
             error: (err) => {
                 console.error('Failed to delete repo:', err);
-            },
-        });
-    }
-
-    protected onBaseBranchEdited({ id, baseBranch }: { id: string; baseBranch: string }): void {
-        this.#api.updateRepo(id, { base_branch: baseBranch }).subscribe({
-            next: () => {
-                this.#reposResource.reload();
-            },
-            error: (err) => {
-                console.error('Failed to update base branch:', err);
             },
         });
     }

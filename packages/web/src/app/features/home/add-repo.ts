@@ -9,7 +9,7 @@ import { ApiClient } from '../../core/services/api-client';
     template: `
         <div class="space-y-6">
             <div>
-                <h3 class="text-lg font-semibold mb-2">Register Repository</h3>
+                <h3 class="text-lg font-semibold mb-2">Add Repository</h3>
                 <div class="flex gap-2">
                     <input
                         class="input input-bordered flex-1"
@@ -20,9 +20,9 @@ import { ApiClient } from '../../core/services/api-client';
                     <button
                         class="btn btn-primary"
                         [disabled]="!manualPath()"
-                        (click)="registerRepo()"
+                        (click)="addRepo()"
                     >
-                        Register
+                        Add
                     </button>
                 </div>
                 @if (manualError()) {
@@ -73,7 +73,7 @@ import { ApiClient } from '../../core/services/api-client';
                                         <td class="font-mono text-xs truncate max-w-32">{{ result.remote_url ?? '-' }}</td>
                                         <td>
                                             @if (dimmed) {
-                                                <span class="badge badge-ghost badge-sm">Registered</span>
+                                                <span class="badge badge-ghost badge-sm">Added</span>
                                             } @else {
                                                 <button class="btn btn-success btn-xs" (click)="addScanned(result.path)">Add</button>
                                             }
@@ -91,7 +91,7 @@ import { ApiClient } from '../../core/services/api-client';
     `,
 })
 export class AddRepo {
-    readonly registeredRepoPaths = input<string[]>([]);
+    readonly existingRepoPaths = input<string[]>([]);
     readonly repoAdded = output<void>();
 
     readonly #api = inject(ApiClient);
@@ -110,7 +110,7 @@ export class AddRepo {
         this.manualError.set(null);
     }
 
-    protected registerRepo(): void {
+    protected addRepo(): void {
         const path = this.manualPath();
         if (!path) return;
 
@@ -121,7 +121,7 @@ export class AddRepo {
                 this.repoAdded.emit();
             },
             error: (err) => {
-                const message = err?.error?.message ?? err?.message ?? 'Failed to register repository';
+                const message = err?.error?.message ?? err?.message ?? 'Failed to add repository';
                 this.manualError.set(message);
             },
         });
@@ -169,6 +169,6 @@ export class AddRepo {
     }
 
     protected isRegistered(path: string): boolean {
-        return this.registeredRepoPaths().includes(path) || this.addedPaths().has(path);
+        return this.existingRepoPaths().includes(path) || this.addedPaths().has(path);
     }
 }

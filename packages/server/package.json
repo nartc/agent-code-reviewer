@@ -30,7 +30,7 @@
         "sourceRoot": "packages/server/src",
         "targets": {
             "serve": {
-                "command": "tsx watch packages/server/src/index.ts",
+                "command": "tsx watch --env-file=packages/server/.env packages/server/src/index.ts",
                 "options": {
                     "cwd": "{workspaceRoot}"
                 }

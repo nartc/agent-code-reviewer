@@ -17,7 +17,7 @@ export class SessionStore {
 
     readonly #sessionResource = rxResource<SessionWithRepo | null, string | undefined>({
         params: () => this.#sessionId(),
-        stream: ({ params }) => this.#api.getSession(params).pipe(map((r) => r.session)),
+        stream: ({ params }) => this.#api.getSession(params),
         defaultValue: null,
     });
 
@@ -46,6 +46,7 @@ export class SessionStore {
     readonly files = computed<FileSummary[]>(() => this.currentDiff()?.files_summary ?? []);
     readonly activeFileIndex = this.#nav.activeFileIndex;
     readonly isLoading = computed(() => this.#sessionResource.isLoading() || this.#snapshotsResource.isLoading());
+    readonly sessionError = this.#sessionResource.error;
 
     readonly activeSnapshot = computed(() => this.snapshots().find((s) => s.id === this.activeSnapshotId()) ?? null);
 

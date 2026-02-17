@@ -57,8 +57,8 @@ export class ApiClient {
         return this.#http.delete<void>(`/api/repos/${id}`);
     }
 
-    getSession(id: string): Observable<{ session: SessionWithRepo }> {
-        return this.#http.get<{ session: SessionWithRepo }>(`/api/sessions/${id}`);
+    getSession(id: string): Observable<SessionWithRepo> {
+        return this.#http.get<SessionWithRepo>(`/api/sessions/${id}`);
     }
 
     createSession(body: CreateSessionRequest): Observable<CreateSessionResponse> {

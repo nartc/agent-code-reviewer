@@ -40,14 +40,16 @@ export function createGitRoutes(gitService: GitService, config: AppConfig): Hono
         const roots = query.roots?.split(',').map((s) => s.trim()) ?? config.scanRoots;
         const maxDepth = query.max_depth ? parseInt(query.max_depth, 10) : config.scanMaxDepth;
 
+        c.header('Content-Type', 'application/x-ndjson');
         return stream(c, async (s) => {
-            c.header('Content-Type', 'application/x-ndjson');
             for await (const repo of gitService.scanForRepos(roots, maxDepth)) {
                 await s.write(
                     JSON.stringify({
                         path: repo.path,
                         name: repo.name,
                         remote_url: repo.remoteUrl,
+                        current_branch: repo.currentBranch,
+                        default_branch: repo.defaultBranch,
                     }) + '\n',
                 );
             }

@@ -17,6 +17,8 @@ export interface ScannedRepo {
     path: string;
     name: string;
     remoteUrl: string | null;
+    currentBranch: string;
+    defaultBranch: string;
 }
 
 function mapToGitError(e: unknown): GitError {
@@ -161,19 +163,30 @@ export class GitService {
         const isRepoResult = await this.isGitRepo(dir);
         if (isRepoResult.isOk() && isRepoResult.value) {
             let remoteUrl: string | null = null;
-            try {
-                const result = await this.getRemoteUrl(dir);
-                if (result.isOk()) {
-                    remoteUrl = result.value;
-                }
-            } catch {
-                // skip remote URL on error
+            let currentBranch = 'unknown';
+            let defaultBranch = 'main';
+
+            const remoteResult = await this.getRemoteUrl(dir);
+            if (remoteResult.isOk()) {
+                remoteUrl = remoteResult.value;
+            }
+
+            const branchResult = await this.getCurrentBranch(dir);
+            if (branchResult.isOk()) {
+                currentBranch = branchResult.value;
+            }
+
+            const defaultResult = await this.getDefaultBranch(dir);
+            if (defaultResult.isOk()) {
+                defaultBranch = defaultResult.value;
             }
 
             yield {
                 path: dir,
                 name: basename(dir),
                 remoteUrl,
+                currentBranch,
+                defaultBranch,
             };
             return; // don't recurse into git repos
         }
