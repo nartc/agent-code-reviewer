@@ -6,11 +6,12 @@ import { CommentStore } from '../../../core/stores/comment-store';
 import { SessionStore } from '../../../core/stores/session-store';
 import type { AnnotationMeta } from './annotation-meta';
 import { AcrFileDiff } from './file-diff';
+import { InlineCommentForm } from './inline-comment-form';
 
 @Component({
     selector: 'acr-diff-viewer',
     changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [AcrFileDiff],
+    imports: [AcrFileDiff, InlineCommentForm],
     host: { class: 'flex flex-col flex-1 overflow-hidden' },
     template: `
         @if (!store.currentDiff()) {
@@ -52,6 +53,19 @@ import { AcrFileDiff } from './file-diff';
                 <button class="btn btn-xs btn-outline" (click)="onFileComment()">Comment on file</button>
             </div>
 
+            @if (fileLevelForm(); as form) {
+                <acr-inline-comment-form
+                    [filePath]="form.filePath"
+                    [lineStart]="form.lineStart"
+                    [side]="form.side"
+                    [snapshotId]="form.snapshotId"
+                    [sessionId]="form.sessionId"
+                    [isFileLevel]="true"
+                    (saved)="onFileLevelFormSaved($event)"
+                    (cancelled)="onFileLevelFormCancelled()"
+                />
+            }
+
             @if (activeMetadata(); as meta) {
                 <acr-file-diff
                     [metadata]="meta"
@@ -75,6 +89,8 @@ export class DiffViewer {
     private readonly fileDiff = viewChild(AcrFileDiff);
 
     readonly #activeForm = signal<AnnotationMeta | null>(null);
+    readonly #fileLevelForm = signal<Extract<AnnotationMeta, { type: 'form' }> | null>(null);
+    protected readonly fileLevelForm = this.#fileLevelForm.asReadonly();
 
     protected readonly parsedFiles = computed<FileDiffMetadata[]>(() => {
         const diff = this.store.currentDiff();
@@ -113,12 +129,12 @@ export class DiffViewer {
             });
         }
 
-        // Add active form annotation if present
+        // Add active form annotation if present (exclude file-level forms)
         const form = this.#activeForm();
-        if (form && form.type === 'form') {
+        if (form && form.type === 'form' && !form.isFileLevel) {
             result.push({
                 side: form.side === 'old' ? 'deletions' : 'additions',
-                lineNumber: form.lineStart,
+                lineNumber: form.lineEnd ?? form.lineStart,
                 metadata: form,
             });
         }
@@ -131,6 +147,7 @@ export class DiffViewer {
         effect(() => {
             this.store.activeFileIndex();
             this.#activeForm.set(null);
+            this.#fileLevelForm.set(null);
         });
     }
 
@@ -173,7 +190,7 @@ export class DiffViewer {
         const meta = this.activeMetadata();
         if (!snapshotId || !sessionId || !meta) return;
 
-        this.#activeForm.set({
+        this.#fileLevelForm.set({
             type: 'form',
             filePath: meta.name,
             lineStart: 1,
@@ -190,6 +207,15 @@ export class DiffViewer {
 
     protected onFormCancelled(): void {
         this.#activeForm.set(null);
+    }
+
+    protected onFileLevelFormSaved(comment: Comment): void {
+        this.onFormSaved(comment);
+        this.#fileLevelForm.set(null);
+    }
+
+    protected onFileLevelFormCancelled(): void {
+        this.#fileLevelForm.set(null);
     }
 
     protected onIndicatorClicked(_commentIds: string[]): void {

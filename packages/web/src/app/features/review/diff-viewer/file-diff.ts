@@ -86,6 +86,7 @@ export class AcrFileDiff {
                     });
                     return btn;
                 },
+                enableHoverUtility: true,
                 enableLineSelection: true,
                 onLineSelected: (range) => {
                     if (!range) return;
