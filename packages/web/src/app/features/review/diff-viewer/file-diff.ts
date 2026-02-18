@@ -32,6 +32,7 @@ export class AcrFileDiff {
     readonly lineAnnotations = input<DiffLineAnnotation<AnnotationMeta>[]>([]);
     readonly lineClicked = output<OnDiffLineClickProps>();
     readonly lineNumberClicked = output<{ lineNumber: number; side: 'old' | 'new' }>();
+    readonly lineRangeSelected = output<{ lineStart: number; lineEnd: number; side: 'old' | 'new' }>();
     readonly indicatorClicked = output<string[]>();
     readonly formSaved = output<Comment>();
     readonly formCancelled = output<void>();
@@ -68,6 +69,42 @@ export class AcrFileDiff {
                     });
                 },
                 renderAnnotation: (annotation) => this.#renderAnnotation(annotation),
+                renderHoverUtility: (getHoveredRow) => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'btn btn-circle btn-xs btn-ghost text-primary opacity-70 hover:opacity-100';
+                    btn.textContent = '+';
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const hovered = getHoveredRow();
+                        if (hovered) {
+                            this.lineNumberClicked.emit({
+                                lineNumber: hovered.lineNumber,
+                                side: hovered.side === 'deletions' ? 'old' : 'new',
+                            });
+                        }
+                    });
+                    return btn;
+                },
+                enableLineSelection: true,
+                onLineSelected: (range) => {
+                    if (!range) return;
+                    const start = Math.min(range.start, range.end);
+                    const end = Math.max(range.start, range.end);
+                    if (start === end) {
+                        this.lineRangeSelected.emit({
+                            lineStart: start,
+                            lineEnd: start,
+                            side: range.side === 'deletions' ? 'old' : 'new',
+                        });
+                    } else {
+                        this.lineRangeSelected.emit({
+                            lineStart: start,
+                            lineEnd: end,
+                            side: range.side === 'deletions' ? 'old' : 'new',
+                        });
+                    }
+                },
             });
 
             this.#instance.render({ fileDiff: meta, containerWrapper: container, lineAnnotations: annotations });
@@ -106,6 +143,12 @@ export class AcrFileDiff {
             ref.setInput('side', annotation.metadata.side);
             ref.setInput('snapshotId', annotation.metadata.snapshotId);
             ref.setInput('sessionId', annotation.metadata.sessionId);
+            if (annotation.metadata.lineEnd != null) {
+                ref.setInput('lineEnd', annotation.metadata.lineEnd);
+            }
+            if (annotation.metadata.isFileLevel) {
+                ref.setInput('isFileLevel', true);
+            }
             ref.instance.saved.subscribe((comment) => {
                 this.formSaved.emit(comment);
             });

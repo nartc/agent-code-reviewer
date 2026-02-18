@@ -17,7 +17,9 @@ import { CommentStore } from '../../../core/stores/comment-store';
             <div class="card-body gap-2">
                 <div class="flex items-center gap-2 flex-wrap">
                     <span class="badge badge-sm badge-neutral font-mono">{{ filePath() }}</span>
-                    @if (lineEnd(); as end) {
+                    @if (isFileLevel()) {
+                        <span class="badge badge-sm badge-ghost">File comment</span>
+                    } @else if (lineEnd(); as end) {
                         <span class="badge badge-sm badge-ghost">Lines {{ lineStart() }}-{{ end }}</span>
                     } @else {
                         <span class="badge badge-sm badge-ghost">Line {{ lineStart() }}</span>
@@ -57,6 +59,7 @@ export class InlineCommentForm {
     readonly side = input.required<'old' | 'new' | 'both'>();
     readonly snapshotId = input.required<string>();
     readonly sessionId = input.required<string>();
+    readonly isFileLevel = input(false);
 
     readonly saved = output<Comment>();
     readonly cancelled = output<void>();
@@ -77,8 +80,8 @@ export class InlineCommentForm {
                 snapshot_id: this.snapshotId(),
                 file_path: this.filePath(),
                 content: text,
-                line_start: this.lineStart(),
-                line_end: this.lineEnd(),
+                line_start: this.isFileLevel() ? undefined : this.lineStart(),
+                line_end: this.isFileLevel() ? undefined : this.lineEnd(),
                 side: this.side(),
                 author: 'user',
             },

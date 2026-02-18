@@ -1,5 +1,6 @@
 import type { FileSummary } from '@agent-code-reviewer/shared';
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
+import { buildFileTree, flattenTree } from './build-file-tree';
 
 @Component({
     selector: 'acr-file-explorer',
@@ -10,24 +11,39 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
             <p class="p-2 text-xs opacity-50">No files</p>
         } @else {
             <ul class="menu menu-sm">
-                @for (file of files(); track file.path; let i = $index) {
+                @for (entry of flatEntries(); track entry.node.fullPath) {
                     <li>
-                        <button
-                            [class.active]="i === activeFileIndex()"
-                            (click)="fileSelected.emit(i)"
-                            class="flex items-center gap-2 font-mono text-xs"
-                        >
-                            <span class="badge badge-xs" [class]="statusClass(file.status)">
-                                {{ statusLetter(file.status) }}
-                            </span>
-                            <span class="truncate flex-1">{{ file.path }}</span>
-                            @if (file.additions > 0) {
-                                <span class="text-success">+{{ file.additions }}</span>
-                            }
-                            @if (file.deletions > 0) {
-                                <span class="text-error">-{{ file.deletions }}</span>
-                            }
-                        </button>
+                        @if (entry.isDir) {
+                            <button
+                                class="flex items-center gap-2 font-mono text-xs"
+                                [style.padding-left.rem]="entry.depth * 1"
+                                [title]="entry.node.fullPath"
+                                (click)="toggleDir(entry.node.fullPath)"
+                            >
+                                <span class="w-3 text-center">{{ isCollapsed(entry.node.fullPath) ? '\u25B8' : '\u25BE' }}</span>
+                                <span class="truncate flex-1">{{ entry.node.name }}</span>
+                            </button>
+                        } @else {
+                            <button
+                                class="flex items-center gap-2 font-mono text-xs"
+                                [class.bg-primary/10]="isActive(entry.node)"
+                                [class.text-primary]="isActive(entry.node)"
+                                [style.padding-left.rem]="entry.depth * 1"
+                                [title]="entry.node.fullPath"
+                                (click)="onFileClick(entry.node)"
+                            >
+                                <span class="badge badge-xs" [class]="statusClass(entry.node.file!.status)">
+                                    {{ statusLetter(entry.node.file!.status) }}
+                                </span>
+                                <span class="truncate flex-1">{{ entry.node.name }}</span>
+                                @if (entry.node.file!.additions > 0) {
+                                    <span class="text-success">+{{ entry.node.file!.additions }}</span>
+                                }
+                                @if (entry.node.file!.deletions > 0) {
+                                    <span class="text-error">-{{ entry.node.file!.deletions }}</span>
+                                }
+                            </button>
+                        }
                     </li>
                 }
             </ul>
@@ -38,6 +54,44 @@ export class FileExplorer {
     readonly files = input.required<FileSummary[]>();
     readonly activeFileIndex = input.required<number>();
     readonly fileSelected = output<number>();
+
+    readonly collapsedPaths = signal<Set<string>>(new Set());
+
+    protected readonly tree = computed(() => buildFileTree(this.files()));
+
+    protected readonly flatEntries = computed(() =>
+        flattenTree(this.tree(), this.collapsedPaths()),
+    );
+
+    protected isCollapsed(fullPath: string): boolean {
+        return this.collapsedPaths().has(fullPath);
+    }
+
+    protected toggleDir(fullPath: string): void {
+        const current = this.collapsedPaths();
+        const next = new Set(current);
+        if (next.has(fullPath)) {
+            next.delete(fullPath);
+        } else {
+            next.add(fullPath);
+        }
+        this.collapsedPaths.set(next);
+    }
+
+    protected isActive(node: { file?: FileSummary }): boolean {
+        if (!node.file) return false;
+        const files = this.files();
+        const activeFile = files[this.activeFileIndex()];
+        return activeFile?.path === node.file.path;
+    }
+
+    protected onFileClick(node: { file?: FileSummary }): void {
+        if (!node.file) return;
+        const idx = this.files().findIndex((f) => f.path === node.file!.path);
+        if (idx >= 0) {
+            this.fileSelected.emit(idx);
+        }
+    }
 
     protected statusLetter(status: FileSummary['status']): string {
         switch (status) {

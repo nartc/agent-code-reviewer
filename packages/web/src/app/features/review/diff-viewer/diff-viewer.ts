@@ -48,6 +48,8 @@ import { AcrFileDiff } from './file-diff';
                 >
                     Split
                 </button>
+                <div class="flex-1"></div>
+                <button class="btn btn-xs btn-outline" (click)="onFileComment()">Comment on file</button>
             </div>
 
             @if (activeMetadata(); as meta) {
@@ -56,6 +58,7 @@ import { AcrFileDiff } from './file-diff';
                     [diffStyle]="diffStyle()"
                     [lineAnnotations]="annotations()"
                     (lineNumberClicked)="onLineNumberClick($event)"
+                    (lineRangeSelected)="onLineRangeSelected($event)"
                     (formSaved)="onFormSaved($event)"
                     (formCancelled)="onFormCancelled()"
                     (indicatorClicked)="onIndicatorClicked($event)"
@@ -142,6 +145,40 @@ export class DiffViewer {
             filePath: meta.name,
             lineStart: event.lineNumber,
             side: event.side,
+            snapshotId,
+            sessionId,
+        });
+    }
+
+    protected onLineRangeSelected(event: { lineStart: number; lineEnd: number; side: 'old' | 'new' }): void {
+        const snapshotId = this.store.activeSnapshotId();
+        const sessionId = this.store.currentSession()?.id;
+        const meta = this.activeMetadata();
+        if (!snapshotId || !sessionId || !meta) return;
+
+        this.#activeForm.set({
+            type: 'form',
+            filePath: meta.name,
+            lineStart: event.lineStart,
+            ...(event.lineStart !== event.lineEnd ? { lineEnd: event.lineEnd } : {}),
+            side: event.side,
+            snapshotId,
+            sessionId,
+        });
+    }
+
+    protected onFileComment(): void {
+        const snapshotId = this.store.activeSnapshotId();
+        const sessionId = this.store.currentSession()?.id;
+        const meta = this.activeMetadata();
+        if (!snapshotId || !sessionId || !meta) return;
+
+        this.#activeForm.set({
+            type: 'form',
+            filePath: meta.name,
+            lineStart: 1,
+            isFileLevel: true,
+            side: 'new',
             snapshotId,
             sessionId,
         });
