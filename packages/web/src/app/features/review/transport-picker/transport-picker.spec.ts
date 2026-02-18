@@ -1,5 +1,7 @@
-import type { Target, TransportStatus, TransportType } from '@agent-code-reviewer/shared';
+import type { CommentThread, Target, TransportStatus, TransportType } from '@agent-code-reviewer/shared';
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { CommentStore } from '../../../core/stores/comment-store';
 import { TransportStore } from '../../../core/stores/transport-store';
 import { TransportPicker } from './transport-picker';
 
@@ -16,6 +18,64 @@ const mockStatuses: TransportStatus[] = [
     { type: 'clipboard' as TransportType, available: true },
 ];
 
+const mockDraftComments: CommentThread[] = [
+    {
+        comment: {
+            id: 'c1',
+            session_id: 's1',
+            snapshot_id: 'snap1',
+            reply_to_id: null,
+            file_path: 'src/app.ts',
+            line_start: 10,
+            line_end: 10,
+            side: 'new',
+            author: 'user',
+            content: 'Fix this variable name',
+            status: 'draft',
+            created_at: '2026-01-01T00:00:00Z',
+            sent_at: null,
+            resolved_at: null,
+        },
+        replies: [],
+    },
+    {
+        comment: {
+            id: 'c2',
+            session_id: 's1',
+            snapshot_id: 'snap1',
+            reply_to_id: null,
+            file_path: 'src/utils.ts',
+            line_start: 5,
+            line_end: 8,
+            side: 'new',
+            author: 'user',
+            content: 'Extract this into a helper',
+            status: 'draft',
+            created_at: '2026-01-01T00:00:00Z',
+            sent_at: null,
+            resolved_at: null,
+        },
+        replies: [
+            {
+                id: 'r1',
+                session_id: 's1',
+                snapshot_id: 'snap1',
+                reply_to_id: 'c2',
+                file_path: 'src/utils.ts',
+                line_start: 5,
+                line_end: 8,
+                side: 'new',
+                author: 'agent',
+                content: 'Good suggestion',
+                status: 'draft',
+                created_at: '2026-01-01T00:00:01Z',
+                sent_at: null,
+                resolved_at: null,
+            },
+        ],
+    },
+];
+
 describe('TransportPicker', () => {
     let fixture: ComponentFixture<TransportPicker>;
     let el: HTMLElement;
@@ -28,8 +88,11 @@ describe('TransportPicker', () => {
         setActiveTransport: ReturnType<typeof vi.fn>;
         refreshTargets: ReturnType<typeof vi.fn>;
     };
+    let draftComments: ReturnType<typeof signal<CommentThread[]>>;
 
     beforeEach(async () => {
+        draftComments = signal<CommentThread[]>([]);
+
         // Create a mock store with signal-like callables
         const targetsFn = Object.assign(() => mockTargets, { set: vi.fn() });
         const statusesFn = Object.assign(() => mockStatuses, { set: vi.fn() });
@@ -49,7 +112,10 @@ describe('TransportPicker', () => {
 
         await TestBed.configureTestingModule({
             imports: [TransportPicker],
-            providers: [{ provide: TransportStore, useValue: mockStore }],
+            providers: [
+                { provide: TransportStore, useValue: mockStore },
+                { provide: CommentStore, useValue: { draftComments } as unknown as CommentStore },
+            ],
         }).compileComponents();
 
         fixture = TestBed.createComponent(TransportPicker);
@@ -94,5 +160,74 @@ describe('TransportPicker', () => {
         const clipboardOption = Array.from(options).find((o) => o.value === 'clipboard');
         expect(clipboardOption!.disabled).toBe(false);
         expect(clipboardOption!.textContent).not.toContain('(unavailable)');
+    });
+
+    describe('preview', () => {
+        it('toggles preview on and off', async () => {
+            await fixture.whenStable();
+            const previewBtn = Array.from(el.querySelectorAll('button')).find((b) =>
+                b.textContent?.trim().includes('Preview'),
+            )!;
+
+            // Initially no preview
+            expect(el.querySelector('pre')).toBeNull();
+
+            // Click to show
+            previewBtn.click();
+            await fixture.whenStable();
+            expect(el.querySelector('pre')).toBeTruthy();
+
+            // Click to hide
+            previewBtn.click();
+            await fixture.whenStable();
+            expect(el.querySelector('pre')).toBeNull();
+        });
+
+        it('shows "No draft comments" when no drafts exist', async () => {
+            await fixture.whenStable();
+            const previewBtn = Array.from(el.querySelectorAll('button')).find((b) =>
+                b.textContent?.trim().includes('Preview'),
+            )!;
+            previewBtn.click();
+            await fixture.whenStable();
+
+            const pre = el.querySelector('pre')!;
+            expect(pre.textContent).toBe('No draft comments');
+        });
+
+        it('shows formatted text for mock drafts', async () => {
+            draftComments.set(mockDraftComments);
+            fixture.detectChanges();
+            await fixture.whenStable();
+
+            const previewBtn = Array.from(el.querySelectorAll('button')).find((b) =>
+                b.textContent?.trim().includes('Preview'),
+            )!;
+            previewBtn.click();
+            await fixture.whenStable();
+
+            const pre = el.querySelector('pre')!;
+            expect(pre.textContent).toContain('src/app.ts');
+            expect(pre.textContent).toContain('src/utils.ts');
+            expect(pre.textContent).toContain('Fix this variable name');
+            expect(pre.textContent).toContain('Extract this into a helper');
+            expect(pre.textContent).toContain('2 comments across 2 files');
+        });
+
+        it('preview area has scrollable styling', async () => {
+            draftComments.set(mockDraftComments);
+            fixture.detectChanges();
+            await fixture.whenStable();
+
+            const previewBtn = Array.from(el.querySelectorAll('button')).find((b) =>
+                b.textContent?.trim().includes('Preview'),
+            )!;
+            previewBtn.click();
+            await fixture.whenStable();
+
+            const pre = el.querySelector('pre')!;
+            expect(pre.classList.contains('max-h-48')).toBe(true);
+            expect(pre.classList.contains('overflow-auto')).toBe(true);
+        });
     });
 });

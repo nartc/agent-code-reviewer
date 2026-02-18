@@ -1,5 +1,6 @@
-import type { TransportType } from '@agent-code-reviewer/shared';
-import { ChangeDetectionStrategy, Component, computed, inject, linkedSignal } from '@angular/core';
+import { formatCommentsForTransport, type CommentPayload, type TransportType } from '@agent-code-reviewer/shared';
+import { ChangeDetectionStrategy, Component, computed, inject, linkedSignal, signal } from '@angular/core';
+import { CommentStore } from '../../../core/stores/comment-store';
 import { TransportStore } from '../../../core/stores/transport-store';
 
 const TRANSPORT_TYPES: TransportType[] = ['tmux', 'mcp', 'clipboard'];
@@ -45,11 +46,26 @@ const TRANSPORT_TYPES: TransportType[] = ['tmux', 'mcp', 'clipboard'];
             } @else {
                 <div class="text-xs opacity-50 p-1">No targets available</div>
             }
+
+            <div class="flex items-center gap-2">
+                <button
+                    class="btn btn-xs btn-ghost gap-1"
+                    [class.btn-active]="showPreview()"
+                    (click)="showPreview.set(!showPreview())"
+                >
+                    Preview
+                </button>
+            </div>
+
+            @if (showPreview()) {
+                <pre class="text-xs whitespace-pre-wrap max-h-48 overflow-auto bg-base-200 rounded p-2 border border-base-300">{{ previewText() || 'No draft comments' }}</pre>
+            }
         </div>
     `,
 })
 export class TransportPicker {
     protected readonly transportStore = inject(TransportStore);
+    private readonly commentStore = inject(CommentStore);
 
     protected readonly transportTypes = TRANSPORT_TYPES;
 
@@ -67,6 +83,24 @@ export class TransportPicker {
         const type = this.selectedType();
         if (!type) return [];
         return this.transportStore.targets().filter((t) => t.transport === type);
+    });
+
+    protected readonly showPreview = signal(false);
+
+    protected readonly previewText = computed(() => {
+        const drafts = this.commentStore.draftComments();
+        if (drafts.length === 0) return '';
+        const payloads: CommentPayload[] = drafts.map((t) => ({
+            file_path: t.comment.file_path,
+            line_start: t.comment.line_start,
+            line_end: t.comment.line_end,
+            side: t.comment.side,
+            content: t.comment.content,
+            status: t.comment.status,
+            author: t.comment.author,
+            thread_replies: t.replies.map((r) => ({ content: r.content, author: r.author })),
+        }));
+        return formatCommentsForTransport(payloads);
     });
 
     private readonly statusMap = computed(() => {
