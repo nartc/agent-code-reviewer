@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { ApiClient } from '../../core/services/api-client';
+import { UiPreferences } from '../../core/services/ui-preferences';
 import { CommentStore } from '../../core/stores/comment-store';
 import { SessionStore } from '../../core/stores/session-store';
 import { TransportStore } from '../../core/stores/transport-store';
@@ -48,25 +49,47 @@ import { SnapshotTimeline } from './snapshot-timeline/snapshot-timeline';
 
             <div class="flex flex-1 overflow-hidden">
                 <!-- Left sidebar -->
-                <div class="flex flex-col overflow-auto" [style.width.px]="leftWidth()">
-                    <acr-session-sidebar
-                        [repoId]="session.repo_id"
-                        [currentSessionId]="sessionId()"
-                        (sessionSelected)="onSessionSelected($event)"
-                    />
-                    @if (store.files().length > 0) {
-                        <div class="border-t border-base-300">
-                            <div class="p-2 text-xs font-semibold opacity-70">Files</div>
-                            <acr-file-explorer
-                                [files]="store.files()"
-                                [activeFileIndex]="store.activeFileIndex()"
-                                (fileSelected)="store.setActiveFile($event)"
-                            />
+                @if (sidebarCollapsed()) {
+                    <div class="flex flex-col items-center border-r border-base-300 py-2 w-10">
+                        <button
+                            class="btn btn-xs btn-ghost"
+                            title="Expand sidebar"
+                            (click)="toggleSidebar()"
+                        >
+                            &raquo;
+                        </button>
+                    </div>
+                } @else {
+                    <div class="flex flex-col overflow-auto" [style.width.px]="leftWidth()">
+                        <div class="flex items-center justify-between px-2 py-1 border-b border-base-300">
+                            <span class="text-xs font-semibold opacity-70">Sessions</span>
+                            <button
+                                class="btn btn-xs btn-ghost"
+                                title="Collapse sidebar"
+                                (click)="toggleSidebar()"
+                            >
+                                &laquo;
+                            </button>
                         </div>
-                    }
-                </div>
+                        <acr-session-sidebar
+                            [repoId]="session.repo_id"
+                            [currentSessionId]="sessionId()"
+                            (sessionSelected)="onSessionSelected($event)"
+                        />
+                        @if (store.files().length > 0) {
+                            <div class="border-t border-base-300">
+                                <div class="p-2 text-xs font-semibold opacity-70">Files</div>
+                                <acr-file-explorer
+                                    [files]="store.files()"
+                                    [activeFileIndex]="store.activeFileIndex()"
+                                    (fileSelected)="store.setActiveFile($event)"
+                                />
+                            </div>
+                        }
+                    </div>
 
-                <acr-resize-handle direction="horizontal" (resized)="onLeftResize($event)" />
+                    <acr-resize-handle direction="horizontal" (resized)="onLeftResize($event)" />
+                }
 
                 <!-- Center diff -->
                 <acr-diff-viewer class="flex flex-col flex-1 overflow-hidden" />
@@ -112,10 +135,12 @@ export class Review {
     readonly #router = inject(Router);
     readonly #commentStore = inject(CommentStore);
     readonly #transportStore = inject(TransportStore);
+    readonly #prefs = inject(UiPreferences);
     readonly sessionId = input.required<string>();
 
-    protected readonly leftWidth = signal(250);
-    protected readonly rightWidth = signal(300);
+    protected readonly leftWidth = this.#prefs.panelLeftWidth;
+    protected readonly rightWidth = this.#prefs.panelRightWidth;
+    protected readonly sidebarCollapsed = this.#prefs.sidebarCollapsed;
     protected readonly isWatching = signal(false);
     protected readonly isSending = signal(false);
     protected readonly toastMessage = signal<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -142,12 +167,18 @@ export class Review {
         });
     }
 
+    protected toggleSidebar(): void {
+        this.#prefs.setSidebarCollapsed(!this.sidebarCollapsed());
+    }
+
     protected onLeftResize(delta: number): void {
-        this.leftWidth.update((w) => Math.max(200, Math.min(400, w + delta)));
+        const clamped = Math.max(200, Math.min(400, this.leftWidth() + delta));
+        this.#prefs.setPanelLeftWidth(clamped);
     }
 
     protected onRightResize(delta: number): void {
-        this.rightWidth.update((w) => Math.max(250, Math.min(500, w - delta)));
+        const clamped = Math.max(250, Math.min(500, this.rightWidth() - delta));
+        this.#prefs.setPanelRightWidth(clamped);
     }
 
     protected toggleWatcher(): void {

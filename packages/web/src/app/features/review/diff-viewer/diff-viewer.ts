@@ -2,6 +2,7 @@ import type { Comment } from '@agent-code-reviewer/shared';
 import type { DiffLineAnnotation, FileDiffMetadata, OnDiffLineClickProps } from '@pierre/diffs';
 import { parsePatchFiles } from '@pierre/diffs';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, viewChild } from '@angular/core';
+import { UiPreferences } from '../../../core/services/ui-preferences';
 import { CommentStore } from '../../../core/stores/comment-store';
 import { SessionStore } from '../../../core/stores/session-store';
 import type { AnnotationMeta } from './annotation-meta';
@@ -25,7 +26,7 @@ import { InlineCommentForm } from './inline-comment-form';
                 <button class="btn btn-xs btn-ghost" (click)="store.prevFile()">
                     &lt;
                 </button>
-                <span class="font-mono text-xs truncate flex-1">{{ activeMetadata()?.name }}</span>
+                <span class="font-mono text-xs truncate flex-1">{{ activeMetadata().name }}</span>
                 <span class="text-xs opacity-50 whitespace-nowrap">
                     {{ store.activeFileIndex() + 1 }} / {{ store.totalFiles() }}
                 </span>
@@ -38,14 +39,14 @@ import { InlineCommentForm } from './inline-comment-form';
                 <button
                     class="btn btn-xs"
                     [class.btn-active]="diffStyle() === 'unified'"
-                    (click)="diffStyle.set('unified')"
+                    (click)="setDiffStyle('unified')"
                 >
                     Unified
                 </button>
                 <button
                     class="btn btn-xs"
                     [class.btn-active]="diffStyle() === 'split'"
-                    (click)="diffStyle.set('split')"
+                    (click)="setDiffStyle('split')"
                 >
                     Split
                 </button>
@@ -83,7 +84,8 @@ import { InlineCommentForm } from './inline-comment-form';
 })
 export class DiffViewer {
     protected readonly store = inject(SessionStore);
-    protected readonly diffStyle = signal<'unified' | 'split'>('unified');
+    readonly #prefs = inject(UiPreferences);
+    protected readonly diffStyle = this.#prefs.diffStyle;
 
     readonly #commentStore = inject(CommentStore);
     private readonly fileDiff = viewChild(AcrFileDiff);
@@ -216,6 +218,10 @@ export class DiffViewer {
 
     protected onFileLevelFormCancelled(): void {
         this.#fileLevelForm.set(null);
+    }
+
+    protected setDiffStyle(style: 'unified' | 'split'): void {
+        this.#prefs.setDiffStyle(style);
     }
 
     protected onIndicatorClicked(_commentIds: string[]): void {

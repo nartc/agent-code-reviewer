@@ -1,5 +1,5 @@
 import type { TransportType } from '@agent-code-reviewer/shared';
-import { TitleCasePipe } from '@angular/common';
+import { Location, TitleCasePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { ThemeSwitcher, type Theme } from '../../core/services/theme-switcher';
 import { TransportStore } from '../../core/stores/transport-store';
@@ -13,7 +13,10 @@ const TRANSPORT_TYPES: TransportType[] = ['tmux', 'mcp', 'clipboard'];
     imports: [TitleCasePipe],
     template: `
         <div class="max-w-2xl mx-auto p-6 flex flex-col gap-6">
-            <h1 class="text-2xl font-bold">Settings</h1>
+            <div class="flex items-center gap-3">
+                <button class="btn btn-sm btn-ghost" (click)="location.back()">&larr; Back</button>
+                <h1 class="text-2xl font-bold">Settings</h1>
+            </div>
 
             <div class="card bg-base-200">
                 <div class="card-body gap-3">
@@ -65,6 +68,7 @@ const TRANSPORT_TYPES: TransportType[] = ['tmux', 'mcp', 'clipboard'];
     `,
 })
 export class Settings {
+    protected readonly location = inject(Location);
     protected readonly themeSwitcher = inject(ThemeSwitcher);
     protected readonly transportStore = inject(TransportStore);
 
