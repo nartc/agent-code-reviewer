@@ -9,12 +9,13 @@ import { CommentPanel } from './comment-panel/comment-panel';
 import { DiffViewer } from './diff-viewer/diff-viewer';
 import { FileExplorer } from './file-explorer/file-explorer';
 import { SessionSidebar } from './session-sidebar/session-sidebar';
+import { SnapshotTimeline } from './snapshot-timeline/snapshot-timeline';
 
 @Component({
     selector: 'acr-review',
     changeDetection: ChangeDetectionStrategy.OnPush,
     host: { class: 'flex flex-col flex-1 overflow-hidden' },
-    imports: [ResizeHandle, DiffViewer, FileExplorer, SessionSidebar, CommentPanel],
+    imports: [ResizeHandle, DiffViewer, FileExplorer, SessionSidebar, CommentPanel, SnapshotTimeline],
     template: `
         @let session = store.currentSession();
         @if (session) {
@@ -36,6 +37,14 @@ import { SessionSidebar } from './session-sidebar/session-sidebar';
                     {{ isWatching() ? 'Stop Watching' : 'Start Watching' }}
                 </button>
             </header>
+
+            <acr-snapshot-timeline
+                [snapshots]="store.snapshots()"
+                [activeSnapshotId]="store.activeSnapshotId()"
+                [hasNewChanges]="store.hasNewChanges()"
+                (snapshotSelected)="store.setActiveSnapshot($event)"
+                (jumpToLatest)="store.jumpToLatest()"
+            />
 
             <div class="flex flex-1 overflow-hidden">
                 <!-- Left sidebar -->
@@ -70,11 +79,24 @@ import { SessionSidebar } from './session-sidebar/session-sidebar';
                         <acr-comment-panel
                             [sessionId]="sessionId()"
                             [snapshotId]="snapId"
+                            [canSend]="canSend()"
                             (sendRequested)="onSendComments($event)"
                         />
                     }
                 </div>
             </div>
+
+            @if (toastMessage(); as toast) {
+                <div class="toast toast-end toast-bottom">
+                    <div
+                        class="alert"
+                        [class.alert-success]="toast.type === 'success'"
+                        [class.alert-error]="toast.type === 'error'"
+                    >
+                        <span>{{ toast.text }}</span>
+                    </div>
+                </div>
+            }
         } @else if (store.sessionError()) {
             <p class="p-4 text-error">Session not found.</p>
         } @else {
@@ -95,6 +117,11 @@ export class Review {
     protected readonly leftWidth = signal(250);
     protected readonly rightWidth = signal(300);
     protected readonly isWatching = signal(false);
+    protected readonly isSending = signal(false);
+    protected readonly toastMessage = signal<{ type: 'success' | 'error'; text: string } | null>(null);
+
+    protected readonly canSend = () =>
+        !!this.#transportStore.activeTransport() && !!this.#transportStore.lastTargetId() && !this.isSending();
 
     constructor() {
         effect(() => {
@@ -144,6 +171,27 @@ export class Review {
         const transport = this.#transportStore.activeTransport();
         const targetId = this.#transportStore.lastTargetId();
         if (!transport || !targetId) return;
-        this.#commentStore.sendComments({ comment_ids: commentIds, transport_type: transport, target_id: targetId });
+        this.isSending.set(true);
+        this.#commentStore.sendComments(
+            { comment_ids: commentIds, transport_type: transport, target_id: targetId },
+            {
+                onSuccess: (res) => {
+                    this.isSending.set(false);
+                    if (transport === 'clipboard' && res.formatted_text) {
+                        navigator.clipboard.writeText(res.formatted_text);
+                    }
+                    this.showToast('success', `Comments sent via ${transport}`);
+                },
+                onError: (err) => {
+                    this.isSending.set(false);
+                    this.showToast('error', `Failed to send: ${err instanceof Error ? err.message : 'Unknown error'}`);
+                },
+            },
+        );
+    }
+
+    private showToast(type: 'success' | 'error', text: string): void {
+        this.toastMessage.set({ type, text });
+        setTimeout(() => this.toastMessage.set(null), 3000);
     }
 }

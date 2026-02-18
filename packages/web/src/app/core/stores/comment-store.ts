@@ -5,6 +5,7 @@ import type {
     ListCommentsParams,
     ReplyToCommentRequest,
     SendCommentsRequest,
+    SendCommentsResponse,
     UpdateCommentRequest,
 } from '@agent-code-reviewer/shared';
 import { Injectable, computed, inject, signal } from '@angular/core';
@@ -82,19 +83,24 @@ export class CommentStore {
         });
     }
 
-    sendComments(body: SendCommentsRequest): void {
+    sendComments(
+        body: SendCommentsRequest,
+        callbacks?: { onSuccess?: (res: SendCommentsResponse) => void; onError?: (err: unknown) => void },
+    ): void {
         this.#api.sendComments(body).subscribe({
-            next: ({ comments: updated }) => {
+            next: (res) => {
                 this.#commentsResource.update((comments) =>
                     comments.map((t) => {
-                        const match = updated.find((c) => c.id === t.comment.id);
+                        const match = res.comments.find((c) => c.id === t.comment.id);
                         if (match) {
                             return { ...t, comment: match };
                         }
                         return t;
                     }),
                 );
+                callbacks?.onSuccess?.(res);
             },
+            error: (err) => callbacks?.onError?.(err),
         });
     }
 

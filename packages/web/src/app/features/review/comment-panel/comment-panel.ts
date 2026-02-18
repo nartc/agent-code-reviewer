@@ -23,7 +23,7 @@ function groupBy<T>(items: T[], keyFn: (item: T) => string): Record<string, T[]>
                 <h3 class="font-semibold text-sm">Comments</h3>
                 <button
                     class="btn btn-xs btn-primary"
-                    [disabled]="!hasDrafts()"
+                    [disabled]="!hasDrafts() || !canSend()"
                     (click)="sendAllDrafts()"
                 >
                     Send All Drafts
@@ -101,6 +101,8 @@ function groupBy<T>(items: T[], keyFn: (item: T) => string): Record<string, T[]>
 export class CommentPanel {
     readonly sessionId = input.required<string>();
     readonly snapshotId = input.required<string>();
+
+    readonly canSend = input(true);
 
     readonly sendRequested = output<string[]>();
 
