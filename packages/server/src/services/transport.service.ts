@@ -10,6 +10,7 @@ import {
     transportUnavailable,
 } from '@agent-code-reviewer/shared';
 import { type Result, ResultAsync, err, errAsync, ok } from 'neverthrow';
+import type { TmuxTransport } from '../transport/tmux.transport.js';
 import type { SendResult, Transport } from '../transport/transport.interface.js';
 import type { DbService } from './db.service.js';
 
@@ -27,16 +28,20 @@ export class TransportService {
         private db: DbService,
     ) {}
 
-    listAllTargets(): ResultAsync<Target[], TransportError> {
-        const promises = this.transports.map((t) =>
-            t.listTargets().match(
+    listAllTargets(repoPath?: string): ResultAsync<Target[], TransportError> {
+        const promises = this.transports.map((t) => {
+            const listing =
+                repoPath && t.type === 'tmux' && 'listTargetsForRepo' in t
+                    ? (t as TmuxTransport).listTargetsForRepo(repoPath)
+                    : t.listTargets();
+            return listing.match(
                 (targets) => targets,
                 (error) => {
                     console.error(`[transport] ${t.type} listTargets failed:`, error.message);
                     return [] as Target[];
                 },
-            ),
-        );
+            );
+        });
 
         return ResultAsync.fromSafePromise(Promise.all(promises)).map((arrays) => arrays.flat());
     }

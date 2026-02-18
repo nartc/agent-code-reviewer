@@ -23,6 +23,13 @@ export interface CommentPayload {
     thread_replies?: Array<{ content: string; author: CommentAuthor }>;
 }
 
+export const SUPPORTED_AGENT_HARNESSES = {
+    claude: 'Claude Code',
+    opencode: 'OpenCode',
+} as const;
+
+export type AgentHarness = keyof typeof SUPPORTED_AGENT_HARNESSES;
+
 export interface TransportStatus {
     type: TransportType;
     available: boolean;

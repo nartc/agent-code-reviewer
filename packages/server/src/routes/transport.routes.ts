@@ -9,9 +9,10 @@ export function createTransportRoutes(transportService: TransportService): Hono 
 
     // GET /targets
     app.get('/targets', (c) => {
+        const repoPath = c.req.query('repo_path');
         return asyncResultToResponse(
             c,
-            transportService.listAllTargets().map((targets) => ({ targets })),
+            transportService.listAllTargets(repoPath).map((targets) => ({ targets })),
         );
     });
 

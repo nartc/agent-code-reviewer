@@ -43,6 +43,11 @@ const TRANSPORT_TYPES: TransportType[] = ['tmux', 'mcp', 'clipboard'];
                         </button>
                     }
                 </div>
+            } @else if (selectedType() === 'tmux') {
+                <div class="text-xs p-2 bg-base-200 rounded">
+                    <p class="font-semibold">No agent harnesses detected</p>
+                    <p class="opacity-70 mt-1">Start Claude Code or OpenCode in a tmux pane at this repo's directory</p>
+                </div>
             } @else {
                 <div class="text-xs opacity-50 p-1">No targets available</div>
             }

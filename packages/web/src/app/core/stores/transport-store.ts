@@ -7,12 +7,18 @@ import type {
 import { httpResource } from '@angular/common/http';
 import { Injectable, computed, inject } from '@angular/core';
 import { ApiClient } from '../services/api-client';
+import { SessionStore } from './session-store';
 
 @Injectable({ providedIn: 'root' })
 export class TransportStore {
     readonly #api = inject(ApiClient);
+    readonly #sessionStore = inject(SessionStore);
 
-    readonly #targetsResource = httpResource<ListTargetsResponse>(() => '/api/transport/targets');
+    readonly #targetsResource = httpResource<ListTargetsResponse>(() => {
+        const repoPath = this.#sessionStore.currentSession()?.repo_path?.path;
+        if (!repoPath) return '/api/transport/targets';
+        return `/api/transport/targets?repo_path=${encodeURIComponent(repoPath)}`;
+    });
     readonly #statusResource = httpResource<TransportStatusResponse>(() => '/api/transport/status');
     readonly #configResource = httpResource<TransportConfigResponse>(() => '/api/transport/config');
 
