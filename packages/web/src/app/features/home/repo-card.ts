@@ -1,11 +1,12 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import type { RepoWithPaths } from '@agent-code-reviewer/shared';
+import { NgIcon } from '@ng-icons/core';
 import { RelativeTime } from '../../shared/pipes/relative-time';
 
 @Component({
     selector: 'acr-repo-card',
     changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [RelativeTime],
+    imports: [RelativeTime, NgIcon],
     template: `
         @let r = repo();
         <div class="card bg-base-200 shadow-sm">
@@ -30,8 +31,14 @@ import { RelativeTime } from '../../shared/pipes/relative-time';
                 <p class="text-xs opacity-50">Created {{ r.created_at | relativeTime }}</p>
 
                 <div class="card-actions justify-end">
-                    <button class="btn btn-primary btn-sm" (click)="opened.emit(r)">Open</button>
-                    <button class="btn btn-error btn-sm btn-outline" (click)="deleted.emit(r.id)">Delete</button>
+                    <button class="btn btn-primary btn-sm" (click)="opened.emit(r)">
+                        <ng-icon name="lucideExternalLink" class="size-3.5" />
+                        Open
+                    </button>
+                    <button class="btn btn-error btn-sm btn-outline" (click)="deleted.emit(r.id)">
+                        <ng-icon name="lucideTrash2" class="size-3.5" />
+                        Delete
+                    </button>
                 </div>
             </div>
         </div>

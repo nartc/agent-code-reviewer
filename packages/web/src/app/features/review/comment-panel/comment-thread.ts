@@ -1,15 +1,18 @@
 import type { CommentThread } from '@agent-code-reviewer/shared';
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { NgIcon } from '@ng-icons/core';
 import { CommentCard } from './comment-card';
 
 @Component({
     selector: 'acr-comment-thread',
     changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [CommentCard, FormsModule],
+    imports: [CommentCard, FormsModule, NgIcon],
     template: `
         <acr-comment-card
             [comment]="thread().comment"
+            [showFileHeader]="showFileHeader()"
+            [showStatus]="showStatus()"
             (edited)="commentEdited.emit($event)"
             (deleted)="commentDeleted.emit($event)"
             (resolved)="commentResolved.emit($event)"
@@ -29,6 +32,7 @@ import { CommentCard } from './comment-card';
                                 class="mt-1"
                                 [comment]="reply"
                                 [isReply]="true"
+                                [showStatus]="showStatus()"
                                 (edited)="commentEdited.emit($event)"
                                 (deleted)="commentDeleted.emit($event)"
                                 (resolved)="commentResolved.emit($event)"
@@ -43,6 +47,7 @@ import { CommentCard } from './comment-card';
                         class="mt-1"
                         [comment]="reply"
                         [isReply]="true"
+                        [showStatus]="showStatus()"
                         (edited)="commentEdited.emit($event)"
                         (deleted)="commentDeleted.emit($event)"
                         (resolved)="commentResolved.emit($event)"
@@ -62,12 +67,17 @@ import { CommentCard } from './comment-card';
                     [(ngModel)]="replyContent"
                 ></textarea>
                 <div class="flex justify-end gap-1 mt-1">
-                    <button class="btn btn-xs btn-ghost" (click)="showReplyForm.set(false)">Cancel</button>
+                    <button class="btn btn-xs btn-ghost" title="Cancel" (click)="showReplyForm.set(false)">
+                        <ng-icon name="lucideX" class="size-3" />
+                        Cancel
+                    </button>
                     <button
                         class="btn btn-xs btn-primary"
+                        title="Submit reply"
                         [disabled]="!replyContent().trim()"
                         (click)="submitReply()"
                     >
+                        <ng-icon name="lucideReply" class="size-3" />
                         Reply
                     </button>
                 </div>
@@ -78,6 +88,8 @@ import { CommentCard } from './comment-card';
 export class AcrCommentThread {
     readonly thread = input.required<CommentThread>();
     readonly sessionId = input.required<string>();
+    readonly showFileHeader = input(true);
+    readonly showStatus = input(true);
 
     readonly commentEdited = output<{ id: string; content: string }>();
     readonly commentDeleted = output<string>();

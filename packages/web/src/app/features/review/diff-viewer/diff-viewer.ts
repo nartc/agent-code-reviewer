@@ -52,7 +52,10 @@ import { InlineCommentForm } from './inline-comment-form';
                     Split
                 </button>
                 <div class="flex-1"></div>
-                <button class="btn btn-xs btn-outline" (click)="onFileComment()">Comment on file</button>
+                <button class="btn btn-xs btn-outline" title="Add a file-level comment" (click)="onFileComment()">
+                    <ng-icon name="lucideMessageSquare" class="size-3" />
+                    Comment on file
+                </button>
             </div>
 
             @if (fileLevelForm(); as form) {
@@ -77,7 +80,6 @@ import { InlineCommentForm } from './inline-comment-form';
                     (lineRangeSelected)="onLineRangeSelected($event)"
                     (formSaved)="onFormSaved($event)"
                     (formCancelled)="onFormCancelled()"
-                    (indicatorClicked)="onIndicatorClicked($event)"
                 />
             }
         }
@@ -225,7 +227,4 @@ export class DiffViewer {
         this.#prefs.setDiffStyle(style);
     }
 
-    protected onIndicatorClicked(_commentIds: string[]): void {
-        // Future: scroll to comment in panel, highlight
-    }
 }

@@ -1,11 +1,13 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, input, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import type { ScannedRepo } from '@agent-code-reviewer/shared';
+import { NgIcon } from '@ng-icons/core';
 import { ApiClient } from '../../core/services/api-client';
 
 @Component({
     selector: 'acr-add-repo',
     changeDetection: ChangeDetectionStrategy.OnPush,
+    imports: [NgIcon],
     template: `
         <div class="space-y-6">
             <div>
@@ -23,6 +25,7 @@ import { ApiClient } from '../../core/services/api-client';
                         [disabled]="!manualPath()"
                         (click)="addRepo()"
                     >
+                        <ng-icon name="lucideFolderPlus" class="size-4" />
                         Add
                     </button>
                 </div>
@@ -43,6 +46,7 @@ import { ApiClient } from '../../core/services/api-client';
                             <span class="loading loading-spinner loading-xs"></span>
                             Scanning...
                         } @else {
+                            <ng-icon name="lucideScan" class="size-3.5" />
                             Scan
                         }
                     </button>
@@ -76,7 +80,10 @@ import { ApiClient } from '../../core/services/api-client';
                                             @if (dimmed) {
                                                 <span class="badge badge-ghost badge-sm">Added</span>
                                             } @else {
-                                                <button class="btn btn-success btn-xs" (click)="addScanned(result.path)">Add</button>
+                                                <button class="btn btn-success btn-xs" (click)="addScanned(result.path)">
+                                                    <ng-icon name="lucidePlus" class="size-3" />
+                                                    Add
+                                                </button>
                                             }
                                         </td>
                                     </tr>

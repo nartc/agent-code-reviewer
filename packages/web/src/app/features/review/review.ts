@@ -40,6 +40,7 @@ import { SnapshotTimeline } from './snapshot-timeline/snapshot-timeline';
                     [class.btn-ghost]="isWatching()"
                     (click)="toggleWatcher()"
                 >
+                    <ng-icon [name]="isWatching() ? 'lucideEyeOff' : 'lucideEye'" class="size-3.5" />
                     {{ isWatching() ? 'Stop Watching' : 'Start Watching' }}
                 </button>
             </header>

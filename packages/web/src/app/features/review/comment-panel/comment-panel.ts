@@ -1,6 +1,7 @@
 import type { CommentThread } from '@agent-code-reviewer/shared';
 import { KeyValuePipe, SlicePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
+import { NgIcon } from '@ng-icons/core';
 import { CommentStore } from '../../../core/stores/comment-store';
 import { AcrCommentThread } from './comment-thread';
 
@@ -16,16 +17,18 @@ function groupBy<T>(items: T[], keyFn: (item: T) => string): Record<string, T[]>
 @Component({
     selector: 'acr-comment-panel',
     changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [AcrCommentThread, KeyValuePipe, SlicePipe],
+    imports: [AcrCommentThread, KeyValuePipe, SlicePipe, NgIcon],
     template: `
         <div class="flex flex-col h-full">
             <div class="flex items-center justify-between p-2 border-b border-base-300">
                 <h3 class="font-semibold text-sm">Comments</h3>
                 <button
                     class="btn btn-xs btn-primary"
+                    title="Send all draft comments"
                     [disabled]="!hasDrafts() || !canSend()"
                     (click)="sendAllDrafts()"
                 >
+                    <ng-icon name="lucideSend" class="size-3" />
                     Send All Drafts
                 </button>
             </div>
@@ -66,6 +69,8 @@ function groupBy<T>(items: T[], keyFn: (item: T) => string): Record<string, T[]>
                                     class="block mt-1"
                                     [thread]="thread"
                                     [sessionId]="sessionId()"
+                                    [showFileHeader]="false"
+                                    [showStatus]="false"
                                     (commentEdited)="onCommentEdited($event)"
                                     (commentDeleted)="onCommentDeleted($event)"
                                     (commentResolved)="onCommentResolved($event)"

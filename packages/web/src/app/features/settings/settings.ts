@@ -6,6 +6,7 @@ import { ThemeSwitcher, type Theme } from '../../core/services/theme-switcher';
 import { TransportStore } from '../../core/stores/transport-store';
 
 const THEMES: Theme[] = ['light', 'dark', 'system'];
+const THEME_ICONS: Record<Theme, string> = { light: 'lucideSun', dark: 'lucideMoon', system: 'lucideMonitor' };
 const TRANSPORT_TYPES: TransportType[] = ['tmux', 'mcp', 'clipboard'];
 
 @Component({
@@ -33,6 +34,7 @@ const TRANSPORT_TYPES: TransportType[] = ['tmux', 'mcp', 'clipboard'];
                                 [class.btn-ghost]="themeSwitcher.theme() !== t"
                                 (click)="themeSwitcher.setTheme(t)"
                             >
+                                <ng-icon [name]="themeIcons[t]" class="size-4" />
                                 {{ t | titlecase }}
                             </button>
                         }
@@ -78,6 +80,7 @@ export class Settings {
     protected readonly transportStore = inject(TransportStore);
 
     protected readonly themes = THEMES;
+    protected readonly themeIcons = THEME_ICONS;
     protected readonly transportTypes = TRANSPORT_TYPES;
 
     protected onTransportChange(type: TransportType): void {

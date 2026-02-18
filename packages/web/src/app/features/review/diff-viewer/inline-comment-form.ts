@@ -1,12 +1,13 @@
 import type { Comment } from '@agent-code-reviewer/shared';
 import { ChangeDetectionStrategy, Component, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { NgIcon } from '@ng-icons/core';
 import { CommentStore } from '../../../core/stores/comment-store';
 
 @Component({
     selector: 'acr-inline-comment-form',
     changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [FormsModule],
+    imports: [FormsModule, NgIcon],
     host: {
         '(keydown.meta.enter)': 'onSave()',
         '(keydown.control.enter)': 'onSave()',
@@ -37,14 +38,20 @@ import { CommentStore } from '../../../core/stores/comment-store';
                 ></textarea>
 
                 <div class="flex justify-end gap-2">
-                    <button class="btn btn-sm btn-ghost" (click)="onCancel()">Cancel</button>
+                    <button class="btn btn-sm btn-ghost" title="Cancel (Esc)" (click)="onCancel()">
+                        <ng-icon name="lucideX" class="size-3.5" />
+                        Cancel
+                    </button>
                     <button
                         class="btn btn-sm btn-primary"
+                        title="Save Draft (Cmd+Enter)"
                         [disabled]="!content().trim() || isSaving()"
                         (click)="onSave()"
                     >
                         @if (isSaving()) {
                             <span class="loading loading-spinner loading-xs"></span>
+                        } @else {
+                            <ng-icon name="lucideSave" class="size-3.5" />
                         }
                         Save Draft
                     </button>

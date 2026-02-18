@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { NgIcon } from '@ng-icons/core';
 
 @Component({
@@ -6,18 +6,13 @@ import { NgIcon } from '@ng-icons/core';
     changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [NgIcon],
     template: `
-        <button
-            class="badge badge-sm badge-primary cursor-pointer inline-flex items-center gap-0.5"
-            (click)="clicked.emit(commentIds())"
-        >
+        <span class="badge badge-sm badge-primary inline-flex items-center gap-0.5">
             <ng-icon name="lucideMessageSquare" class="size-3" />
             {{ count() }}
-        </button>
+        </span>
     `,
 })
 export class CommentIndicator {
     readonly count = input.required<number>();
     readonly commentIds = input.required<string[]>();
-
-    readonly clicked = output<string[]>();
 }

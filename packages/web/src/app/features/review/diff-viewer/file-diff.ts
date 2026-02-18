@@ -33,7 +33,6 @@ export class AcrFileDiff {
     readonly lineClicked = output<OnDiffLineClickProps>();
     readonly lineNumberClicked = output<{ lineNumber: number; side: 'old' | 'new' }>();
     readonly lineRangeSelected = output<{ lineStart: number; lineEnd: number; side: 'old' | 'new' }>();
-    readonly indicatorClicked = output<string[]>();
     readonly formSaved = output<Comment>();
     readonly formCancelled = output<void>();
 
@@ -135,7 +134,6 @@ export class AcrFileDiff {
             const ref: ComponentRef<CommentIndicator> = outlet.attach(portal);
             ref.setInput('count', annotation.metadata.count);
             ref.setInput('commentIds', annotation.metadata.commentIds);
-            ref.instance.clicked.subscribe((ids) => this.indicatorClicked.emit(ids));
         } else if (annotation.metadata.type === 'form') {
             const portal = new ComponentPortal(InlineCommentForm);
             const ref: ComponentRef<InlineCommentForm> = outlet.attach(portal);
