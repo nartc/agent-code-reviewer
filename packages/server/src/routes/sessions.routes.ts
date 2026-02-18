@@ -1,4 +1,5 @@
-import { createSessionSchema, updateSessionSchema } from '@agent-code-reviewer/shared';
+import { createSessionSchema, updateSessionSchema, validation } from '@agent-code-reviewer/shared';
+import { err } from 'neverthrow';
 import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
 import { asyncResultToResponse, resultToResponse } from '../lib/result-to-response.js';
@@ -37,7 +38,7 @@ export function createSessionRoutes(sessionService: SessionService, watcherServi
         const { id } = c.req.valid('param');
         const body = c.req.valid('json');
         if (!body.base_branch) {
-            return c.json({ error: { code: 'VALIDATION', message: 'base_branch is required' } }, 400);
+            return resultToResponse(c, err(validation('base_branch is required')));
         }
         return resultToResponse(c, sessionService.updateBaseBranch(id, body.base_branch));
     });

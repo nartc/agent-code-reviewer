@@ -24,14 +24,14 @@ import { InlineCommentForm } from './inline-comment-form';
             <div class="p-4 opacity-50">No files changed</div>
         } @else {
             <div class="flex items-center gap-2 px-4 py-2 border-b border-base-300">
-                <button class="btn btn-xs btn-ghost" (click)="store.prevFile()">
+                <button class="btn btn-xs btn-ghost" aria-label="Previous file" (click)="store.prevFile()">
                     <ng-icon name="lucideChevronLeft" class="size-4" />
                 </button>
                 <span class="font-mono text-xs truncate flex-1">{{ activeMetadata().name }}</span>
                 <span class="text-xs opacity-50 whitespace-nowrap">
                     {{ store.activeFileIndex() + 1 }} / {{ store.totalFiles() }}
                 </span>
-                <button class="btn btn-xs btn-ghost" (click)="store.nextFile()">
+                <button class="btn btn-xs btn-ghost" aria-label="Next file" (click)="store.nextFile()">
                     <ng-icon name="lucideChevronRight" class="size-4" />
                 </button>
             </div>

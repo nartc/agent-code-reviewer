@@ -227,21 +227,7 @@ export class CommentService {
         );
         if (parentsResult.isErr()) return err(parentsResult.error);
 
-        const threads: CommentThread[] = [];
-        for (const parent of parentsResult.value) {
-            const repliesResult = this.db.query<CommentRow>(
-                'SELECT * FROM comments WHERE reply_to_id = $parentId ORDER BY created_at',
-                { $parentId: parent.id },
-            );
-            if (repliesResult.isErr()) return err(repliesResult.error);
-
-            threads.push({
-                comment: castComment(parent),
-                replies: repliesResult.value.map(castComment),
-            });
-        }
-
-        return ok(threads);
+        return this.buildThreads(parentsResult.value);
     }
 
     getCommentsForSnapshot(sessionId: string, snapshotId: string): Result<CommentThread[], DatabaseError> {
@@ -275,21 +261,7 @@ export class CommentService {
             (row) => row.file_path === '[general]' || filePathSet.has(row.file_path),
         );
 
-        const threads: CommentThread[] = [];
-        for (const parent of filteredParents) {
-            const repliesResult = this.db.query<CommentRow>(
-                'SELECT * FROM comments WHERE reply_to_id = $parentId ORDER BY created_at',
-                { $parentId: parent.id },
-            );
-            if (repliesResult.isErr()) return err(repliesResult.error);
-
-            threads.push({
-                comment: castComment(parent),
-                replies: repliesResult.value.map(castComment),
-            });
-        }
-
-        return ok(threads);
+        return this.buildThreads(filteredParents);
     }
 
     markSent(ids: string[]): Result<Comment[], DatabaseError | NotFoundError> {
@@ -384,5 +356,36 @@ export class CommentService {
         if (result.isErr()) return err(result.error);
 
         return ok(result.value ? castComment(result.value) : undefined);
+    }
+
+    private buildThreads(parents: CommentRow[]): Result<CommentThread[], DatabaseError> {
+        if (parents.length === 0) return ok([]);
+
+        const parentIds = parents.map((p) => p.id);
+        const placeholders = parentIds.map((_, i) => `$p${i}`).join(', ');
+        const params: Record<string, string> = {};
+        for (let i = 0; i < parentIds.length; i++) {
+            params[`$p${i}`] = parentIds[i];
+        }
+
+        const repliesResult = this.db.query<CommentRow>(
+            `SELECT * FROM comments WHERE reply_to_id IN (${placeholders}) ORDER BY created_at`,
+            params,
+        );
+        if (repliesResult.isErr()) return err(repliesResult.error);
+
+        const replyMap = new Map<string, Comment[]>();
+        for (const row of repliesResult.value) {
+            const replies = replyMap.get(row.reply_to_id!) ?? [];
+            replies.push(castComment(row));
+            replyMap.set(row.reply_to_id!, replies);
+        }
+
+        return ok(
+            parents.map((parent) => ({
+                comment: castComment(parent),
+                replies: replyMap.get(parent.id) ?? [],
+            })),
+        );
     }
 }

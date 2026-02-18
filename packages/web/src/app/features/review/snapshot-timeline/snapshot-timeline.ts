@@ -33,6 +33,8 @@ interface DotPosition {
                         "
                         [style.left.%]="dot.left"
                         [attr.title]="dot.id | slice: 0 : 8"
+                        [attr.aria-label]="'Snapshot ' + (dot.id | slice: 0 : 8)"
+                        [attr.aria-current]="dot.isActive ? 'step' : null"
                         (click)="snapshotSelected.emit(dot.id)"
                     ></button>
                 }

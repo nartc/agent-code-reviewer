@@ -50,6 +50,7 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
                     <textarea
                         class="textarea textarea-bordered textarea-sm w-full"
                         rows="3"
+                        aria-label="Edit comment"
                         [(ngModel)]="editContent"
                     ></textarea>
                     <div class="flex justify-end gap-1">

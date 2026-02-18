@@ -31,6 +31,7 @@ import { CommentStore } from '../../../core/stores/comment-store';
                     class="textarea textarea-bordered w-full"
                     rows="3"
                     placeholder="Write a comment..."
+                    aria-label="Add comment"
                     [(ngModel)]="content"
                     #textareaEl
                 ></textarea>

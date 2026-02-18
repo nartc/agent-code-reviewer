@@ -1,4 +1,5 @@
-import { createRepoSchema, updateRepoSchema } from '@agent-code-reviewer/shared';
+import { createRepoSchema, updateRepoSchema, validation } from '@agent-code-reviewer/shared';
+import { err } from 'neverthrow';
 import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
 import { resultToResponse } from '../lib/result-to-response.js';
@@ -32,7 +33,7 @@ export function createRepoRoutes(repoService: RepoService): Hono {
         const { id } = c.req.valid('param');
         const body = c.req.valid('json');
         if (!body.base_branch) {
-            return c.json({ error: { code: 'VALIDATION', message: 'base_branch is required' } }, 400);
+            return resultToResponse(c, err(validation('base_branch is required')));
         }
         return resultToResponse(c, repoService.updateRepo(id, { baseBranch: body.base_branch }));
     });

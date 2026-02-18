@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, input, linkedSignal, signal } from '@angular/core';
 import { NgIcon } from '@ng-icons/core';
 import { Router } from '@angular/router';
 import { ApiClient } from '../../core/services/api-client';
@@ -59,6 +59,7 @@ import { SnapshotTimeline } from './snapshot-timeline/snapshot-timeline';
                         <button
                             class="btn btn-xs btn-ghost"
                             title="Expand sidebar"
+                            aria-expanded="false"
                             (click)="toggleSidebar()"
                         >
                             <ng-icon name="lucideChevronsRight" class="size-4" />
@@ -71,6 +72,7 @@ import { SnapshotTimeline } from './snapshot-timeline/snapshot-timeline';
                             <button
                                 class="btn btn-xs btn-ghost"
                                 title="Collapse sidebar"
+                                aria-expanded="true"
                                 (click)="toggleSidebar()"
                             >
                                 <ng-icon name="lucideChevronsLeft" class="size-4" />
@@ -146,7 +148,7 @@ export class Review {
     protected readonly leftWidth = this.#prefs.panelLeftWidth;
     protected readonly rightWidth = this.#prefs.panelRightWidth;
     protected readonly sidebarCollapsed = this.#prefs.sidebarCollapsed;
-    protected readonly isWatching = signal(false);
+    protected readonly isWatching = linkedSignal(() => this.store.isWatching());
     protected readonly isSending = signal(false);
     protected readonly toastMessage = signal<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -156,10 +158,6 @@ export class Review {
     constructor() {
         effect(() => {
             this.store.loadSession(this.sessionId());
-        });
-
-        effect(() => {
-            this.isWatching.set(this.store.isWatching());
         });
 
         // Load comments when snapshot changes

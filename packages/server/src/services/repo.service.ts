@@ -23,21 +23,39 @@ export class RepoService {
     ) {}
 
     listRepos(): Result<RepoWithPaths[], DatabaseError> {
-        const reposResult = this.dbService.query<Repo>('SELECT * FROM repos ORDER BY created_at DESC');
-        if (reposResult.isErr()) return err(reposResult.error);
+        const rowsResult = this.dbService.query<
+            Repo & { path_id: string | null; path: string | null; last_accessed_at: string | null; path_created_at: string | null }
+        >(
+            `SELECT r.*, rp.id as path_id, rp.path, rp.last_accessed_at, rp.created_at as path_created_at
+             FROM repos r LEFT JOIN repo_paths rp ON r.id = rp.repo_id
+             ORDER BY r.created_at DESC`,
+        );
+        if (rowsResult.isErr()) return err(rowsResult.error);
 
-        const repos = reposResult.value;
-        const result: RepoWithPaths[] = [];
-
-        for (const repo of repos) {
-            const pathsResult = this.dbService.query<RepoPath>('SELECT * FROM repo_paths WHERE repo_id = $repoId', {
-                $repoId: repo.id,
-            });
-            if (pathsResult.isErr()) return err(pathsResult.error);
-            result.push({ ...repo, paths: pathsResult.value });
+        const repoMap = new Map<string, RepoWithPaths>();
+        for (const row of rowsResult.value) {
+            if (!repoMap.has(row.id)) {
+                repoMap.set(row.id, {
+                    id: row.id,
+                    remote_url: row.remote_url,
+                    name: row.name,
+                    base_branch: row.base_branch,
+                    created_at: row.created_at,
+                    paths: [],
+                });
+            }
+            if (row.path_id != null) {
+                repoMap.get(row.id)!.paths.push({
+                    id: row.path_id,
+                    repo_id: row.id,
+                    path: row.path!,
+                    last_accessed_at: row.last_accessed_at,
+                    created_at: row.path_created_at!,
+                });
+            }
         }
 
-        return ok(result);
+        return ok([...repoMap.values()]);
     }
 
     createOrGetFromPath(path: string): ResultAsync<CreateOrGetResult, GitError | DatabaseError | NotFoundError> {

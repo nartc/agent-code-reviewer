@@ -35,6 +35,8 @@ function groupBy<T>(items: T[], keyFn: (item: T) => string): Record<string, T[]>
                     role="tab"
                     class="tab tab-sm"
                     [class.tab-active]="activeTab() === 'draft'"
+                    [attr.aria-selected]="activeTab() === 'draft'"
+                    aria-controls="comment-panel-draft"
                     (click)="activeTab.set('draft')"
                 >
                     Drafts
@@ -46,13 +48,15 @@ function groupBy<T>(items: T[], keyFn: (item: T) => string): Record<string, T[]>
                     role="tab"
                     class="tab tab-sm"
                     [class.tab-active]="activeTab() === 'history'"
+                    [attr.aria-selected]="activeTab() === 'history'"
+                    aria-controls="comment-panel-history"
                     (click)="activeTab.set('history')"
                 >
                     History
                 </button>
             </div>
 
-            <div class="flex-1 overflow-auto p-2">
+            <div class="flex-1 overflow-auto p-2" role="tabpanel" [id]="'comment-panel-' + activeTab()">
                 @if (activeTab() === 'draft') {
                     @if (hasDrafts()) {
                         @for (group of draftsByFile() | keyvalue; track group.key) {

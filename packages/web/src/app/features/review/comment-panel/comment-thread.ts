@@ -18,8 +18,8 @@ import { CommentCard } from './comment-card';
 
         @if (thread().replies.length > 0) {
             @if (hasLongThread()) {
-                <div class="collapse collapse-arrow bg-base-100 ml-6 mt-1" role="group">
-                    <input type="checkbox" />
+                <div class="collapse collapse-arrow bg-base-100 ml-6 mt-1">
+                    <input type="checkbox" aria-label="Toggle replies" />
                     <div class="collapse-title text-xs font-medium py-1 min-h-0">
                         Show {{ thread().replies.length }} replies
                     </div>
@@ -58,6 +58,7 @@ import { CommentCard } from './comment-card';
                     class="textarea textarea-bordered textarea-sm w-full"
                     rows="2"
                     placeholder="Write a reply..."
+                    aria-label="Reply to comment"
                     [(ngModel)]="replyContent"
                 ></textarea>
                 <div class="flex justify-end gap-1 mt-1">

@@ -45,6 +45,7 @@ const TRANSPORT_TYPES: TransportType[] = ['tmux', 'mcp', 'clipboard'];
                     <h2 class="card-title text-base">Default Transport</h2>
                     <select
                         class="select select-bordered select-sm w-full max-w-xs"
+                        aria-label="Default transport"
                         [value]="transportStore.activeTransport() ?? ''"
                         (change)="onTransportChange($any($event.target).value)"
                     >

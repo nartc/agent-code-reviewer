@@ -17,6 +17,7 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
                 type="text"
                 placeholder="Filter by branch..."
                 class="input input-sm input-bordered w-full"
+                aria-label="Filter branches"
                 [value]="filterText()"
                 (input)="filterText.set($any($event.target).value)"
             />

@@ -20,6 +20,7 @@ import { buildFileTree, flattenTree } from './build-file-tree';
                                 class="flex items-center gap-2 font-mono text-xs"
                                 [style.padding-left.rem]="entry.depth * 1"
                                 [title]="entry.node.fullPath"
+                                [attr.aria-expanded]="!isCollapsed(entry.node.fullPath)"
                                 (click)="toggleDir(entry.node.fullPath)"
                             >
                                 <ng-icon [name]="isCollapsed(entry.node.fullPath) ? 'lucideChevronRight' : 'lucideChevronDown'" class="size-3" />

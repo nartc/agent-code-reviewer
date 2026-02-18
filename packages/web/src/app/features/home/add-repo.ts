@@ -14,6 +14,7 @@ import { ApiClient } from '../../core/services/api-client';
                     <input
                         class="input input-bordered flex-1"
                         placeholder="Enter repository path..."
+                        aria-label="Repository path"
                         [value]="manualPath()"
                         (input)="onManualInput($any($event.target).value)"
                     />

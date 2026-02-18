@@ -65,7 +65,7 @@ export class DbService {
      */
     execute(sql: string, params?: BindParams): Result<{ changes: number }, DatabaseError> {
         try {
-            this.db.run(sql, params as any);
+            this.db.run(sql, params);
             return ok({ changes: this.db.getRowsModified() });
         } catch (e) {
             return err(databaseError(`Execute failed: ${e instanceof Error ? e.message : String(e)}`, e));
