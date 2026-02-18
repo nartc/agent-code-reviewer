@@ -43,10 +43,10 @@ describe('ResizeHandle', () => {
         expect(el.classList.contains('cursor-row-resize')).toBe(true);
     });
 
-    it('has block and select-none classes', async () => {
+    it('has flex and select-none classes', async () => {
         await fixture.whenStable();
         const el = (fixture.nativeElement as HTMLElement).querySelector('acr-resize-handle') as HTMLElement;
-        expect(el.classList.contains('block')).toBe(true);
+        expect(el.classList.contains('flex')).toBe(true);
         expect(el.classList.contains('select-none')).toBe(true);
     });
 });

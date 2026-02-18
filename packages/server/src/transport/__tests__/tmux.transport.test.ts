@@ -135,7 +135,7 @@ describe('TmuxTransport', () => {
             },
         ];
 
-        it('executes 4 tmux commands in order: load-buffer, paste-buffer, delete-buffer, send-keys', async () => {
+        it('executes 3 tmux commands in order: load-buffer, paste-buffer, delete-buffer', async () => {
             const calls: string[][] = [];
             (execFile as unknown as Mock).mockImplementation(
                 (cmd: string, args: string[], cb: (err: Error | null, stdout: string, stderr: string) => void) => {
@@ -150,11 +150,10 @@ describe('TmuxTransport', () => {
             expect(result.isOk()).toBe(true);
             expect(result._unsafeUnwrap()).toEqual({ success: true });
 
-            expect(calls).toHaveLength(4);
+            expect(calls).toHaveLength(3);
             expect(calls[0][1]).toBe('load-buffer');
             expect(calls[1][1]).toBe('paste-buffer');
             expect(calls[2][1]).toBe('delete-buffer');
-            expect(calls[3][1]).toBe('send-keys');
         });
 
         it('pipes formatted text to stdin of load-buffer', async () => {

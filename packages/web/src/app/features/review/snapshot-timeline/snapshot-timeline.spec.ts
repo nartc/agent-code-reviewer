@@ -103,10 +103,10 @@ describe('SnapshotTimeline', () => {
 
     it('next navigates to newer snapshot', async () => {
         await fixture.whenStable();
-        const buttons = el.querySelectorAll('button');
-        // Next button is after the dots — find by content
-        const nextBtn = Array.from(buttons).find((b) => b.textContent?.includes('\u25B6') && !b.disabled);
-        nextBtn!.click();
+        const navBtns = el.querySelectorAll('.btn.btn-ghost');
+        // First nav btn is prev, second is next
+        const nextBtn = navBtns[1] as HTMLButtonElement;
+        nextBtn.click();
         await fixture.whenStable();
         // active is snap-3 (index 2), next goes to snap-4 (index 1)
         expect(host.selectedId()).toBe('snap-4');

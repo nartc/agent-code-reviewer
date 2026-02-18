@@ -170,12 +170,12 @@ export class Review {
         });
     }
 
-    protected onKeyPrev(event: KeyboardEvent): void {
+    protected onKeyPrev(event: Event): void {
         if (this.#isInputFocused(event)) return;
         this.store.prevFile();
     }
 
-    protected onKeyNext(event: KeyboardEvent): void {
+    protected onKeyNext(event: Event): void {
         if (this.#isInputFocused(event)) return;
         this.store.nextFile();
     }
@@ -234,7 +234,7 @@ export class Review {
         );
     }
 
-    #isInputFocused(event: KeyboardEvent): boolean {
+    #isInputFocused(event: Event): boolean {
         const tag = (event.target as HTMLElement).tagName;
         return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (event.target as HTMLElement).isContentEditable;
     }
