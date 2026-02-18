@@ -16,7 +16,11 @@ import { SnapshotTimeline } from './snapshot-timeline/snapshot-timeline';
 @Component({
     selector: 'acr-review',
     changeDetection: ChangeDetectionStrategy.OnPush,
-    host: { class: 'flex flex-col flex-1 overflow-hidden' },
+    host: {
+        class: 'flex flex-col flex-1 overflow-hidden',
+        '(document:keydown.ArrowLeft)': 'onKeyPrev($event)',
+        '(document:keydown.ArrowRight)': 'onKeyNext($event)',
+    },
     imports: [ResizeHandle, DiffViewer, FileExplorer, SessionSidebar, CommentPanel, SnapshotTimeline, NgIcon],
     template: `
         @let session = store.currentSession();
@@ -168,6 +172,16 @@ export class Review {
         });
     }
 
+    protected onKeyPrev(event: KeyboardEvent): void {
+        if (this.#isInputFocused(event)) return;
+        this.store.prevFile();
+    }
+
+    protected onKeyNext(event: KeyboardEvent): void {
+        if (this.#isInputFocused(event)) return;
+        this.store.nextFile();
+    }
+
     protected toggleSidebar(): void {
         this.#prefs.setSidebarCollapsed(!this.sidebarCollapsed());
     }
@@ -220,6 +234,11 @@ export class Review {
                 },
             },
         );
+    }
+
+    #isInputFocused(event: KeyboardEvent): boolean {
+        const tag = (event.target as HTMLElement).tagName;
+        return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (event.target as HTMLElement).isContentEditable;
     }
 
     private showToast(type: 'success' | 'error', text: string): void {
