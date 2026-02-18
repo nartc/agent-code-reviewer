@@ -4,15 +4,19 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
     selector: 'acr-resize-handle',
     changeDetection: ChangeDetectionStrategy.OnPush,
     host: {
-        class: 'block select-none',
+        class: 'flex items-center justify-center select-none shrink-0',
         '[class.cursor-col-resize]': "direction() === 'horizontal'",
         '[class.cursor-row-resize]': "direction() === 'vertical'",
-        '[class.w-1]': "direction() === 'horizontal'",
-        '[class.h-1]': "direction() === 'vertical'",
+        '[class.w-2]': "direction() === 'horizontal'",
+        '[class.h-2]': "direction() === 'vertical'",
         '(pointerdown)': 'onPointerDown($event)',
     },
     template: `
-        <div class="divider m-0 h-full"></div>
+        @if (direction() === 'horizontal') {
+            <div class="w-px h-full rounded-full bg-base-300 transition-colors hover:bg-primary"></div>
+        } @else {
+            <div class="h-px w-full rounded-full bg-base-300 transition-colors hover:bg-primary"></div>
+        }
     `,
 })
 export class ResizeHandle {

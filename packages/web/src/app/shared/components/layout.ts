@@ -10,7 +10,7 @@ const themes: Theme[] = ['light', 'dark', 'system'];
     selector: 'acr-layout',
     changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [RouterOutlet, RouterLink, TitleCasePipe],
-    host: { class: 'flex flex-col min-h-screen' },
+    host: { class: 'flex flex-col h-screen' },
     template: `
         <nav class="navbar bg-base-100 shadow-sm">
             <div class="flex-1">
@@ -33,7 +33,7 @@ const themes: Theme[] = ['light', 'dark', 'system'];
                 <a routerLink="/settings" class="btn btn-ghost btn-sm">Settings</a>
             </div>
         </nav>
-        <main class="flex-1">
+        <main class="flex flex-col flex-1 overflow-auto">
             <router-outlet />
         </main>
     `,

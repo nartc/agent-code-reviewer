@@ -69,7 +69,7 @@ export class DiffViewer {
     protected readonly diffStyle = signal<'unified' | 'split'>('unified');
 
     readonly #commentStore = inject(CommentStore);
-    readonly #fileDiff = viewChild(AcrFileDiff);
+    private readonly fileDiff = viewChild(AcrFileDiff);
 
     readonly #activeForm = signal<AnnotationMeta | null>(null);
 

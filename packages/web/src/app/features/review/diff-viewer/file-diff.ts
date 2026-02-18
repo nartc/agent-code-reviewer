@@ -70,7 +70,7 @@ export class AcrFileDiff {
                 renderAnnotation: (annotation) => this.#renderAnnotation(annotation),
             });
 
-            this.#instance.render({ fileDiff: meta, fileContainer: container, lineAnnotations: annotations });
+            this.#instance.render({ fileDiff: meta, containerWrapper: container, lineAnnotations: annotations });
         });
 
         this.#destroyRef.onDestroy(() => {
