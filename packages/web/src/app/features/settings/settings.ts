@@ -1,6 +1,7 @@
 import type { TransportType } from '@agent-code-reviewer/shared';
 import { Location, TitleCasePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { NgIcon } from '@ng-icons/core';
 import { ThemeSwitcher, type Theme } from '../../core/services/theme-switcher';
 import { TransportStore } from '../../core/stores/transport-store';
 
@@ -10,11 +11,14 @@ const TRANSPORT_TYPES: TransportType[] = ['tmux', 'mcp', 'clipboard'];
 @Component({
     selector: 'acr-settings',
     changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [TitleCasePipe],
+    imports: [TitleCasePipe, NgIcon],
     template: `
         <div class="max-w-2xl mx-auto p-6 flex flex-col gap-6">
             <div class="flex items-center gap-3">
-                <button class="btn btn-sm btn-ghost" (click)="location.back()">&larr; Back</button>
+                <button class="btn btn-sm btn-ghost inline-flex items-center gap-1" (click)="location.back()">
+                    <ng-icon name="lucideArrowLeft" class="size-4" />
+                    Back
+                </button>
                 <h1 class="text-2xl font-bold">Settings</h1>
             </div>
 

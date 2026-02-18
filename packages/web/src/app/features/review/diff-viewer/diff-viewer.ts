@@ -2,6 +2,7 @@ import type { Comment } from '@agent-code-reviewer/shared';
 import type { DiffLineAnnotation, FileDiffMetadata, OnDiffLineClickProps } from '@pierre/diffs';
 import { parsePatchFiles } from '@pierre/diffs';
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, viewChild } from '@angular/core';
+import { NgIcon } from '@ng-icons/core';
 import { UiPreferences } from '../../../core/services/ui-preferences';
 import { CommentStore } from '../../../core/stores/comment-store';
 import { SessionStore } from '../../../core/stores/session-store';
@@ -12,7 +13,7 @@ import { InlineCommentForm } from './inline-comment-form';
 @Component({
     selector: 'acr-diff-viewer',
     changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [AcrFileDiff, InlineCommentForm],
+    imports: [AcrFileDiff, InlineCommentForm, NgIcon],
     host: { class: 'flex flex-col flex-1 overflow-hidden' },
     template: `
         @if (!store.currentDiff()) {
@@ -24,14 +25,14 @@ import { InlineCommentForm } from './inline-comment-form';
         } @else {
             <div class="flex items-center gap-2 px-4 py-2 border-b border-base-300">
                 <button class="btn btn-xs btn-ghost" (click)="store.prevFile()">
-                    &lt;
+                    <ng-icon name="lucideChevronLeft" class="size-4" />
                 </button>
                 <span class="font-mono text-xs truncate flex-1">{{ activeMetadata().name }}</span>
                 <span class="text-xs opacity-50 whitespace-nowrap">
                     {{ store.activeFileIndex() + 1 }} / {{ store.totalFiles() }}
                 </span>
                 <button class="btn btn-xs btn-ghost" (click)="store.nextFile()">
-                    &gt;
+                    <ng-icon name="lucideChevronRight" class="size-4" />
                 </button>
             </div>
 

@@ -1,10 +1,12 @@
 import type { FileSummary } from '@agent-code-reviewer/shared';
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
+import { NgIcon } from '@ng-icons/core';
 import { buildFileTree, flattenTree } from './build-file-tree';
 
 @Component({
     selector: 'acr-file-explorer',
     changeDetection: ChangeDetectionStrategy.OnPush,
+    imports: [NgIcon],
     host: { class: 'flex flex-col' },
     template: `
         @if (files().length === 0) {
@@ -20,7 +22,7 @@ import { buildFileTree, flattenTree } from './build-file-tree';
                                 [title]="entry.node.fullPath"
                                 (click)="toggleDir(entry.node.fullPath)"
                             >
-                                <span class="w-3 text-center">{{ isCollapsed(entry.node.fullPath) ? '\u25B8' : '\u25BE' }}</span>
+                                <ng-icon [name]="isCollapsed(entry.node.fullPath) ? 'lucideChevronRight' : 'lucideChevronDown'" class="size-3" />
                                 <span class="truncate flex-1">{{ entry.node.name }}</span>
                             </button>
                         } @else {

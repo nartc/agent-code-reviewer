@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from '@angular/core';
+import { NgIcon } from '@ng-icons/core';
 import { Router } from '@angular/router';
 import { ApiClient } from '../../core/services/api-client';
 import { UiPreferences } from '../../core/services/ui-preferences';
@@ -16,7 +17,7 @@ import { SnapshotTimeline } from './snapshot-timeline/snapshot-timeline';
     selector: 'acr-review',
     changeDetection: ChangeDetectionStrategy.OnPush,
     host: { class: 'flex flex-col flex-1 overflow-hidden' },
-    imports: [ResizeHandle, DiffViewer, FileExplorer, SessionSidebar, CommentPanel, SnapshotTimeline],
+    imports: [ResizeHandle, DiffViewer, FileExplorer, SessionSidebar, CommentPanel, SnapshotTimeline, NgIcon],
     template: `
         @let session = store.currentSession();
         @if (session) {
@@ -56,7 +57,7 @@ import { SnapshotTimeline } from './snapshot-timeline/snapshot-timeline';
                             title="Expand sidebar"
                             (click)="toggleSidebar()"
                         >
-                            &raquo;
+                            <ng-icon name="lucideChevronsRight" class="size-4" />
                         </button>
                     </div>
                 } @else {
@@ -68,7 +69,7 @@ import { SnapshotTimeline } from './snapshot-timeline/snapshot-timeline';
                                 title="Collapse sidebar"
                                 (click)="toggleSidebar()"
                             >
-                                &laquo;
+                                <ng-icon name="lucideChevronsLeft" class="size-4" />
                             </button>
                         </div>
                         <acr-session-sidebar

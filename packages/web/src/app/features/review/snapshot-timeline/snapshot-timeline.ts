@@ -1,6 +1,7 @@
 import type { SnapshotSummary } from '@agent-code-reviewer/shared';
 import { SlicePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { NgIcon } from '@ng-icons/core';
 
 interface DotPosition {
     id: string;
@@ -12,10 +13,12 @@ interface DotPosition {
 @Component({
     selector: 'acr-snapshot-timeline',
     changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [SlicePipe],
+    imports: [SlicePipe, NgIcon],
     template: `
         <div class="relative flex items-center h-10 px-2 border-b border-base-300 gap-1">
-            <button class="btn btn-xs btn-ghost" [disabled]="!canGoPrev()" (click)="goPrev()">&#9664;</button>
+            <button class="btn btn-xs btn-ghost" [disabled]="!canGoPrev()" (click)="goPrev()">
+                <ng-icon name="lucideChevronLeft" class="size-4" />
+            </button>
 
             <div class="relative flex-1 h-2 bg-base-200 rounded-full mx-1">
                 @for (dot of dotPositions(); track dot.id) {
@@ -35,7 +38,9 @@ interface DotPosition {
                 }
             </div>
 
-            <button class="btn btn-xs btn-ghost" [disabled]="!canGoNext()" (click)="goNext()">&#9654;</button>
+            <button class="btn btn-xs btn-ghost" [disabled]="!canGoNext()" (click)="goNext()">
+                <ng-icon name="lucideChevronRight" class="size-4" />
+            </button>
 
             @if (!isViewingLatest()) {
                 <button class="btn btn-xs btn-accent gap-1" (click)="jumpToLatest.emit()">
