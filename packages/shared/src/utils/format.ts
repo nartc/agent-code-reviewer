@@ -49,6 +49,8 @@ export function formatCommentsForTransport(comments: CommentPayload[]): string {
         `${comments.length} comment${comments.length !== 1 ? 's' : ''} across ${Object.keys(grouped).length} file${Object.keys(grouped).length !== 1 ? 's' : ''}`,
     );
     lines.push('');
+    // Instruct agent to use MCP tools for the resolve flow:
+    // Primary path: agent resolves via mark_resolved; fallback: user resolves via UI or bulk resolve (F7)
     lines.push('To respond to these comments, use the agent-code-reviewer MCP tools:');
     lines.push('- check_comments: list pending comments');
     lines.push('- reply_to_comment: respond to a specific comment');

@@ -7,6 +7,14 @@ interface AgentCommentRow {
     created_at: string;
 }
 
+/**
+ * Polls SQLite for new agent-authored comments written by the MCP server.
+ *
+ * Resolve flow:
+ *  1. Primary: agent calls `mark_resolved` MCP tool → writes to SQLite → this poller detects it → SSE → UI refreshes
+ *  2. Fallback: user clicks "Resolve" on sent comments in the UI (CommentCard / CommentListItem)
+ *  3. Bulk fallback: user clicks "Resolve all" on the Comments History page (F7)
+ */
 export class AgentPollService {
     #intervalId: ReturnType<typeof setInterval> | null = null;
     #lastPollTimestamp: string;
