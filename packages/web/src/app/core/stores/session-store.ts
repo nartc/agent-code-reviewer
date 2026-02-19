@@ -61,6 +61,7 @@ export class SessionStore {
     readonly isLoading = computed(() => this.#sessionResource.isLoading() || this.#snapshotsResource.isLoading());
     readonly sessionError = this.#sessionResource.error;
 
+    readonly changedFiles = computed<string[]>(() => this.currentDiff()?.changed_files ?? []);
     readonly activeSnapshot = computed(() => this.snapshots().find((s) => s.id === this.activeSnapshotId()) ?? null);
 
     readonly hasNewChanges = computed(() => {

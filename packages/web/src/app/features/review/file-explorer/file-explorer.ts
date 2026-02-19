@@ -39,6 +39,9 @@ import { buildFileTree, flattenTree } from './build-file-tree';
                                     {{ statusLetter(entry.node.file!.status) }}
                                 </span>
                                 <span class="truncate flex-1">{{ entry.node.name }}</span>
+                                @if (isChanged(entry.node.file!.path)) {
+                                    <span class="badge badge-xs badge-accent" title="Changed in this snapshot">●</span>
+                                }
                                 @if (entry.node.file!.additions > 0) {
                                     <span class="text-success">+{{ entry.node.file!.additions }}</span>
                                 }
@@ -56,6 +59,7 @@ import { buildFileTree, flattenTree } from './build-file-tree';
 export class FileExplorer {
     readonly files = input.required<FileSummary[]>();
     readonly activeFileIndex = input.required<number>();
+    readonly changedFiles = input<string[]>([]);
     readonly fileSelected = output<number>();
 
     readonly collapsedPaths = signal<Set<string>>(new Set());
@@ -94,6 +98,10 @@ export class FileExplorer {
         if (idx >= 0) {
             this.fileSelected.emit(idx);
         }
+    }
+
+    protected isChanged(filePath: string): boolean {
+        return this.changedFiles().includes(filePath);
     }
 
     protected statusLetter(status: FileSummary['status']): string {

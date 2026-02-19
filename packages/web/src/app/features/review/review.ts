@@ -91,6 +91,7 @@ import { TransportPicker } from './transport-picker/transport-picker';
                                 <acr-file-explorer
                                     [files]="store.files()"
                                     [activeFileIndex]="store.activeFileIndex()"
+                                    [changedFiles]="store.changedFiles()"
                                     (fileSelected)="store.setActiveFile($event)"
                                 />
                             </div>
