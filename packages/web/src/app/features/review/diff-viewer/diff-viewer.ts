@@ -113,11 +113,13 @@ export class DiffViewer {
         const comments = this.#commentStore.comments();
         const result: DiffLineAnnotation<AnnotationMeta>[] = [];
 
-        // Build indicator annotations from comments on this file
+        // Build indicator annotations from comments on this file (scoped to active snapshot)
+        const activeSnapId = this.store.activeSnapshotId();
         const lineMap: Record<string, { count: number; ids: string[]; hasMultiLine: boolean }> = {};
         for (const thread of comments) {
             const c = thread.comment;
             if (c.file_path !== fileName || c.line_start == null) continue;
+            if (c.snapshot_id !== activeSnapId) continue;
             const key = `${c.side ?? 'new'}-${c.line_start}`;
             const existing = lineMap[key] ?? { count: 0, ids: [], hasMultiLine: false };
             existing.count++;
