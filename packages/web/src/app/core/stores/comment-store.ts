@@ -134,7 +134,10 @@ export class CommentStore {
         });
     }
 
-    onSseCommentUpdate(_sessionId: string): void {
-        // No-op: mutation methods handle local state via optimistic .update() calls.
+    // Resolve flow: primary path is agent resolving via MCP mark_resolved tool.
+    // Fallback: user resolves via UI button or bulk resolve on history page.
+    // SSE comment-update events trigger a full reload to pick up agent replies/resolutions.
+    onSseCommentUpdate(sessionId: string): void {
+        this.loadComments({ session_id: sessionId });
     }
 }

@@ -48,6 +48,11 @@ export function formatCommentsForTransport(comments: CommentPayload[]): string {
     lines.push(
         `${comments.length} comment${comments.length !== 1 ? 's' : ''} across ${Object.keys(grouped).length} file${Object.keys(grouped).length !== 1 ? 's' : ''}`,
     );
+    lines.push('');
+    lines.push('To respond to these comments, use the agent-code-reviewer MCP tools:');
+    lines.push('- check_comments: list pending comments');
+    lines.push('- reply_to_comment: respond to a specific comment');
+    lines.push('- mark_resolved: mark a comment as addressed');
 
     return lines.join('\n');
 }

@@ -29,10 +29,14 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
                 }
 
                 <div class="flex items-center gap-2 text-xs">
+                    <ng-icon
+                        [name]="comment().author === 'agent' ? 'lucideBot' : 'lucideUser'"
+                        class="size-3"
+                    />
                     <span
                         class="badge badge-xs"
                         [class.badge-primary]="comment().author === 'user'"
-                        [class.badge-secondary]="comment().author === 'agent'"
+                        [class.badge-accent]="comment().author === 'agent'"
                     >
                         {{ comment().author }}
                     </span>
