@@ -113,27 +113,16 @@ export class DiffViewer {
         const comments = this.#commentStore.comments();
         const result: DiffLineAnnotation<AnnotationMeta>[] = [];
 
-        // Build indicator annotations from comments on this file (scoped to active snapshot)
+        // Build per-thread comment annotations (scoped to active snapshot)
         const activeSnapId = this.store.activeSnapshotId();
-        const lineMap: Record<string, { count: number; ids: string[]; hasMultiLine: boolean }> = {};
         for (const thread of comments) {
             const c = thread.comment;
             if (c.file_path !== fileName || c.line_start == null) continue;
             if (c.snapshot_id !== activeSnapId) continue;
-            const key = `${c.side ?? 'new'}-${c.line_start}`;
-            const existing = lineMap[key] ?? { count: 0, ids: [], hasMultiLine: false };
-            existing.count++;
-            existing.ids.push(c.id);
-            if (c.line_end != null && c.line_end !== c.line_start) existing.hasMultiLine = true;
-            lineMap[key] = existing;
-        }
-
-        for (const [key, data] of Object.entries(lineMap)) {
-            const [side, lineStr] = key.split('-');
             result.push({
-                side: side === 'old' ? 'deletions' : 'additions',
-                lineNumber: Number(lineStr),
-                metadata: { type: 'indicator', count: data.count, commentIds: data.ids, hasMultiLine: data.hasMultiLine },
+                side: (c.side ?? 'new') === 'old' ? 'deletions' : 'additions',
+                lineNumber: c.line_start,
+                metadata: { type: 'comment', thread },
             });
         }
 

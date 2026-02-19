@@ -1,5 +1,7 @@
+import type { CommentThread } from '@agent-code-reviewer/shared';
+
 export type AnnotationMeta =
-    | { type: 'indicator'; count: number; commentIds: string[]; hasMultiLine: boolean }
+    | { type: 'comment'; thread: CommentThread }
     | {
           type: 'form';
           filePath: string;

@@ -17,7 +17,7 @@ import {
     viewChild,
 } from '@angular/core';
 import type { AnnotationMeta } from './annotation-meta';
-import { CommentIndicator } from './comment-indicator';
+import { InlineComment } from './inline-comment';
 import { InlineCommentForm } from './inline-comment-form';
 
 @Component({
@@ -129,12 +129,11 @@ export class AcrFileDiff {
         el.className = 'annotation-anchor';
         const outlet = new DomPortalOutlet(el, this.#appRef, this.#injector);
 
-        if (annotation.metadata.type === 'indicator') {
-            const portal = new ComponentPortal(CommentIndicator);
-            const ref: ComponentRef<CommentIndicator> = outlet.attach(portal);
-            ref.setInput('count', annotation.metadata.count);
-            ref.setInput('commentIds', annotation.metadata.commentIds);
-            ref.setInput('hasMultiLine', annotation.metadata.hasMultiLine);
+        if (annotation.metadata.type === 'comment') {
+            const portal = new ComponentPortal(InlineComment);
+            const ref: ComponentRef<InlineComment> = outlet.attach(portal);
+            ref.setInput('thread', annotation.metadata.thread);
+            ref.setInput('sessionId', annotation.metadata.thread.comment.session_id);
         } else if (annotation.metadata.type === 'form') {
             const portal = new ComponentPortal(InlineCommentForm);
             const ref: ComponentRef<InlineCommentForm> = outlet.attach(portal);
