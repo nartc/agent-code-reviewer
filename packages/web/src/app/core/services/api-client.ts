@@ -128,6 +128,10 @@ export class ApiClient {
         return this.#http.post<Comment>(`/api/comments/${id}/reply`, body);
     }
 
+    bulkResolveComments(body: { session_id: string; snapshot_id?: string; comment_ids?: string[] }): Observable<{ resolved_count: number }> {
+        return this.#http.post<{ resolved_count: number }>('/api/comments/bulk-resolve', body);
+    }
+
     listTargets(): Observable<ListTargetsResponse> {
         return this.#http.get<ListTargetsResponse>('/api/transport/targets');
     }

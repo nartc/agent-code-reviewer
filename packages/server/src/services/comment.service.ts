@@ -351,6 +351,43 @@ export class CommentService {
         return ok(resolved);
     }
 
+    bulkResolve(
+        sessionId: string,
+        snapshotId?: string,
+        commentIds?: string[],
+    ): Result<number, DatabaseError> {
+        return this.db.transaction(() => {
+            let query: string;
+            const params: Record<string, string> = { $sessionId: sessionId };
+
+            if (commentIds && commentIds.length > 0) {
+                const placeholders = commentIds.map((_, i) => `$cid${i}`).join(', ');
+                for (let i = 0; i < commentIds.length; i++) {
+                    params[`$cid${i}`] = commentIds[i];
+                }
+                query = `UPDATE comments SET status = 'resolved', resolved_at = datetime('now')
+                         WHERE session_id = $sessionId AND status = 'sent' AND id IN (${placeholders})`;
+            } else if (snapshotId) {
+                params['$snapshotId'] = snapshotId;
+                query = `UPDATE comments SET status = 'resolved', resolved_at = datetime('now')
+                         WHERE session_id = $sessionId AND snapshot_id = $snapshotId AND status = 'sent' AND reply_to_id IS NULL`;
+            } else {
+                query = `UPDATE comments SET status = 'resolved', resolved_at = datetime('now')
+                         WHERE session_id = $sessionId AND status = 'sent' AND reply_to_id IS NULL`;
+            }
+
+            const result = this.db.execute(query, params);
+            if (result.isErr()) return err(result.error);
+
+            this.sse.broadcast(sessionId, {
+                type: 'comment-update',
+                data: { session_id: sessionId, comment_id: 'bulk', action: 'resolved' },
+            });
+
+            return ok(result.value.changes);
+        });
+    }
+
     private getCommentById(id: string): Result<Comment | undefined, DatabaseError> {
         const result = this.db.queryOne<CommentRow>('SELECT * FROM comments WHERE id = $id', { $id: id });
         if (result.isErr()) return err(result.error);

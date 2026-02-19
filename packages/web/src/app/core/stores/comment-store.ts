@@ -126,6 +126,14 @@ export class CommentStore {
         });
     }
 
+    bulkResolve(params: { session_id: string; snapshot_id?: string; comment_ids?: string[] }): void {
+        this.#api.bulkResolveComments(params).subscribe({
+            next: () => {
+                this.loadComments({ session_id: params.session_id });
+            },
+        });
+    }
+
     onSseCommentUpdate(_sessionId: string): void {
         // No-op: mutation methods handle local state via optimistic .update() calls.
     }

@@ -6,6 +6,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/home/home').then((m) => m.Home),
     },
     {
+        path: 'review/:sessionId/comments',
+        loadComponent: () => import('./features/review/comment-history/comment-history').then((m) => m.CommentHistory),
+    },
+    {
         path: 'review/:sessionId',
         loadComponent: () => import('./features/review/review').then((m) => m.Review),
     },

@@ -79,6 +79,19 @@ export function createCommentRoutes(commentService: CommentService, transportSer
         });
     });
 
+    // POST /bulk-resolve — Resolve multiple comments at once
+    app.post('/bulk-resolve', async (c) => {
+        const body = await c.req.json<{ session_id: string; snapshot_id?: string; comment_ids?: string[] }>();
+        if (!body.session_id) {
+            return c.json({ error: 'session_id is required' }, 400);
+        }
+        const result = commentService.bulkResolve(body.session_id, body.snapshot_id, body.comment_ids);
+        if (result.isErr()) {
+            return resultToResponse(c, result);
+        }
+        return c.json({ resolved_count: result.value });
+    });
+
     // PATCH /:id — Update content
     app.patch('/:id', zValidator('param', idParamSchema), zValidator('json', updateCommentSchema), (c) => {
         const { id } = c.req.valid('param');
