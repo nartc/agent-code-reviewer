@@ -114,6 +114,7 @@ import { TransportPicker } from './transport-picker/transport-picker';
                             [snapshotId]="snapId"
                             [canSend]="canSend()"
                             (sendRequested)="onSendComments($event)"
+                            (commentClicked)="onCommentClicked($event)"
                         />
                     }
                 </div>
@@ -226,6 +227,10 @@ export class Review {
             queryParamsHandling: 'merge',
             replaceUrl: true,
         });
+    }
+
+    protected onCommentClicked(event: { filePath: string; lineStart: number | null; side: string }): void {
+        this.store.setActiveFileByPath(event.filePath);
     }
 
     protected onSessionSelected(sessionId: string): void {

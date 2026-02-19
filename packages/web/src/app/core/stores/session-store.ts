@@ -167,6 +167,13 @@ export class SessionStore {
         patchState(this.#nav, { activeFileIndex: clamped });
     }
 
+    setActiveFileByPath(filePath: string): void {
+        const idx = this.files().findIndex((f) => f.path === filePath);
+        if (idx >= 0) {
+            this.setActiveFile(idx);
+        }
+    }
+
     jumpToLatest(): void {
         const snaps = this.snapshots();
         if (snaps.length === 0) return;
