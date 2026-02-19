@@ -13,7 +13,7 @@ import type { CommentService } from '../services/comment.service.js';
 import type { TransportService } from '../services/transport.service.js';
 import { idParamSchema } from './params.js';
 
-function buildPayload(comment: Comment): CommentPayload {
+function buildPayload(comment: Comment, replies: Comment[] = []): CommentPayload {
     return {
         file_path: comment.file_path,
         line_start: comment.line_start,
@@ -22,6 +22,7 @@ function buildPayload(comment: Comment): CommentPayload {
         content: comment.content,
         status: comment.status,
         author: comment.author,
+        thread_replies: replies.map((r) => ({ content: r.content, author: r.author })),
     };
 }
 
@@ -68,7 +69,15 @@ export function createCommentRoutes(commentService: CommentService, transportSer
             return resultToResponse(c, markResult);
         }
         const sentComments = markResult.value;
-        const payloads: CommentPayload[] = sentComments.map(buildPayload);
+        const replyMap: Record<string, Comment[]> = {};
+        for (const c of sentComments) {
+            if (c.reply_to_id) {
+                (replyMap[c.reply_to_id] ??= []).push(c);
+            }
+        }
+        const payloads: CommentPayload[] = sentComments
+            .filter((c) => c.reply_to_id === null)
+            .map((c) => buildPayload(c, replyMap[c.id] ?? []));
         const sendResult = await transportService.send(transport_type, target_id, payloads);
         if (sendResult.isErr()) {
             return resultToResponse(c, sendResult);

@@ -1,6 +1,5 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { initMcpDatabase } from './db.js';
 import { registerCheckComments } from './tools/check-comments.js';
@@ -9,7 +8,9 @@ import { registerMarkResolved } from './tools/mark-resolved.js';
 import { registerReplyToComment } from './tools/reply-to-comment.js';
 
 async function main(): Promise<void> {
-    const dbPath = process.env['DB_PATH'] ?? join(homedir(), '.config', 'agent-code-reviewer', 'db', 'reviewer.db');
+    // NOTE: process.cwd() must match the server's CWD for both to share the same DB.
+    // Set DB_PATH explicitly in .env if the MCP server runs from a different directory.
+    const dbPath = process.env['DB_PATH'] ?? join(process.cwd(), '.data', 'reviewer.db');
 
     console.error(`[mcp-server] Opening database: ${dbPath}`);
 

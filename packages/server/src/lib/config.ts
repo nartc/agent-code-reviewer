@@ -11,7 +11,7 @@ export interface AppConfig {
 export function loadConfig(): AppConfig {
     return {
         port: parseInt(process.env['PORT'] ?? '3847', 10),
-        dbPath: process.env['DB_PATH'] ?? join(homedir(), '.config', 'agent-code-reviewer', 'db', 'reviewer.db'),
+        dbPath: process.env['DB_PATH'] ?? join(process.cwd(), '.data', 'reviewer.db'),
         scanRoots: (process.env['SCAN_ROOTS'] ?? homedir()).split(',').map((s) => s.trim()),
         scanMaxDepth: parseInt(process.env['SCAN_MAX_DEPTH'] ?? '3', 10),
     };

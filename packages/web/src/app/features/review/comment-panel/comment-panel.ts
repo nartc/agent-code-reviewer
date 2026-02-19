@@ -50,7 +50,6 @@ function groupBy<T>(items: T[], keyFn: (item: T) => string): Record<string, T[]>
                                     [showFileHeader]="false"
                                     [showStatus]="false"
                                     (commentClicked)="onCommentClicked($event)"
-                                    (commentEdited)="onCommentEditedFromListItem($event)"
                                     (commentDeleted)="onCommentDeletedFromListItem($event)"
                                 />
                             }
@@ -152,11 +151,6 @@ export class CommentPanel {
 
     protected onCommentClicked(event: { filePath: string; lineStart: number | null; side: string }): void {
         this.commentClicked.emit(event);
-    }
-
-    protected onCommentEditedFromListItem(thread: CommentThread): void {
-        // For now, just trigger edit flow - actual inline editing handled by comment-thread
-        // This is a simplified version; the full edit would need a form
     }
 
     protected onCommentDeletedFromListItem(thread: CommentThread): void {

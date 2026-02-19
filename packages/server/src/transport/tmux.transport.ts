@@ -35,9 +35,14 @@ function execFileAsync(
                 resolve({ stdout, stderr });
             }
         });
-        if (options?.input != null && child.stdin) {
-            child.stdin.write(options.input);
-            child.stdin.end();
+        const stdin = child.stdin;
+        if (options?.input != null && stdin) {
+            const ok = stdin.write(options.input);
+            if (!ok) {
+                stdin.once('drain', () => stdin.end());
+            } else {
+                stdin.end();
+            }
         }
     });
 }

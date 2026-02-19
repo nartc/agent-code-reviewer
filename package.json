@@ -2,7 +2,9 @@
     "name": "agent-code-reviewer",
     "version": "0.0.0",
     "license": "MIT",
-    "scripts": {},
+    "scripts": {
+        "setup-mcp": "node scripts/setup-mcp.mjs"
+    },
     "private": true,
     "devDependencies": {
         "@nx/js": "22.5.0",

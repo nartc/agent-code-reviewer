@@ -50,6 +50,9 @@ Thumbs.db
 # sql.js in-memory DB artifacts from tests
 :memory:
 
+# local data directory (repo-local DB)
+.data/
+
 # env files (keep .env.example)
 .env
 .env.local

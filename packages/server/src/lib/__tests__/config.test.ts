@@ -19,8 +19,8 @@ describe('loadConfig', () => {
         const config = loadConfig();
 
         expect(config.port).toBe(3847);
-        expect(config.dbPath).toBe(join(homedir(), '.config', 'agent-code-reviewer', 'db', 'reviewer.db'));
-        expect(config.dbPath).toMatch(/\.config\/agent-code-reviewer\/db\/reviewer\.db$/);
+        expect(config.dbPath).toBe(join(process.cwd(), '.data', 'reviewer.db'));
+        expect(config.dbPath).toMatch(/\.data\/reviewer\.db$/);
         expect(config.scanRoots).toEqual([homedir()]);
         expect(config.scanMaxDepth).toBe(3);
     });

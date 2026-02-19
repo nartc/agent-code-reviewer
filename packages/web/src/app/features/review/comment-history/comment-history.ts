@@ -73,7 +73,7 @@ function groupBy<T>(items: T[], keyFn: (item: T) => string): Record<string, T[]>
                     <div #snapshotGroup [attr.data-snapshot-id]="group.snapshotId" class="card bg-base-100 shadow-sm">
                         <div class="card-body p-3">
                             <div class="flex items-center gap-2">
-                                <span class="badge badge-neutral font-mono">{{ group.snapshotId | slice:0:8 }}</span>
+                                <span class="badge badge-neutral font-mono" [title]="group.snapshotId">{{ group.snapshotId | slice:0:8 }}</span>
                                 <span class="text-xs opacity-50 flex-1">{{ group.comments.length }} comments</span>
                                 @if (group.unresolvedCount > 0) {
                                     <button
