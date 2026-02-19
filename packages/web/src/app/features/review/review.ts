@@ -50,8 +50,8 @@ import { TransportPicker } from './transport-picker/transport-picker';
                 [snapshots]="store.snapshots()"
                 [activeSnapshotId]="store.activeSnapshotId()"
                 [hasNewChanges]="store.hasNewChanges()"
-                (snapshotSelected)="store.setActiveSnapshot($event)"
-                (jumpToLatest)="store.jumpToLatest()"
+                (snapshotSelected)="onSnapshotSelected($event)"
+                (jumpToLatest)="onJumpToLatest()"
             />
 
             <div class="flex flex-1 overflow-hidden">
@@ -147,6 +147,7 @@ export class Review {
     readonly #transportStore = inject(TransportStore);
     readonly #prefs = inject(UiPreferences);
     readonly sessionId = input.required<string>();
+    readonly snapshot = input<string>();
 
     protected readonly leftWidth = this.#prefs.panelLeftWidth;
     protected readonly rightWidth = this.#prefs.panelRightWidth;
@@ -160,7 +161,7 @@ export class Review {
 
     constructor() {
         effect(() => {
-            this.store.loadSession(this.sessionId());
+            this.store.loadSession(this.sessionId(), this.snapshot());
         });
 
         // Load comments when snapshot changes
@@ -204,6 +205,27 @@ export class Review {
         } else {
             this.#api.startWatching(id).subscribe();
         }
+    }
+
+    protected onJumpToLatest(): void {
+        this.store.jumpToLatest();
+        const snaps = this.store.snapshots();
+        if (snaps.length > 0) {
+            this.#router.navigate([], {
+                queryParams: { snapshot: snaps[0].id },
+                queryParamsHandling: 'merge',
+                replaceUrl: true,
+            });
+        }
+    }
+
+    protected onSnapshotSelected(snapshotId: string): void {
+        this.store.setActiveSnapshot(snapshotId);
+        this.#router.navigate([], {
+            queryParams: { snapshot: snapshotId },
+            queryParamsHandling: 'merge',
+            replaceUrl: true,
+        });
     }
 
     protected onSessionSelected(sessionId: string): void {

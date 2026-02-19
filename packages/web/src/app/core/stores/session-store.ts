@@ -19,6 +19,7 @@ export class SessionStore {
     readonly #pendingRestore = signal(false);
 
     readonly #sessionId = signal<string | undefined>(undefined);
+    readonly #initialSnapshotId = signal<string | undefined>(undefined);
     readonly #isConnected = signal(false);
     readonly #isWatching = signal(false);
 
@@ -36,7 +37,12 @@ export class SessionStore {
 
     readonly #activeSnapshotId = linkedSignal<string | null>(() => {
         const snaps = this.#snapshotsResource.value();
-        return snaps.length > 0 ? snaps[0].id : null;
+        if (snaps.length === 0) return null;
+        const initial = this.#initialSnapshotId();
+        if (initial && snaps.some((s) => s.id === initial)) {
+            return initial;
+        }
+        return snaps[0].id;
     });
 
     readonly #diffResource = httpResource<SnapshotDiffResponse>(() => {
@@ -98,8 +104,9 @@ export class SessionStore {
         });
     }
 
-    loadSession(id: string): void {
+    loadSession(id: string, initialSnapshotId?: string): void {
         this.#sessionId.set(id);
+        this.#initialSnapshotId.set(initialSnapshotId);
         this.#pendingRestore.set(true);
         this.#isConnected.set(false);
 
