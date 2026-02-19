@@ -1,5 +1,5 @@
 export type AnnotationMeta =
-    | { type: 'indicator'; count: number; commentIds: string[] }
+    | { type: 'indicator'; count: number; commentIds: string[]; hasMultiLine: boolean }
     | {
           type: 'form';
           filePath: string;

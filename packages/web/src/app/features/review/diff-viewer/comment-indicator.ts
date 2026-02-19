@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { NgIcon } from '@ng-icons/core';
 
 @Component({
@@ -7,7 +7,7 @@ import { NgIcon } from '@ng-icons/core';
     imports: [NgIcon],
     template: `
         <span class="badge badge-sm badge-primary inline-flex items-center gap-0.5">
-            <ng-icon name="lucideMessageSquare" class="size-3" />
+            <ng-icon [name]="iconName()" class="size-3" />
             {{ count() }}
         </span>
     `,
@@ -15,4 +15,9 @@ import { NgIcon } from '@ng-icons/core';
 export class CommentIndicator {
     readonly count = input.required<number>();
     readonly commentIds = input.required<string[]>();
+    readonly hasMultiLine = input(false);
+
+    protected readonly iconName = computed(() =>
+        this.hasMultiLine() ? 'lucideMessageSquareText' : 'lucideMessageSquare',
+    );
 }

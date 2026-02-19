@@ -12,7 +12,7 @@
         "@agent-code-reviewer/shared": "workspace:*",
         "@hono/node-server": "^1.x",
         "@hono/zod-validator": "^0.x",
-        "chokidar": "^4.x",
+
         "hono": "^4.x",
         "nanoid": "^5.x",
         "neverthrow": "^8.x",
@@ -20,7 +20,7 @@
         "sql.js": "^1.x",
         "zod": "^3.x"
     },
-    "devDependencies": {
+"devDependencies": {
         "vitest": "^4.0.8",
         "@types/node": "^22.x"
     },

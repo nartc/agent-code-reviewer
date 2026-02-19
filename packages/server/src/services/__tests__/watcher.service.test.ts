@@ -9,24 +9,23 @@ import { SessionService } from '../session.service.js';
 import type { SseService } from '../sse.service.js';
 import { WatcherService, computeChangedFiles, createIgnoreFunction } from '../watcher.service.js';
 
-// Mock chokidar
-const mockWatcherClose = vi.fn().mockResolvedValue(undefined);
-const mockWatcherOn = vi.fn();
-let capturedAllHandler: (() => void) | null = null;
+// Mock node:fs — replace watch with a controllable mock
+const mockWatcherClose = vi.fn();
+let capturedChangeHandler: ((event: string, filename: string | null) => void) | null = null;
 
-vi.mock('chokidar', () => ({
-    watch: vi.fn(() => {
-        const watcher = {
-            on: vi.fn((event: string, handler: () => void) => {
-                if (event === 'all') capturedAllHandler = handler;
-                mockWatcherOn(event, handler);
-                return watcher;
-            }),
-            close: mockWatcherClose,
-        };
-        return watcher;
-    }),
-}));
+vi.mock('node:fs', async (importOriginal) => {
+    const original = await importOriginal<typeof import('node:fs')>();
+    return {
+        ...original,
+        watch: vi.fn((_path: string, _opts: any, listener: (event: string, filename: string | null) => void) => {
+            capturedChangeHandler = listener;
+            return {
+                close: mockWatcherClose,
+                on: vi.fn().mockReturnThis(),
+            };
+        }),
+    };
+});
 
 function createMockGitService(overrides: Partial<GitService> = {}): GitService {
     return {
@@ -69,11 +68,11 @@ describe('WatcherService', () => {
 
     beforeEach(async () => {
         vi.useFakeTimers();
-        capturedAllHandler = null;
-        mockWatcherClose.mockReset().mockResolvedValue(undefined);
-        mockWatcherOn.mockReset();
-        const chokidar = await import('chokidar');
-        vi.mocked(chokidar.watch).mockClear();
+        capturedChangeHandler = null;
+        mockWatcherClose.mockReset();
+
+        const fs = await import('node:fs');
+        vi.mocked(fs.watch).mockClear();
 
         const dbResult = await initInMemoryDatabase();
         expect(dbResult.isOk()).toBe(true);
@@ -104,8 +103,8 @@ describe('WatcherService', () => {
         sessionId = expectOk(sessionResult).id;
     });
 
-    afterEach(async () => {
-        await service.stopAll();
+    afterEach(() => {
+        service.stopAll();
         vi.useRealTimers();
         try {
             dbService.close();
@@ -113,6 +112,10 @@ describe('WatcherService', () => {
             // ignore
         }
     });
+
+    function triggerFileChange(filename = 'src/app.ts') {
+        capturedChangeHandler?.('change', filename);
+    }
 
     describe('startWatching', () => {
         it('creates a file watcher (AC-2.1)', async () => {
@@ -136,13 +139,13 @@ describe('WatcherService', () => {
         });
 
         it('is idempotent (AC-2.2)', async () => {
-            const { watch } = await import('chokidar');
+            const fs = await import('node:fs');
 
             await service.startWatching(sessionId, '/repo');
             const result = await service.startWatching(sessionId, '/repo');
 
             expect(result.isOk()).toBe(true);
-            expect(watch).toHaveBeenCalledTimes(1);
+            expect(fs.watch).toHaveBeenCalledTimes(1);
         });
 
         it('fails for non-existent session (AC-2.3)', async () => {
@@ -186,7 +189,7 @@ describe('WatcherService', () => {
             await service.startWatching(sessionId, '/repo');
 
             // Fire file change
-            capturedAllHandler!();
+            triggerFileChange();
 
             // Before debounce
             await vi.advanceTimersByTimeAsync(1499);
@@ -210,15 +213,15 @@ describe('WatcherService', () => {
             await service.startWatching(sessionId, '/repo');
 
             // File change at t=0
-            capturedAllHandler!();
+            triggerFileChange();
 
             // File change at t=500ms
             await vi.advanceTimersByTimeAsync(500);
-            capturedAllHandler!();
+            triggerFileChange();
 
             // File change at t=1000ms
             await vi.advanceTimersByTimeAsync(500);
-            capturedAllHandler!();
+            triggerFileChange();
 
             // At t=1500ms (first debounce would have fired but was reset)
             await vi.advanceTimersByTimeAsync(500);
@@ -233,15 +236,13 @@ describe('WatcherService', () => {
             await service.startWatching(sessionId, '/repo');
 
             // First snapshot at t=0 (trigger immediately to set lastSnapshotAt)
-            capturedAllHandler!();
+            triggerFileChange();
             await vi.advanceTimersByTimeAsync(1500);
             expect(gitService.getDiff).toHaveBeenCalledTimes(1);
 
-            // File change at t=1500ms (1s after snapshot at t=1500ms effective)
-            // Actually let's be precise: snapshot completed at ~1500ms
             // File change at t=2000ms
             await vi.advanceTimersByTimeAsync(500);
-            capturedAllHandler!();
+            triggerFileChange();
 
             // Debounce fires at t=3500ms (2000 + 1500)
             // At that point, elapsed = 3500 - 1500 = 2000ms < 3000ms
@@ -252,6 +253,16 @@ describe('WatcherService', () => {
             // At t=4500ms, the rescheduled timer fires
             await vi.advanceTimersByTimeAsync(1000);
             expect(gitService.getDiff).toHaveBeenCalledTimes(2);
+        });
+
+        it('ignores changes in ignored directories', async () => {
+            await service.startWatching(sessionId, '/repo');
+
+            // Trigger change in node_modules
+            capturedChangeHandler?.('change', 'node_modules/foo/bar.js');
+
+            await vi.advanceTimersByTimeAsync(2000);
+            expect(gitService.getDiff).not.toHaveBeenCalled();
         });
     });
 
@@ -408,7 +419,7 @@ describe('WatcherService', () => {
             expect(service.isWatching(sessionId)).toBe(true);
             expect(service.isWatching(sessionId2)).toBe(true);
 
-            await service.stopAll();
+            service.stopAll();
 
             expect(service.isWatching(sessionId)).toBe(false);
             expect(service.isWatching(sessionId2)).toBe(false);
@@ -418,8 +429,6 @@ describe('WatcherService', () => {
 });
 
 describe('createIgnoreFunction', () => {
-    const ignoreFn = createIgnoreFunction();
-
     it.each([
         ['/repo/node_modules/foo/bar.js', true, 'node_modules'],
         ['/repo/.git/HEAD', true, '.git'],
@@ -434,7 +443,7 @@ describe('createIgnoreFunction', () => {
         ['/repo/src/app.ts', false, 'normal source'],
         ['/repo/src/utils/build-helpers.ts', false, 'build as substring'],
     ])('ignores %s → %s (%s) (AC-2.15)', (path, expected, _reason) => {
-        expect(ignoreFn(path)).toBe(expected);
+        expect(createIgnoreFunction(path, '/repo')).toBe(expected);
     });
 });
 

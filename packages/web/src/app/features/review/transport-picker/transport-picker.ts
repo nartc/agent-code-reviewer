@@ -9,9 +9,9 @@ const TRANSPORT_TYPES: TransportType[] = ['tmux', 'mcp', 'clipboard'];
     selector: 'acr-transport-picker',
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
-        <div class="flex flex-col gap-2 p-2 border-b border-base-300">
-            <div class="flex items-center gap-2">
-                <label class="text-xs font-semibold">Transport</label>
+        <div class="flex flex-col gap-1.5 p-2 border-b border-base-300">
+            <div class="flex items-center gap-1.5">
+                <label class="text-xs font-semibold shrink-0">Transport</label>
 
                 <select
                     class="select select-xs select-bordered flex-1"
@@ -34,9 +34,10 @@ const TRANSPORT_TYPES: TransportType[] = ['tmux', 'mcp', 'clipboard'];
                 <div class="flex flex-col gap-1 max-h-32 overflow-auto">
                     @for (target of filteredTargets(); track target.id) {
                         <button
-                            class="btn btn-xs justify-start"
+                            class="btn btn-xs justify-start truncate"
                             [class.btn-primary]="target.id === selectedTargetId()"
                             [class.btn-ghost]="target.id !== selectedTargetId()"
+                            [title]="target.label"
                             (click)="onTargetSelect(target.id)"
                         >
                             {{ target.label }}
@@ -109,17 +110,17 @@ export class TransportPicker {
     });
 
     private readonly statusMap = computed(() => {
-        const map = new Map<string, boolean>();
+        const record: Record<string, boolean> = {};
         for (const s of this.transportStore.statuses()) {
-            map.set(s.type, s.available);
+            record[s.type] = s.available;
         }
-        map.set('clipboard', true);
-        return map;
+        record['clipboard'] = true;
+        return record;
     });
 
     protected isAvailable(type: TransportType): boolean {
         if (type === 'clipboard') return true;
-        return this.statusMap().get(type) ?? false;
+        return this.statusMap()[type] ?? false;
     }
 
     protected onTypeChange(type: TransportType): void {

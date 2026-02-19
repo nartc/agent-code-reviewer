@@ -13,6 +13,15 @@ import { ResultAsync, okAsync } from 'neverthrow';
 import { execFile } from 'node:child_process';
 import type { SendResult, Transport } from './transport.interface.js';
 
+const SEMVER_RE = /^\d+\.\d+\.\d+/;
+
+function resolveAgentHarness(command: string): AgentHarness | null {
+    if (command in SUPPORTED_AGENT_HARNESSES) return command as AgentHarness;
+    // Claude Code reports its version number (e.g. "2.1.45") as the process name
+    if (SEMVER_RE.test(command)) return 'claude';
+    return null;
+}
+
 function execFileAsync(
     cmd: string,
     args: string[],
@@ -62,9 +71,11 @@ export class TmuxTransport implements Transport {
                     const id = parts[0];
                     const pane_title = parts[1] ?? '';
                     const pane_current_command = parts[2] ?? '';
+                    const agent = resolveAgentHarness(pane_current_command);
+                    const displayName = agent ? SUPPORTED_AGENT_HARNESSES[agent] : pane_current_command;
                     return {
                         id,
-                        label: `${id} — ${pane_current_command}`,
+                        label: `${id} — ${displayName}`,
                         transport: 'tmux' as const,
                         metadata: { pane_title, pane_current_command },
                     };
@@ -93,8 +104,8 @@ export class TmuxTransport implements Transport {
                     const panePath = parts[1] ?? '';
                     const paneCommand = parts[2] ?? '';
 
-                    const agent = paneCommand as AgentHarness;
-                    if (!(agent in SUPPORTED_AGENT_HARNESSES)) return targets;
+                    const agent = resolveAgentHarness(paneCommand);
+                    if (!agent) return targets;
 
                     const normalizedPane = panePath.replace(/\/+$/, '');
                     if (normalizedPane !== normalizedRepo && !normalizedPane.startsWith(`${normalizedRepo}/`)) {
@@ -131,6 +142,12 @@ export class TmuxTransport implements Transport {
                             `tmux paste-buffer failed for target "${targetId}": ${e instanceof Error ? e.message : String(e)}`,
                             e,
                         ),
+                ),
+            )
+            .andThen(() =>
+                ResultAsync.fromPromise(
+                    execFileAsync('tmux', ['send-keys', '-t', targetId, 'Enter']),
+                    (e) => transportError(`tmux send-keys failed: ${e instanceof Error ? e.message : String(e)}`, e),
                 ),
             )
             .andThen(() =>

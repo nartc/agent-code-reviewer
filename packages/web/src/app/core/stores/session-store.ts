@@ -1,10 +1,11 @@
 import type { FileSummary, SessionWithRepo, SnapshotDiffResponse, SnapshotSummary } from '@agent-code-reviewer/shared';
 import { httpResource } from '@angular/common/http';
-import { DestroyRef, Injectable, computed, inject, linkedSignal, signal } from '@angular/core';
+import { DestroyRef, Injectable, computed, effect, inject, linkedSignal, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { patchState, signalState } from '@ngrx/signals';
 import { map } from 'rxjs';
 import { ApiClient } from '../services/api-client';
+import { UiPreferences } from '../services/ui-preferences';
 import { SseConnection } from '../services/sse-connection';
 import { CommentStore } from './comment-store';
 
@@ -13,7 +14,9 @@ export class SessionStore {
     readonly #api = inject(ApiClient);
     readonly #sse = inject(SseConnection);
     readonly #commentStore = inject(CommentStore);
+    readonly #prefs = inject(UiPreferences);
     readonly #destroyRef = inject(DestroyRef);
+    readonly #pendingRestore = signal(false);
 
     readonly #sessionId = signal<string | undefined>(undefined);
     readonly #isConnected = signal(false);
@@ -71,8 +74,33 @@ export class SessionStore {
     readonly isConnected = this.#isConnected.asReadonly();
     readonly isWatching = this.#isWatching.asReadonly();
 
+    constructor() {
+        // Restore file index on initial session load
+        effect(() => {
+            const files = this.files();
+            const sessionId = this.#sessionId();
+            if (this.#pendingRestore() && files.length > 0 && sessionId) {
+                const stored = this.#prefs.getActiveFileIndex(sessionId);
+                if (stored != null && stored < files.length) {
+                    patchState(this.#nav, { activeFileIndex: stored });
+                }
+                this.#pendingRestore.set(false);
+            }
+        });
+
+        // Persist file index on change (skip during restore to avoid overwriting stored value with 0)
+        effect(() => {
+            const sessionId = this.#sessionId();
+            const index = this.activeFileIndex();
+            if (sessionId != null && !this.#pendingRestore()) {
+                this.#prefs.setActiveFileIndex(sessionId, index);
+            }
+        });
+    }
+
     loadSession(id: string): void {
         this.#sessionId.set(id);
+        this.#pendingRestore.set(true);
         this.#isConnected.set(false);
 
         const sse$ = this.#sse.connect(id);

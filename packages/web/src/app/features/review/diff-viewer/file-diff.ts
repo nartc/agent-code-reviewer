@@ -134,6 +134,7 @@ export class AcrFileDiff {
             const ref: ComponentRef<CommentIndicator> = outlet.attach(portal);
             ref.setInput('count', annotation.metadata.count);
             ref.setInput('commentIds', annotation.metadata.commentIds);
+            ref.setInput('hasMultiLine', annotation.metadata.hasMultiLine);
         } else if (annotation.metadata.type === 'form') {
             const portal = new ComponentPortal(InlineCommentForm);
             const ref: ComponentRef<InlineCommentForm> = outlet.attach(portal);

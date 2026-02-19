@@ -73,4 +73,23 @@ export class UiPreferences {
 			// localStorage unavailable
 		}
 	}
+
+	getActiveFileIndex(sessionId: string): number | null {
+		try {
+			const stored = localStorage.getItem(`acr-active-file-${sessionId}`);
+			if (stored == null) return null;
+			const parsed = Number(stored);
+			return Number.isNaN(parsed) ? null : parsed;
+		} catch {
+			return null;
+		}
+	}
+
+	setActiveFileIndex(sessionId: string, index: number): void {
+		try {
+			localStorage.setItem(`acr-active-file-${sessionId}`, String(index));
+		} catch {
+			// localStorage unavailable
+		}
+	}
 }

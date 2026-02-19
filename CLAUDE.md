@@ -75,6 +75,11 @@ These are the project's Angular authoring conventions. Follow them for all front
 - `withComponentInputBinding()` for route params → component `input()`
 - `loadComponent` for leaf routes, `loadChildren` for features with sub-routes
 
+## TypeScript Preferences
+
+- Prefer `Record<string, T>` over `Map<string, T>` when keys are simple strings/numbers
+- Use `Map` only when you need non-string keys or Map-specific APIs (e.g., insertion order guarantees with frequent delete)
+
 ## Styling
 
 - DaisyUI classes directly on elements, no wrapper components

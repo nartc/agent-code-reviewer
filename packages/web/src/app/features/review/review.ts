@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, inject, input, linkedSignal, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from '@angular/core';
 import { NgIcon } from '@ng-icons/core';
 import { Router } from '@angular/router';
 import { ApiClient } from '../../core/services/api-client';
@@ -12,6 +12,7 @@ import { DiffViewer } from './diff-viewer/diff-viewer';
 import { FileExplorer } from './file-explorer/file-explorer';
 import { SessionSidebar } from './session-sidebar/session-sidebar';
 import { SnapshotTimeline } from './snapshot-timeline/snapshot-timeline';
+import { TransportPicker } from './transport-picker/transport-picker';
 
 @Component({
     selector: 'acr-review',
@@ -21,7 +22,7 @@ import { SnapshotTimeline } from './snapshot-timeline/snapshot-timeline';
         '(document:keydown.ArrowLeft)': 'onKeyPrev($event)',
         '(document:keydown.ArrowRight)': 'onKeyNext($event)',
     },
-    imports: [ResizeHandle, DiffViewer, FileExplorer, SessionSidebar, CommentPanel, SnapshotTimeline, NgIcon],
+    imports: [ResizeHandle, DiffViewer, FileExplorer, SessionSidebar, CommentPanel, SnapshotTimeline, TransportPicker, NgIcon],
     template: `
         @let session = store.currentSession();
         @if (session) {
@@ -107,6 +108,7 @@ import { SnapshotTimeline } from './snapshot-timeline/snapshot-timeline';
                 <!-- Right panel -->
                 <div class="flex flex-col overflow-auto" [style.width.px]="rightWidth()">
                     @if (store.activeSnapshotId(); as snapId) {
+                        <acr-transport-picker />
                         <acr-comment-panel
                             [sessionId]="sessionId()"
                             [snapshotId]="snapId"
@@ -149,7 +151,7 @@ export class Review {
     protected readonly leftWidth = this.#prefs.panelLeftWidth;
     protected readonly rightWidth = this.#prefs.panelRightWidth;
     protected readonly sidebarCollapsed = this.#prefs.sidebarCollapsed;
-    protected readonly isWatching = linkedSignal(() => this.store.isWatching());
+    protected readonly isWatching = this.store.isWatching;
     protected readonly isSending = signal(false);
     protected readonly toastMessage = signal<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -198,13 +200,9 @@ export class Review {
     protected toggleWatcher(): void {
         const id = this.sessionId();
         if (this.isWatching()) {
-            this.#api.stopWatching(id).subscribe({
-                next: () => this.isWatching.set(false),
-            });
+            this.#api.stopWatching(id).subscribe();
         } else {
-            this.#api.startWatching(id).subscribe({
-                next: () => this.isWatching.set(true),
-            });
+            this.#api.startWatching(id).subscribe();
         }
     }
 

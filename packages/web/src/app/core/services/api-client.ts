@@ -104,12 +104,12 @@ export class ApiClient {
         return this.#http.get<ListCommentsResponse>('/api/comments', { params: httpParams });
     }
 
-    createComment(body: CreateCommentInput): Observable<{ comment: Comment }> {
-        return this.#http.post<{ comment: Comment }>('/api/comments', body);
+    createComment(body: CreateCommentInput): Observable<Comment> {
+        return this.#http.post<Comment>('/api/comments', body);
     }
 
-    updateComment(id: string, body: UpdateCommentRequest): Observable<{ comment: Comment }> {
-        return this.#http.patch<{ comment: Comment }>(`/api/comments/${id}`, body);
+    updateComment(id: string, body: UpdateCommentRequest): Observable<Comment> {
+        return this.#http.patch<Comment>(`/api/comments/${id}`, body);
     }
 
     deleteComment(id: string): Observable<void> {
@@ -120,12 +120,12 @@ export class ApiClient {
         return this.#http.post<SendCommentsResponse>('/api/comments/send', body);
     }
 
-    resolveComment(id: string): Observable<{ comment: Comment }> {
-        return this.#http.post<{ comment: Comment }>(`/api/comments/${id}/resolve`, null);
+    resolveComment(id: string): Observable<Comment> {
+        return this.#http.post<Comment>(`/api/comments/${id}/resolve`, null);
     }
 
-    replyToComment(id: string, body: ReplyToCommentRequest): Observable<{ comment: Comment }> {
-        return this.#http.post<{ comment: Comment }>(`/api/comments/${id}/reply`, body);
+    replyToComment(id: string, body: ReplyToCommentRequest): Observable<Comment> {
+        return this.#http.post<Comment>(`/api/comments/${id}/reply`, body);
     }
 
     listTargets(): Observable<ListTargetsResponse> {

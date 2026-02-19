@@ -114,23 +114,24 @@ export class DiffViewer {
         const result: DiffLineAnnotation<AnnotationMeta>[] = [];
 
         // Build indicator annotations from comments on this file
-        const lineMap = new Map<string, { count: number; ids: string[] }>();
+        const lineMap: Record<string, { count: number; ids: string[]; hasMultiLine: boolean }> = {};
         for (const thread of comments) {
             const c = thread.comment;
             if (c.file_path !== fileName || c.line_start == null) continue;
             const key = `${c.side ?? 'new'}-${c.line_start}`;
-            const existing = lineMap.get(key) ?? { count: 0, ids: [] };
+            const existing = lineMap[key] ?? { count: 0, ids: [], hasMultiLine: false };
             existing.count++;
             existing.ids.push(c.id);
-            lineMap.set(key, existing);
+            if (c.line_end != null && c.line_end !== c.line_start) existing.hasMultiLine = true;
+            lineMap[key] = existing;
         }
 
-        for (const [key, data] of lineMap) {
+        for (const [key, data] of Object.entries(lineMap)) {
             const [side, lineStr] = key.split('-');
             result.push({
                 side: side === 'old' ? 'deletions' : 'additions',
                 lineNumber: Number(lineStr),
-                metadata: { type: 'indicator', count: data.count, commentIds: data.ids },
+                metadata: { type: 'indicator', count: data.count, commentIds: data.ids, hasMultiLine: data.hasMultiLine },
             });
         }
 

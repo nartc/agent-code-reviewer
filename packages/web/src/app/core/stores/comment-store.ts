@@ -9,37 +9,39 @@ import type {
     UpdateCommentRequest,
 } from '@agent-code-reviewer/shared';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { rxResource } from '@angular/core/rxjs-interop';
-import { map } from 'rxjs';
 import { ApiClient } from '../services/api-client';
 
 @Injectable({ providedIn: 'root' })
 export class CommentStore {
     readonly #api = inject(ApiClient);
 
-    readonly #commentParams = signal<ListCommentsParams | undefined>(undefined);
+    readonly #comments = signal<CommentThread[]>([]);
+    readonly #isLoading = signal(false);
 
-    readonly #commentsResource = rxResource<CommentThread[], ListCommentsParams | undefined>({
-        params: () => this.#commentParams(),
-        stream: ({ params }) => this.#api.listComments(params).pipe(map((r) => r.comments)),
-        defaultValue: [],
-    });
-
-    readonly comments = this.#commentsResource.value;
-    readonly isLoading = this.#commentsResource.isLoading;
+    readonly comments = this.#comments.asReadonly();
+    readonly isLoading = this.#isLoading.asReadonly();
 
     readonly draftComments = computed(() => this.comments().filter((t) => t.comment.status === 'draft'));
     readonly sentComments = computed(() => this.comments().filter((t) => t.comment.status === 'sent'));
     readonly resolvedComments = computed(() => this.comments().filter((t) => t.comment.status === 'resolved'));
 
     loadComments(params: ListCommentsParams): void {
-        this.#commentParams.set(params);
+        this.#isLoading.set(true);
+        this.#api.listComments(params).subscribe({
+            next: (res) => {
+                this.#comments.set(res.comments);
+                this.#isLoading.set(false);
+            },
+            error: () => {
+                this.#isLoading.set(false);
+            },
+        });
     }
 
     createComment(body: CreateCommentInput, onCreated?: (comment: Comment) => void): void {
         this.#api.createComment(body).subscribe({
-            next: ({ comment }) => {
-                this.#commentsResource.update((comments) => [...comments, { comment, replies: [] }]);
+            next: (comment) => {
+                this.#comments.update((comments) => [...comments, { comment, replies: [] }]);
                 onCreated?.(comment);
             },
         });
@@ -47,8 +49,8 @@ export class CommentStore {
 
     updateComment(id: string, body: UpdateCommentRequest): void {
         this.#api.updateComment(id, body).subscribe({
-            next: ({ comment: updated }) => {
-                this.#commentsResource.update((comments) =>
+            next: (updated) => {
+                this.#comments.update((comments) =>
                     comments.map((t) => {
                         if (t.comment.id === id) {
                             return { ...t, comment: updated };
@@ -69,7 +71,7 @@ export class CommentStore {
     deleteComment(id: string): void {
         this.#api.deleteComment(id).subscribe({
             next: () => {
-                this.#commentsResource.update((comments) => {
+                this.#comments.update((comments) => {
                     const isParent = comments.some((t) => t.comment.id === id);
                     if (isParent) {
                         return comments.filter((t) => t.comment.id !== id);
@@ -89,7 +91,7 @@ export class CommentStore {
     ): void {
         this.#api.sendComments(body).subscribe({
             next: (res) => {
-                this.#commentsResource.update((comments) =>
+                this.#comments.update((comments) =>
                     comments.map((t) => {
                         const match = res.comments.find((c) => c.id === t.comment.id);
                         if (match) {
@@ -106,8 +108,8 @@ export class CommentStore {
 
     resolveComment(id: string): void {
         this.#api.resolveComment(id).subscribe({
-            next: ({ comment: updated }) => {
-                this.#commentsResource.update((comments) =>
+            next: (updated) => {
+                this.#comments.update((comments) =>
                     comments.map((t) => (t.comment.id === id ? { ...t, comment: updated } : t)),
                 );
             },
@@ -116,15 +118,15 @@ export class CommentStore {
 
     createReply(commentId: string, body: ReplyToCommentRequest): void {
         this.#api.replyToComment(commentId, body).subscribe({
-            next: ({ comment: reply }) => {
-                this.#commentsResource.update((comments) =>
+            next: (reply) => {
+                this.#comments.update((comments) =>
                     comments.map((t) => (t.comment.id === commentId ? { ...t, replies: [...t.replies, reply] } : t)),
                 );
             },
         });
     }
 
-    onSseCommentUpdate(sessionId: string): void {
-        this.loadComments({ session_id: sessionId });
+    onSseCommentUpdate(_sessionId: string): void {
+        // No-op: mutation methods handle local state via optimistic .update() calls.
     }
 }
