@@ -42,14 +42,14 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
             </p>
 
             @if (isLongContent()) {
-                <button class="btn btn-xs btn-ghost mt-1" (click)="expanded.update(v => !v)">
+                <button class="btn btn-xs btn-ghost mt-1" (click)="toggleExpanded()">
                     {{ expanded() ? 'Show less' : 'Show more' }}
                 </button>
             }
 
             @if (thread().replies.length > 0) {
                 <div class="mt-1">
-                    <button class="btn btn-xs btn-ghost" (click)="repliesExpanded.update(v => !v)">
+                    <button class="btn btn-xs btn-ghost" (click)="toggleReplies()">
                         {{ repliesExpanded() ? 'Hide' : 'Show' }} {{ thread().replies.length }} replies
                     </button>
                     @if (repliesExpanded()) {
@@ -127,4 +127,12 @@ export class InlineComment {
         const content = this.thread().comment.content;
         return content.split('\n').length > 4 || content.length > 300;
     });
+
+    protected toggleExpanded(): void {
+        this.expanded.update((v) => !v);
+    }
+
+    protected toggleReplies(): void {
+        this.repliesExpanded.update((v) => !v);
+    }
 }

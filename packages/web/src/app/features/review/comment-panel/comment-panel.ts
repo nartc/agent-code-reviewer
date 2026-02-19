@@ -6,7 +6,7 @@ import { NgIcon } from '@ng-icons/core';
 import { CommentStore } from '../../../core/stores/comment-store';
 import { SessionStore } from '../../../core/stores/session-store';
 import { CommentListItem } from './comment-list-item';
-import { AcrCommentThread } from './comment-thread';
+
 
 function groupBy<T>(items: T[], keyFn: (item: T) => string): Record<string, T[]> {
     const result: Record<string, T[]> = {};
@@ -20,7 +20,7 @@ function groupBy<T>(items: T[], keyFn: (item: T) => string): Record<string, T[]>
 @Component({
     selector: 'acr-comment-panel',
     changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [AcrCommentThread, CommentListItem, KeyValuePipe, NgIcon, RouterLink],
+    imports: [CommentListItem, KeyValuePipe, NgIcon, RouterLink],
     template: `
         <div class="flex flex-col h-full">
             @if (isViewingLatest()) {
