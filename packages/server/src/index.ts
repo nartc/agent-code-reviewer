@@ -9,7 +9,6 @@ import { RepoService } from './services/repo.service.js';
 import { SessionService } from './services/session.service.js';
 import { SseService } from './services/sse.service.js';
 import { TransportService } from './services/transport.service.js';
-import { AgentPollService } from './services/agent-poll.service.js';
 import { WatcherService } from './services/watcher.service.js';
 import { ClipboardTransport } from './transport/clipboard.transport.js';
 import { TmuxTransport } from './transport/tmux.transport.js';
@@ -43,11 +42,6 @@ async function main() {
     const clipboardTransport = new ClipboardTransport();
     const transportService = new TransportService([tmuxTransport, clipboardTransport], dbService);
 
-    // Agent reply polling
-    const agentPollIntervalMs = parseInt(process.env['ACR_AGENT_POLL_INTERVAL_MS'] ?? '5000', 10);
-    const agentPollService = new AgentPollService(dbService, sseService, agentPollIntervalMs);
-    agentPollService.start();
-
     const app = createApp({
         dbService,
         sseService,
@@ -62,7 +56,6 @@ async function main() {
 
     const shutdown = async () => {
         console.log('[server] Shutting down...');
-        agentPollService.stop();
         await watcherService.stopAll();
         sseService.shutdown();
         dbService.save();

@@ -91,19 +91,11 @@ export class AcrFileDiff {
                     if (!range) return;
                     const start = Math.min(range.start, range.end);
                     const end = Math.max(range.start, range.end);
-                    if (start === end) {
-                        this.lineRangeSelected.emit({
-                            lineStart: start,
-                            lineEnd: start,
-                            side: range.side === 'deletions' ? 'old' : 'new',
-                        });
-                    } else {
-                        this.lineRangeSelected.emit({
-                            lineStart: start,
-                            lineEnd: end,
-                            side: range.side === 'deletions' ? 'old' : 'new',
-                        });
-                    }
+                    this.lineRangeSelected.emit({
+                        lineStart: start,
+                        lineEnd: end,
+                        side: range.side === 'deletions' ? 'old' : 'new',
+                    });
                 },
             });
 

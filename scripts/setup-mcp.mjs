@@ -10,7 +10,7 @@ const RESET = '\x1b[0m';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const MCP_ENTRY = join(ROOT, 'packages', 'mcp-server', 'dist', 'index.js');
-const DB_PATH = join(ROOT, '.data', 'reviewer.db');
+const SERVER_URL = 'http://localhost:3847';
 
 console.log();
 console.log(`${BOLD}${CYAN}=== agent-code-reviewer MCP Setup ===${RESET}`);
@@ -36,7 +36,7 @@ console.log(JSON.stringify({
             type: 'stdio',
             command: 'node',
             args: [MCP_ENTRY],
-            env: { DB_PATH },
+            env: { SERVER_URL },
         },
     },
 }, null, 2));
@@ -51,12 +51,12 @@ console.log(JSON.stringify({
         'agent-code-reviewer': {
             type: 'local',
             command: `node ${MCP_ENTRY}`,
-            env: { DB_PATH },
+            env: { SERVER_URL },
         },
     },
 }, null, 2));
 console.log();
 
-console.log(`${YELLOW}Note:${RESET} DB_PATH points to the agent-code-reviewer repo's .data/reviewer.db.`);
-console.log('      Both the web server and the MCP server must share this path.');
+console.log(`${YELLOW}Note:${RESET} SERVER_URL points to the running agent-code-reviewer server.`);
+console.log('      The server must be running for the MCP tools to work.');
 console.log();

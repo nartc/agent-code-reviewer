@@ -1,38 +1,8 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { Database } from 'sql.js';
 import { z } from 'zod';
+import type { ApiClient } from '../api-client.js';
 
-interface CommentRow {
-    id: string;
-    session_id: string;
-    snapshot_id: string;
-    reply_to_id: string | null;
-    file_path: string;
-    line_start: number | null;
-    line_end: number | null;
-    side: string | null;
-    author: string;
-    content: string;
-    status: string;
-    created_at: string;
-    sent_at: string | null;
-    resolved_at: string | null;
-}
-
-type SqlParam = number | string | Uint8Array | null;
-
-function queryRows<T>(db: Database, sql: string, params?: Record<string, SqlParam>): T[] {
-    const stmt = db.prepare(sql);
-    if (params) stmt.bind(params);
-    const rows: T[] = [];
-    while (stmt.step()) {
-        rows.push(stmt.getAsObject() as T);
-    }
-    stmt.free();
-    return rows;
-}
-
-export function registerGetDetails(server: McpServer, db: Database): void {
+export function registerGetDetails(server: McpServer, client: ApiClient): void {
     server.registerTool(
         'get_comment_details',
         {
@@ -43,17 +13,8 @@ export function registerGetDetails(server: McpServer, db: Database): void {
         },
         async ({ comment_id }) => {
             try {
-                const comments = queryRows<CommentRow>(db, 'SELECT * FROM comments WHERE id = $id', {
-                    $id: comment_id,
-                });
-
-                if (comments.length === 0) {
-                    return {
-                        content: [{ type: 'text' as const, text: `Error: Comment "${comment_id}" not found.` }],
-                    };
-                }
-
-                const comment = comments[0];
+                const { thread } = await client.getCommentThread(comment_id);
+                const { comment, replies } = thread;
                 const lines: string[] = [];
 
                 lines.push(`Comment [${comment.id}]:`);
@@ -82,31 +43,19 @@ export function registerGetDetails(server: McpServer, db: Database): void {
                     lines.push(`  Resolved: ${comment.resolved_at}`);
                 }
 
-                const replies = queryRows<CommentRow>(
-                    db,
-                    'SELECT * FROM comments WHERE reply_to_id = $parentId ORDER BY created_at',
-                    { $parentId: comment.id },
-                );
-
                 if (replies.length > 0) {
                     lines.push('');
                     lines.push(`Replies (${replies.length}):`);
                     for (let i = 0; i < replies.length; i++) {
                         const reply = replies[i];
-                        lines.push(
-                            `  ${i + 1}. [${reply.id}] ${reply.author} (${reply.status}): "${reply.content}" — ${reply.created_at}`,
-                        );
+                        lines.push(`  ${i + 1}. [${reply.id}] ${reply.author} (${reply.status}): "${reply.content}" — ${reply.created_at}`);
                     }
                 }
 
-                return {
-                    content: [{ type: 'text' as const, text: lines.join('\n') }],
-                };
+                return { content: [{ type: 'text' as const, text: lines.join('\n') }] };
             } catch (e) {
                 console.error('[mcp-server] get_comment_details error:', e);
-                return {
-                    content: [{ type: 'text' as const, text: `Error: ${e instanceof Error ? e.message : String(e)}` }],
-                };
+                return { content: [{ type: 'text' as const, text: `Error: ${e instanceof Error ? e.message : String(e)}` }] };
             }
         },
     );

@@ -13,8 +13,7 @@
     "dependencies": {
         "@agent-code-reviewer/shared": "workspace:*",
         "@modelcontextprotocol/sdk": "^1.26.0",
-        "neverthrow": "^8.x",
-        "sql.js": "^1.x",
+
         "zod": "^3.25"
     },
     "devDependencies": {

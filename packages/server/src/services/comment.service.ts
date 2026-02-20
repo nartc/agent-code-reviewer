@@ -188,7 +188,7 @@ export class CommentService {
 
         const insertResult = this.db.execute(
             `INSERT INTO comments (id, session_id, snapshot_id, reply_to_id, file_path, line_start, line_end, side, author, content, status)
-             VALUES ($id, $sessionId, $snapshotId, $replyToId, $filePath, $lineStart, $lineEnd, $side, $author, $content, 'draft')`,
+             VALUES ($id, $sessionId, $snapshotId, $replyToId, $filePath, $lineStart, $lineEnd, $side, $author, $content, 'sent')`,
             {
                 $id: id,
                 $sessionId: parent.session_id,
@@ -388,11 +388,25 @@ export class CommentService {
         });
     }
 
-    private getCommentById(id: string): Result<Comment | undefined, DatabaseError> {
+    getCommentById(id: string): Result<Comment | undefined, DatabaseError> {
         const result = this.db.queryOne<CommentRow>('SELECT * FROM comments WHERE id = $id', { $id: id });
         if (result.isErr()) return err(result.error);
 
         return ok(result.value ? castComment(result.value) : undefined);
+    }
+
+    getCommentThread(id: string): Result<CommentThread | undefined, DatabaseError> {
+        const commentResult = this.getCommentById(id);
+        if (commentResult.isErr()) return err(commentResult.error);
+        if (!commentResult.value) return ok(undefined);
+
+        const repliesResult = this.db.query<CommentRow>(
+            'SELECT * FROM comments WHERE reply_to_id = $id ORDER BY created_at',
+            { $id: id },
+        );
+        if (repliesResult.isErr()) return err(repliesResult.error);
+
+        return ok({ comment: commentResult.value, replies: repliesResult.value.map(castComment) });
     }
 
     private buildThreads(parents: CommentRow[]): Result<CommentThread[], DatabaseError> {

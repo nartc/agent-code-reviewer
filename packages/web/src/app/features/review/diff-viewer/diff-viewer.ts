@@ -95,6 +95,7 @@ export class DiffViewer {
 
     readonly #activeForm = signal<AnnotationMeta | null>(null);
     readonly #fileLevelForm = signal<Extract<AnnotationMeta, { type: 'form' }> | null>(null);
+    #rangeJustSelected = false;
     protected readonly fileLevelForm = this.#fileLevelForm.asReadonly();
 
     protected readonly parsedFiles = computed<FileDiffMetadata[]>(() => {
@@ -170,6 +171,9 @@ export class DiffViewer {
     }
 
     protected onLineNumberClick(event: { lineNumber: number; side: 'old' | 'new' }): void {
+        // Skip if onLineRangeSelected already handled this interaction (multi-line drag)
+        if (this.#rangeJustSelected) return;
+
         const snapshotId = this.store.activeSnapshotId();
         const sessionId = this.store.currentSession()?.id;
         const meta = this.activeMetadata();
@@ -190,6 +194,11 @@ export class DiffViewer {
         const sessionId = this.store.currentSession()?.id;
         const meta = this.activeMetadata();
         if (!snapshotId || !sessionId || !meta) return;
+
+        // Prevent the subsequent click→onLineNumberClick from overriding this range.
+        // setTimeout (not queueMicrotask) because microtasks flush between pointerup and click events.
+        this.#rangeJustSelected = true;
+        setTimeout(() => { this.#rangeJustSelected = false; });
 
         this.#activeForm.set({
             type: 'form',

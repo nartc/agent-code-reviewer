@@ -13,6 +13,10 @@ export interface SendResult {
     formatted_text?: string;
 }
 
+export interface SendOptions {
+    snapshot_id?: string;
+}
+
 export interface Transport {
     readonly type: TransportType;
     isAvailable(): ResultAsync<boolean, never>;
@@ -20,6 +24,7 @@ export interface Transport {
     sendComments(
         targetId: string,
         payloads: CommentPayload[],
+        options?: SendOptions,
     ): ResultAsync<SendResult, TransportError | TransportUnavailableError>;
     getStatus(): ResultAsync<TransportStatus, never>;
 }

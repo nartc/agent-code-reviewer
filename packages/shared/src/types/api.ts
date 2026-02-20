@@ -70,6 +70,7 @@ export const sendCommentsSchema = z.object({
     comment_ids: z.array(z.string()).min(1),
     target_id: z.string().min(1),
     transport_type: transportTypeSchema,
+    snapshot_id: z.string().optional(),
 });
 export const replyToCommentSchema = z.object({
     content: z.string().min(1),

@@ -63,7 +63,7 @@ export function createCommentRoutes(commentService: CommentService, transportSer
 
     // POST /send — Mark sent + deliver (MUST be before /:id routes)
     app.post('/send', zValidator('json', sendCommentsSchema), async (c) => {
-        const { comment_ids, target_id, transport_type } = c.req.valid('json');
+        const { comment_ids, target_id, transport_type, snapshot_id } = c.req.valid('json');
         const markResult = commentService.markSent(comment_ids);
         if (markResult.isErr()) {
             return resultToResponse(c, markResult);
@@ -78,7 +78,7 @@ export function createCommentRoutes(commentService: CommentService, transportSer
         const payloads: CommentPayload[] = sentComments
             .filter((c) => c.reply_to_id === null)
             .map((c) => buildPayload(c, replyMap[c.id] ?? []));
-        const sendResult = await transportService.send(transport_type, target_id, payloads);
+        const sendResult = await transportService.send(transport_type, target_id, payloads, { snapshot_id });
         if (sendResult.isErr()) {
             return resultToResponse(c, sendResult);
         }

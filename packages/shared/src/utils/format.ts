@@ -1,6 +1,10 @@
 import type { CommentPayload } from '../types/transport.js';
 
-export function formatCommentsForTransport(comments: CommentPayload[]): string {
+export interface FormatOptions {
+    snapshot_id?: string;
+}
+
+export function formatCommentsForTransport(comments: CommentPayload[], options?: FormatOptions): string {
     if (comments.length === 0) {
         return '## Code Review Comments\n\nNo comments.\n';
     }
@@ -52,7 +56,11 @@ export function formatCommentsForTransport(comments: CommentPayload[]): string {
     // Instruct agent to use MCP tools for the resolve flow:
     // Primary path: agent resolves via mark_resolved; fallback: user resolves via UI or bulk resolve (F7)
     lines.push('To respond to these comments, use the agent-code-reviewer MCP tools:');
-    lines.push('- check_comments: list pending comments');
+    if (options?.snapshot_id) {
+        lines.push(`- check_comments: list pending comments (use snapshot_id: "${options.snapshot_id}" to scope to this review)`);
+    } else {
+        lines.push('- check_comments: list pending comments');
+    }
     lines.push('- reply_to_comment: respond to a specific comment');
     lines.push('- mark_resolved: mark a comment as addressed');
 

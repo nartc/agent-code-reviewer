@@ -244,7 +244,7 @@ export class Review {
         if (!transport || !targetId) return;
         this.isSending.set(true);
         this.#commentStore.sendComments(
-            { comment_ids: commentIds, transport_type: transport, target_id: targetId },
+            { comment_ids: commentIds, transport_type: transport, target_id: targetId, snapshot_id: this.store.activeSnapshotId() ?? undefined },
             {
                 onSuccess: (res) => {
                     this.isSending.set(false);

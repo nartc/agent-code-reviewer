@@ -1,83 +1,10 @@
-import initSqlJs, { type Database } from 'sql.js';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-
-// We extract the handler logic by calling registerTool on a mock server
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Comment, CommentThread } from '@agent-code-reviewer/shared';
+import { ApiClient } from '../api-client.js';
 import { registerCheckComments } from '../tools/check-comments.js';
 import { registerGetDetails } from '../tools/get-details.js';
 import { registerMarkResolved } from '../tools/mark-resolved.js';
 import { registerReplyToComment } from '../tools/reply-to-comment.js';
-
-const SCHEMA = `
-PRAGMA foreign_keys = ON;
-
-CREATE TABLE IF NOT EXISTS repos (
-    id TEXT PRIMARY KEY,
-    remote_url TEXT UNIQUE,
-    name TEXT NOT NULL,
-    base_branch TEXT NOT NULL DEFAULT 'main',
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
-CREATE TABLE IF NOT EXISTS repo_paths (
-    id TEXT PRIMARY KEY,
-    repo_id TEXT NOT NULL REFERENCES repos(id) ON DELETE CASCADE,
-    path TEXT UNIQUE NOT NULL,
-    last_accessed_at TEXT,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
-CREATE TABLE IF NOT EXISTS sessions (
-    id TEXT PRIMARY KEY,
-    repo_id TEXT NOT NULL REFERENCES repos(id) ON DELETE CASCADE,
-    branch TEXT NOT NULL,
-    base_branch TEXT,
-    is_watching INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    UNIQUE(repo_id, branch)
-);
-
-CREATE TABLE IF NOT EXISTS snapshots (
-    id TEXT PRIMARY KEY,
-    session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
-    raw_diff TEXT NOT NULL,
-    files_summary TEXT NOT NULL,
-    head_commit TEXT,
-    trigger TEXT NOT NULL CHECK(trigger IN ('manual', 'fs_watch', 'initial')),
-    changed_files TEXT,
-    has_review_comments INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
-CREATE TABLE IF NOT EXISTS comments (
-    id TEXT PRIMARY KEY,
-    session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
-    snapshot_id TEXT NOT NULL REFERENCES snapshots(id) ON DELETE CASCADE,
-    reply_to_id TEXT REFERENCES comments(id) ON DELETE CASCADE,
-    file_path TEXT NOT NULL,
-    line_start INTEGER,
-    line_end INTEGER,
-    side TEXT CHECK(side IN ('old', 'new', 'both')),
-    author TEXT NOT NULL DEFAULT 'user',
-    content TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft', 'sent', 'resolved')),
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    sent_at TEXT,
-    resolved_at TEXT
-);
-
-CREATE TABLE IF NOT EXISTS transport_config (
-    id TEXT PRIMARY KEY DEFAULT 'default',
-    active_transport TEXT NOT NULL DEFAULT 'tmux',
-    last_target_id TEXT,
-    settings TEXT,
-    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
-CREATE TABLE IF NOT EXISTS app_config (
-    key TEXT PRIMARY KEY,
-    value TEXT
-);
-`;
 
 type ToolHandler = (args: Record<string, unknown>) => Promise<{ content: Array<{ type: string; text: string }> }>;
 
@@ -98,51 +25,64 @@ function getText(result: { content: Array<{ type: string; text: string }> }): st
     return result.content[0].text;
 }
 
+function makeComment(overrides: Partial<Comment> = {}): Comment {
+    return {
+        id: 'c1',
+        session_id: 'sess1',
+        snapshot_id: 'snap1',
+        reply_to_id: null,
+        file_path: 'src/app.ts',
+        line_start: 10,
+        line_end: 15,
+        side: 'new',
+        author: 'user',
+        content: 'Add error handling for the API call',
+        status: 'sent',
+        created_at: '2024-01-01T00:00:00Z',
+        sent_at: '2024-01-01T00:00:01Z',
+        resolved_at: null,
+        ...overrides,
+    };
+}
+
+function makeThread(commentOverrides: Partial<Comment> = {}, replies: Comment[] = []): CommentThread {
+    return { comment: makeComment(commentOverrides), replies };
+}
+
 describe('MCP Tools', () => {
-    let db: Database;
+    let client: ApiClient;
     let handlers: Record<string, ToolHandler>;
 
-    beforeEach(async () => {
-        const SQL = await initSqlJs();
-        db = new SQL.Database();
-        db.run(SCHEMA);
+    beforeEach(() => {
+        client = new ApiClient('http://localhost:3847');
+        vi.spyOn(client, 'getUnresolvedComments');
+        vi.spyOn(client, 'getCommentThread');
+        vi.spyOn(client, 'createReply');
+        vi.spyOn(client, 'resolveComment');
 
         const mockServer = createMockServer();
-        registerCheckComments(mockServer as any, db);
-        registerGetDetails(mockServer as any, db);
-        registerReplyToComment(mockServer as any, db);
-        registerMarkResolved(mockServer as any, db);
+        registerCheckComments(mockServer as any, client);
+        registerGetDetails(mockServer as any, client);
+        registerReplyToComment(mockServer as any, client);
+        registerMarkResolved(mockServer as any, client);
         handlers = mockServer.handlers;
-
-        // Seed test data
-        db.run("INSERT INTO repos (id, name, remote_url) VALUES ('repo1', 'my-app', 'https://github.com/test/my-app')");
-        db.run("INSERT INTO repo_paths (id, repo_id, path) VALUES ('rp1', 'repo1', '/home/user/my-app')");
-        db.run("INSERT INTO sessions (id, repo_id, branch) VALUES ('sess1', 'repo1', 'feature-branch')");
-        db.run(
-            "INSERT INTO snapshots (id, session_id, raw_diff, files_summary, trigger) VALUES ('snap1', 'sess1', 'diff content', '[]', 'manual')",
-        );
-
-        // Sent comments
-        db.run(`INSERT INTO comments (id, session_id, snapshot_id, file_path, line_start, line_end, side, author, content, status, sent_at)
-                VALUES ('c1', 'sess1', 'snap1', 'src/app.ts', 10, 15, 'new', 'user', 'Add error handling for the API call', 'sent', datetime('now'))`);
-        db.run(`INSERT INTO comments (id, session_id, snapshot_id, file_path, line_start, line_end, side, author, content, status, sent_at)
-                VALUES ('c2', 'sess1', 'snap1', 'src/utils.ts', 5, NULL, NULL, 'user', 'This function should be pure', 'sent', datetime('now'))`);
-
-        // A reply to c1
-        db.run(`INSERT INTO comments (id, session_id, snapshot_id, reply_to_id, file_path, line_start, line_end, side, author, content, status)
-                VALUES ('reply1', 'sess1', 'snap1', 'c1', 'src/app.ts', 10, 15, 'new', 'agent', 'I will add a try-catch block', 'draft')`);
-
-        // Draft comment (should not show in check_comments)
-        db.run(`INSERT INTO comments (id, session_id, snapshot_id, file_path, line_start, line_end, side, author, content, status)
-                VALUES ('c3', 'sess1', 'snap1', 'src/other.ts', 1, NULL, NULL, 'user', 'Draft comment', 'draft')`);
     });
 
     afterEach(() => {
-        db.close();
+        vi.restoreAllMocks();
     });
 
     describe('check_comments', () => {
         it('finds sent unresolved comments by repo_name', async () => {
+            const reply = makeComment({ id: 'reply1', reply_to_id: 'c1', author: 'agent', content: 'I will add a try-catch block', status: 'draft' });
+            vi.mocked(client.getUnresolvedComments).mockResolvedValue({
+                threads: [
+                    makeThread({}, [reply]),
+                    makeThread({ id: 'c2', file_path: 'src/utils.ts', line_start: 5, line_end: null, side: null, content: 'This function should be pure' }),
+                ],
+                repo_name: 'my-app',
+            });
+
             const result = await handlers['check_comments']({ repo_name: 'my-app' });
             const text = getText(result);
             expect(text).toContain('Found 2 unresolved comments');
@@ -153,23 +93,31 @@ describe('MCP Tools', () => {
         });
 
         it('finds comments by repo_path', async () => {
+            vi.mocked(client.getUnresolvedComments).mockResolvedValue({
+                threads: [makeThread(), makeThread({ id: 'c2' })],
+                repo_name: 'my-app',
+            });
+
             const result = await handlers['check_comments']({ repo_path: '/home/user/my-app' });
             const text = getText(result);
             expect(text).toContain('Found 2 unresolved comments');
         });
 
         it('returns "no comments" when none are sent', async () => {
-            db.run("UPDATE comments SET status = 'draft', sent_at = NULL WHERE status = 'sent'");
+            vi.mocked(client.getUnresolvedComments).mockResolvedValue({ threads: [], repo_name: 'my-app' });
+
             const result = await handlers['check_comments']({ repo_name: 'my-app' });
             const text = getText(result);
             expect(text).toContain('No unresolved comments');
         });
 
         it('returns error for non-existent repo', async () => {
+            vi.mocked(client.getUnresolvedComments).mockRejectedValue(new Error('Repo not found'));
+
             const result = await handlers['check_comments']({ repo_name: 'unknown' });
             const text = getText(result);
             expect(text).toContain('Error');
-            expect(text).toContain('"unknown" not found');
+            expect(text).toContain('Repo not found');
         });
 
         it('returns error when neither repo_path nor repo_name provided', async () => {
@@ -179,7 +127,29 @@ describe('MCP Tools', () => {
             expect(text).toContain('At least one of repo_path or repo_name is required');
         });
 
+        it('passes snapshot_id to filter comments', async () => {
+            vi.mocked(client.getUnresolvedComments).mockResolvedValue({
+                threads: [makeThread()],
+                repo_name: 'my-app',
+            });
+
+            const result = await handlers['check_comments']({ repo_name: 'my-app', snapshot_id: 'snap1' });
+            const text = getText(result);
+            expect(text).toContain('Found 1 unresolved comment');
+            expect(vi.mocked(client.getUnresolvedComments)).toHaveBeenCalledWith({
+                repo_path: undefined,
+                repo_name: 'my-app',
+                snapshot_id: 'snap1',
+            });
+        });
+
         it('includes reply information', async () => {
+            const reply = makeComment({ id: 'reply1', reply_to_id: 'c1', author: 'agent', content: 'I will add a try-catch block', status: 'draft' });
+            vi.mocked(client.getUnresolvedComments).mockResolvedValue({
+                threads: [makeThread({}, [reply])],
+                repo_name: 'my-app',
+            });
+
             const result = await handlers['check_comments']({ repo_name: 'my-app' });
             const text = getText(result);
             expect(text).toContain('try-catch');
@@ -189,6 +159,11 @@ describe('MCP Tools', () => {
 
     describe('get_comment_details', () => {
         it('returns full comment with replies', async () => {
+            const reply = makeComment({ id: 'reply1', reply_to_id: 'c1', author: 'agent', content: 'I will add a try-catch block', status: 'draft', created_at: '2024-01-01T01:00:00Z' });
+            vi.mocked(client.getCommentThread).mockResolvedValue({
+                thread: makeThread({}, [reply]),
+            });
+
             const result = await handlers['get_comment_details']({ comment_id: 'c1' });
             const text = getText(result);
             expect(text).toContain('Comment [c1]');
@@ -203,15 +178,21 @@ describe('MCP Tools', () => {
         });
 
         it('returns error for non-existent comment', async () => {
+            vi.mocked(client.getCommentThread).mockRejectedValue(new Error('Comment not found'));
+
             const result = await handlers['get_comment_details']({ comment_id: 'xxx' });
             const text = getText(result);
             expect(text).toContain('Error');
-            expect(text).toContain('"xxx" not found');
+            expect(text).toContain('Comment not found');
         });
     });
 
     describe('reply_to_comment', () => {
-        it('creates reply with inherited fields', async () => {
+        it('creates reply successfully', async () => {
+            vi.mocked(client.createReply).mockResolvedValue(
+                makeComment({ id: 'new-reply', reply_to_id: 'c1', author: 'agent', content: 'Fixed in latest commit', status: 'sent' }),
+            );
+
             const result = await handlers['reply_to_comment']({
                 comment_id: 'c1',
                 content: 'Fixed in latest commit',
@@ -219,73 +200,49 @@ describe('MCP Tools', () => {
             const text = getText(result);
             expect(text).toContain('Reply created successfully');
             expect(text).toContain('Parent: [c1]');
-            expect(text).toContain('draft');
-
-            // Verify in DB
-            const stmt = db.prepare(
-                "SELECT * FROM comments WHERE reply_to_id = 'c1' AND content = 'Fixed in latest commit'",
-            );
-            expect(stmt.step()).toBe(true);
-            const row = stmt.getAsObject();
-            expect(row['author']).toBe('agent');
-            expect(row['session_id']).toBe('sess1');
-            expect(row['snapshot_id']).toBe('snap1');
-            expect(row['file_path']).toBe('src/app.ts');
-            expect(row['line_start']).toBe(10);
-            expect(row['line_end']).toBe(15);
-            expect(row['side']).toBe('new');
-            expect(row['status']).toBe('draft');
-            stmt.free();
+            expect(text).toContain('sent');
         });
 
         it('returns error for non-existent parent', async () => {
+            vi.mocked(client.createReply).mockRejectedValue(new Error('Parent comment not found'));
+
             const result = await handlers['reply_to_comment']({
                 comment_id: 'xxx',
                 content: 'text',
             });
             const text = getText(result);
             expect(text).toContain('Error');
-            expect(text).toContain('"xxx" not found');
+            expect(text).toContain('Parent comment not found');
         });
     });
 
     describe('mark_comment_resolved', () => {
         it('resolves a sent comment', async () => {
+            vi.mocked(client.resolveComment).mockResolvedValue(
+                makeComment({ id: 'c1', status: 'resolved', resolved_at: '2024-01-01T02:00:00Z' }),
+            );
+
             const result = await handlers['mark_comment_resolved']({ comment_id: 'c1' });
             const text = getText(result);
             expect(text).toContain('Comment [c1] marked as resolved');
-
-            // Verify in DB
-            const stmt = db.prepare("SELECT status, resolved_at FROM comments WHERE id = 'c1'");
-            stmt.step();
-            const row = stmt.getAsObject();
-            expect(row['status']).toBe('resolved');
-            expect(row['resolved_at']).not.toBeNull();
-            stmt.free();
         });
 
         it('rejects draft comment', async () => {
+            vi.mocked(client.resolveComment).mockRejectedValue(new Error("Cannot resolve draft comments, send first"));
+
             const result = await handlers['mark_comment_resolved']({ comment_id: 'c3' });
             const text = getText(result);
             expect(text).toContain('Error');
-            expect(text).toContain("must be in 'sent' status");
-            expect(text).toContain('draft');
-        });
-
-        it('rejects already resolved comment', async () => {
-            db.run("UPDATE comments SET status = 'resolved', resolved_at = datetime('now') WHERE id = 'c1'");
-            const result = await handlers['mark_comment_resolved']({ comment_id: 'c1' });
-            const text = getText(result);
-            expect(text).toContain('Error');
-            expect(text).toContain("must be in 'sent' status");
-            expect(text).toContain('resolved');
+            expect(text).toContain('Cannot resolve draft comments');
         });
 
         it('returns error for non-existent comment', async () => {
+            vi.mocked(client.resolveComment).mockRejectedValue(new Error('Comment not found'));
+
             const result = await handlers['mark_comment_resolved']({ comment_id: 'xxx' });
             const text = getText(result);
             expect(text).toContain('Error');
-            expect(text).toContain('"xxx" not found');
+            expect(text).toContain('Comment not found');
         });
     });
 });

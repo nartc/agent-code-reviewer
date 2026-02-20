@@ -11,7 +11,7 @@ import {
 } from '@agent-code-reviewer/shared';
 import { ResultAsync, okAsync } from 'neverthrow';
 import { execFile } from 'node:child_process';
-import type { SendResult, Transport } from './transport.interface.js';
+import type { SendOptions, SendResult, Transport } from './transport.interface.js';
 
 const SEMVER_RE = /^\d+\.\d+\.\d+/;
 
@@ -131,8 +131,9 @@ export class TmuxTransport implements Transport {
     sendComments(
         targetId: string,
         payloads: CommentPayload[],
+        options?: SendOptions,
     ): ResultAsync<SendResult, TransportError | TransportUnavailableError> {
-        const formatted = formatCommentsForTransport(payloads);
+        const formatted = formatCommentsForTransport(payloads, { snapshot_id: options?.snapshot_id });
         const bufferName = `pr-review-${Date.now()}`;
 
         return ResultAsync.fromPromise(

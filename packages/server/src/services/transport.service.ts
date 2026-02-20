@@ -50,12 +50,13 @@ export class TransportService {
         type: TransportType,
         targetId: string,
         payloads: CommentPayload[],
+        options?: { snapshot_id?: string },
     ): ResultAsync<SendResult, TransportError | TransportUnavailableError> {
         const transport = this.transports.find((t) => t.type === type);
         if (!transport) {
             return errAsync(transportUnavailable(type));
         }
-        return transport.sendComments(targetId, payloads);
+        return transport.sendComments(targetId, payloads, options);
     }
 
     getActiveConfig(): Result<TransportConfigResponse, DatabaseError> {

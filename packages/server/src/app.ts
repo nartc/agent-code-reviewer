@@ -5,6 +5,7 @@ import type { AppConfig } from './lib/config.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { createCommentRoutes } from './routes/comments.routes.js';
 import { createGitRoutes } from './routes/git.routes.js';
+import { createMcpRoutes } from './routes/mcp.routes.js';
 import { createRepoRoutes } from './routes/repos.routes.js';
 import { createSessionRoutes } from './routes/sessions.routes.js';
 import { createSnapshotRoutes } from './routes/snapshots.routes.js';
@@ -50,6 +51,7 @@ export function createApp(deps: AppDependencies): Hono {
     app.route('/api/sse', createSseRoutes(deps.sseService));
 
     // API routes
+    app.route('/api/mcp', createMcpRoutes(deps.repoService, deps.sessionService, deps.commentService));
     app.route('/api/repos', createRepoRoutes(deps.repoService));
     app.route('/api/sessions', createSessionRoutes(deps.sessionService, deps.watcherService));
     app.route('/api/comments', createCommentRoutes(deps.commentService, deps.transportService));

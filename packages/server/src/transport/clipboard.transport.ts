@@ -7,7 +7,7 @@ import {
     formatCommentsForTransport,
 } from '@agent-code-reviewer/shared';
 import { type ResultAsync, okAsync } from 'neverthrow';
-import type { SendResult, Transport } from './transport.interface.js';
+import type { SendOptions, SendResult, Transport } from './transport.interface.js';
 
 export class ClipboardTransport implements Transport {
     readonly type = 'clipboard' as const;
@@ -23,8 +23,9 @@ export class ClipboardTransport implements Transport {
     sendComments(
         _targetId: string,
         payloads: CommentPayload[],
+        options?: SendOptions,
     ): ResultAsync<SendResult, TransportError | TransportUnavailableError> {
-        const formatted = formatCommentsForTransport(payloads);
+        const formatted = formatCommentsForTransport(payloads, { snapshot_id: options?.snapshot_id });
         return okAsync({ success: true, formatted_text: formatted });
     }
 
