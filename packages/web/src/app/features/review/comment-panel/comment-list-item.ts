@@ -9,119 +9,113 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
     changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [RelativeTime, NgIcon],
     host: {
-        class: 'block cursor-pointer',
+        class: 'card card-compact bg-base-100 shadow-sm hover:bg-base-200 transition-colors cursor-pointer',
+        '[class.opacity-50]': 'thread().comment.status === "resolved"',
         '(click)': 'onClick($event)',
     },
     template: `
         @let c = thread().comment;
 
-        <div
-            class="card card-compact bg-base-100 shadow-sm hover:bg-base-200 transition-colors"
-            [class.opacity-50]="c.status === 'resolved'"
-        >
-            <div class="card-body gap-1">
-                @if (showFileHeader()) {
-                    <div class="flex items-center gap-1 flex-wrap text-xs">
-                        @if (c.file_path === '[general]') {
-                            <span class="badge badge-xs badge-neutral">General</span>
-                        } @else {
-                            <span class="badge badge-xs badge-neutral font-mono truncate max-w-48" [title]="c.file_path">{{ c.file_path }}</span>
-                            @if (c.line_start != null) {
-                                <span class="badge badge-xs badge-ghost">L{{ c.line_start }}</span>
+        <div class="card-body gap-1">
+            @if (showFileHeader()) {
+                <div class="flex items-center gap-1 flex-wrap text-xs">
+                    @if (c.file_path === '[general]') {
+                        <span class="badge badge-xs badge-neutral">General</span>
+                    } @else {
+                        <span class="badge badge-xs badge-neutral font-mono max-w-xs" [title]="c.file_path">
+                            <span class="truncate min-w-0">{{ c.file_path }}</span>
+                        </span>
+                        @if (c.line_start != null) {
+                            <span class="badge badge-xs badge-ghost">L{{ c.line_start }}</span>
+                        }
+                    }
+                </div>
+            }
+
+            <div class="flex items-center gap-2 text-xs">
+                <ng-icon
+                    [name]="c.author === 'agent' ? 'lucideBot' : 'lucideUser'"
+                    class="size-3"
+                />
+                <span
+                    class="badge badge-xs"
+                    [class.badge-primary]="c.author === 'user'"
+                    [class.badge-accent]="c.author === 'agent'"
+                >
+                    {{ c.author }}
+                </span>
+                <span class="opacity-50">{{ c.created_at | relativeTime }}</span>
+                @if (showStatus()) {
+                    <span
+                        class="badge badge-xs"
+                        [class.badge-warning]="c.status === 'draft'"
+                        [class.badge-info]="c.status === 'sent'"
+                        [class.badge-success]="c.status === 'resolved'"
+                    >
+                        {{ c.status }}
+                    </span>
+                }
+            </div>
+
+            @if (editing()) {
+                <div (click)="$event.stopPropagation()">
+                    <textarea
+                        class="textarea textarea-sm textarea-bordered w-full text-sm mt-1"
+                        rows="4"
+                        aria-label="Edit comment"
+                        [value]="editContent()"
+                        (input)="editContent.set($any($event.target).value)"
+                    ></textarea>
+                    <div class="flex justify-end gap-1 mt-1">
+                        <button class="btn btn-xs btn-ghost" type="button" (click)="cancelEdit()">Cancel</button>
+                        <button
+                            class="btn btn-xs btn-primary"
+                            type="button"
+                            [disabled]="!editContent().trim()"
+                            (click)="saveEdit()"
+                        >
+                            Save
+                        </button>
+                    </div>
+                </div>
+            } @else {
+                <p class="text-sm whitespace-pre-wrap" [class.line-clamp-2]="!expanded()">
+                    {{ c.content }}
+                </p>
+
+                @if (showActions()) {
+                    <div class="flex justify-end gap-1">
+                        @switch (c.status) {
+                            @case ('draft') {
+                                <button class="btn btn-xs btn-ghost" title="Edit comment" (click)="startEdit()">
+                                    <ng-icon name="lucidePencil" class="size-3" />
+                                    Edit
+                                </button>
+                                <button class="btn btn-xs btn-ghost text-error" title="Delete comment" (click)="commentDeleted.emit(thread())">
+                                    <ng-icon name="lucideTrash2" class="size-3" />
+                                    Delete
+                                </button>
+                            }
+                            @case ('sent') {
+                                <button class="btn btn-xs btn-ghost" title="Mark as resolved" (click)="commentResolved.emit(thread())">
+                                    <ng-icon name="lucideCheck" class="size-3" />
+                                    Resolve
+                                </button>
+                                <button class="btn btn-xs btn-ghost" title="Reply" (click)="replyCreated.emit({ thread: thread(), content: '' })">
+                                    <ng-icon name="lucideReply" class="size-3" />
+                                    Reply
+                                </button>
+                            }
+                            @case ('resolved') {
+                                <button class="btn btn-xs btn-ghost" title="Reply" (click)="replyCreated.emit({ thread: thread(), content: '' })">
+                                    <ng-icon name="lucideReply" class="size-3" />
+                                    Reply
+                                </button>
                             }
                         }
                     </div>
                 }
-
-                <div class="flex items-center gap-2 text-xs">
-                    <ng-icon
-                        [name]="c.author === 'agent' ? 'lucideBot' : 'lucideUser'"
-                        class="size-3"
-                    />
-                    <span
-                        class="badge badge-xs"
-                        [class.badge-primary]="c.author === 'user'"
-                        [class.badge-accent]="c.author === 'agent'"
-                    >
-                        {{ c.author }}
-                    </span>
-                    <span class="opacity-50">{{ c.created_at | relativeTime }}</span>
-                    @if (showStatus()) {
-                        <span
-                            class="badge badge-xs"
-                            [class.badge-warning]="c.status === 'draft'"
-                            [class.badge-info]="c.status === 'sent'"
-                            [class.badge-success]="c.status === 'resolved'"
-                        >
-                            {{ c.status }}
-                        </span>
-                    }
-                </div>
-
-                @if (editing()) {
-                    <div (click)="$event.stopPropagation()">
-                        <textarea
-                            class="textarea textarea-sm textarea-bordered w-full text-sm mt-1"
-                            rows="4"
-                            aria-label="Edit comment"
-                            [value]="editContent()"
-                            (input)="editContent.set($any($event.target).value)"
-                        ></textarea>
-                        <div class="flex justify-end gap-1 mt-1">
-                            <button class="btn btn-xs btn-ghost" type="button" (click)="cancelEdit()">Cancel</button>
-                            <button
-                                class="btn btn-xs btn-primary"
-                                type="button"
-                                [disabled]="!editContent().trim()"
-                                (click)="saveEdit()"
-                            >
-                                Save
-                            </button>
-                        </div>
-                    </div>
-                } @else {
-                    <p
-                        class="text-sm whitespace-pre-wrap"
-                        [class.line-clamp-2]="!expanded()"
-                        (click)="toggleExpand($event)"
-                    >
-                        {{ c.content }}
-                    </p>
-
-                    @if (showActions()) {
-                        <div class="flex justify-end gap-1" (click)="$event.stopPropagation()">
-                            @switch (c.status) {
-                                @case ('draft') {
-                                    <button class="btn btn-xs btn-ghost" title="Edit comment" (click)="startEdit()">
-                                        <ng-icon name="lucidePencil" class="size-3" />
-                                        Edit
-                                    </button>
-                                    <button class="btn btn-xs btn-ghost text-error" title="Delete comment" (click)="commentDeleted.emit(thread())">
-                                        <ng-icon name="lucideTrash2" class="size-3" />
-                                        Delete
-                                    </button>
-                                }
-                                @case ('sent') {
-                                    <button class="btn btn-xs btn-ghost" title="Mark as resolved" (click)="commentResolved.emit(thread())">
-                                        <ng-icon name="lucideCheck" class="size-3" />
-                                        Resolve
-                                    </button>
-                                    <button class="btn btn-xs btn-ghost" title="Reply" (click)="replyCreated.emit({ thread: thread(), content: '' })">
-                                        <ng-icon name="lucideReply" class="size-3" />
-                                        Reply
-                                    </button>
-                                }
-                                @case ('resolved') {
-                                    <button class="btn btn-xs btn-ghost" title="Reply" (click)="replyCreated.emit({ thread: thread(), content: '' })">
-                                        <ng-icon name="lucideReply" class="size-3" />
-                                        Reply
-                                    </button>
-                                }
-                            }
-                        </div>
-                    }
-                }
-            </div>
+            }
         </div>
     `,
 })
@@ -142,8 +136,7 @@ export class CommentListItem {
     protected readonly editing = signal(false);
     protected readonly editContent = signal('');
 
-    protected toggleExpand(event: Event): void {
-        event.stopPropagation();
+    protected toggleExpand(): void {
         this.expanded.update((v) => !v);
     }
 

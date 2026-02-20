@@ -231,7 +231,7 @@ export class Review {
     }
 
     protected onCommentClicked(event: { filePath: string; lineStart: number | null; side: string }): void {
-        this.store.setActiveFileByPath(event.filePath);
+        this.store.navigateToComment(event.filePath, event.lineStart, event.side);
     }
 
     protected onSessionSelected(sessionId: string): void {

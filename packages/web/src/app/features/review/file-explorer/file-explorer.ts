@@ -1,5 +1,5 @@
 import type { FileSummary } from '@agent-code-reviewer/shared';
-import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, ElementRef, input, output, signal, viewChildren } from '@angular/core';
 import { NgIcon } from '@ng-icons/core';
 import { buildFileTree, flattenTree } from './build-file-tree';
 
@@ -28,11 +28,13 @@ import { buildFileTree, flattenTree } from './build-file-tree';
                             </button>
                         } @else {
                             <button
+                                #fileEntry
                                 class="flex items-center gap-2 font-mono text-xs"
                                 [class.bg-primary/10]="isActive(entry.node)"
                                 [class.text-primary]="isActive(entry.node)"
                                 [style.padding-left.rem]="entry.depth * 1"
                                 [title]="entry.node.fullPath"
+                                [attr.data-file-path]="entry.node.fullPath"
                                 (click)="onFileClick(entry.node)"
                             >
                                 <span class="badge badge-xs" [class]="statusClass(entry.node.file!.status)">
@@ -63,6 +65,21 @@ export class FileExplorer {
     readonly fileSelected = output<number>();
 
     readonly collapsedPaths = signal<Set<string>>(new Set());
+    private readonly fileEntryEls = viewChildren<ElementRef<HTMLElement>>('fileEntry');
+
+    constructor() {
+        effect(() => {
+            const files = this.files();
+            const idx = this.activeFileIndex();
+            const entries = this.fileEntryEls();
+            const activeFile = files[idx];
+            if (!activeFile || entries.length === 0) return;
+            const el = entries.find((e) => e.nativeElement.getAttribute('data-file-path') === activeFile.path);
+            if (el) {
+                el.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        });
+    }
 
     protected readonly tree = computed(() => buildFileTree(this.files()));
 

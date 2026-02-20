@@ -191,7 +191,7 @@ export class WatcherService {
 
         return this.gitService.getDiff(repoPath, baseBranch).andThen(({ rawDiff, files }) => {
             const prevResult = this.dbService.queryOne<SnapshotRow>(
-                'SELECT id, files_summary, changed_files FROM snapshots WHERE session_id = $sessionId ORDER BY created_at DESC LIMIT 1',
+                'SELECT id, session_id, raw_diff, files_summary, head_commit, trigger, changed_files, has_review_comments, created_at FROM snapshots WHERE session_id = $sessionId ORDER BY created_at DESC LIMIT 1',
                 { $sessionId: sessionId },
             );
             if (prevResult.isErr()) return errAsync(prevResult.error);
@@ -201,6 +201,22 @@ export class WatcherService {
             const changedFiles = computeChangedFiles(files, previousFiles);
 
             return this.gitService.getHeadCommit(repoPath).andThen((headCommit) => {
+                // Skip snapshot if HEAD hasn't changed since last snapshot
+                if (prevResult.value && prevResult.value.head_commit === headCommit) {
+                    const prev = prevResult.value;
+                    return okAsync({
+                        id: prev.id,
+                        session_id: prev.session_id,
+                        raw_diff: prev.raw_diff,
+                        files_summary: JSON.parse(prev.files_summary) as FileSummary[],
+                        head_commit: prev.head_commit,
+                        trigger: prev.trigger as SnapshotTrigger,
+                        changed_files: prev.changed_files ? JSON.parse(prev.changed_files) : null,
+                        has_review_comments: Boolean(prev.has_review_comments),
+                        created_at: prev.created_at,
+                    } satisfies Snapshot);
+                }
+
                 const snapshotId = generateId();
 
                 const insertResult = this.dbService.execute(

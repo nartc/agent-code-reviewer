@@ -17,6 +17,7 @@ export class SessionStore {
     readonly #prefs = inject(UiPreferences);
     readonly #destroyRef = inject(DestroyRef);
     readonly #pendingRestore = signal(false);
+    readonly #scrollTarget = signal<{ lineStart: number; side: string } | null>(null);
 
     readonly #sessionId = signal<string | undefined>(undefined);
     readonly #initialSnapshotId = signal<string | undefined>(undefined);
@@ -80,6 +81,7 @@ export class SessionStore {
     readonly totalFiles = computed(() => this.files().length);
     readonly isConnected = this.#isConnected.asReadonly();
     readonly isWatching = this.#isWatching.asReadonly();
+    readonly scrollTarget = this.#scrollTarget.asReadonly();
 
     constructor() {
         // Restore file index on initial session load
@@ -173,6 +175,17 @@ export class SessionStore {
         if (idx >= 0) {
             this.setActiveFile(idx);
         }
+    }
+
+    navigateToComment(filePath: string, lineStart: number | null, side: string): void {
+        this.setActiveFileByPath(filePath);
+        if (lineStart != null) {
+            this.#scrollTarget.set({ lineStart, side });
+        }
+    }
+
+    clearScrollTarget(): void {
+        this.#scrollTarget.set(null);
     }
 
     jumpToLatest(): void {

@@ -1,2 +1,12 @@
 @import 'tailwindcss';
 @plugin "daisyui";
+
+@theme {
+    --font-sans: 'Inter', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+}
+
+:root {
+    --diffs-font-family: 'JetBrains Mono', monospace;
+    --diffs-font-size: 12px;
+}

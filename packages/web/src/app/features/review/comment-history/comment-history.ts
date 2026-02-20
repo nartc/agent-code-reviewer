@@ -99,6 +99,7 @@ function groupBy<T>(items: T[], keyFn: (item: T) => string): Record<string, T[]>
                                     <acr-comment-list-item
                                         [thread]="thread"
                                         [showActions]="true"
+                                        (commentClicked)="onCommentClicked(group.snapshotId, $event)"
                                         (commentResolved)="onResolve($event)"
                                     />
                                 }
@@ -196,6 +197,12 @@ export class CommentHistory {
             snapshot_id: state.snapshotId,
         });
         this.confirmState.set(null);
+    }
+
+    protected onCommentClicked(snapshotId: string, event: { filePath: string; lineStart: number | null; side: string }): void {
+        this.#router.navigate(['/review', this.sessionId()], {
+            queryParams: { snapshot: snapshotId },
+        });
     }
 
     protected onResolve(thread: CommentThread): void {
