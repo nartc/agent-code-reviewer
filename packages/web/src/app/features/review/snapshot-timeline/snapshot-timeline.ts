@@ -14,8 +14,8 @@ interface DotPosition {
     selector: 'acr-snapshot-timeline',
     changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [SlicePipe, NgIcon],
+    host: { class: 'relative flex items-center h-10 px-2 border-b border-base-300 gap-1' },
     template: `
-        <div class="relative flex items-center h-10 px-2 border-b border-base-300 gap-1">
             <button class="btn btn-xs btn-ghost" [disabled]="!canGoPrev()" (click)="goPrev()">
                 <ng-icon name="lucideChevronLeft" class="size-4" />
             </button>
@@ -52,7 +52,6 @@ interface DotPosition {
                     Latest
                 </button>
             }
-        </div>
     `,
 })
 export class SnapshotTimeline {

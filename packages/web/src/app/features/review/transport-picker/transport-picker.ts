@@ -8,8 +8,8 @@ const TRANSPORT_TYPES: TransportType[] = ['tmux', 'mcp', 'clipboard'];
 @Component({
     selector: 'acr-transport-picker',
     changeDetection: ChangeDetectionStrategy.OnPush,
+    host: { class: 'flex flex-col gap-1.5 p-2 border-b border-base-300' },
     template: `
-        <div class="flex flex-col gap-1.5 p-2 border-b border-base-300">
             <div class="flex items-center gap-1.5">
                 <label class="text-xs font-semibold shrink-0">Transport</label>
 
@@ -66,7 +66,6 @@ const TRANSPORT_TYPES: TransportType[] = ['tmux', 'mcp', 'clipboard'];
             @if (showPreview()) {
                 <pre class="text-xs whitespace-pre-wrap max-h-48 overflow-auto bg-base-200 rounded p-2 border border-base-300">{{ previewText() || 'No draft comments' }}</pre>
             }
-        </div>
     `,
 })
 export class TransportPicker {

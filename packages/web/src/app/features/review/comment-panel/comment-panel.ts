@@ -21,8 +21,8 @@ function groupBy<T>(items: T[], keyFn: (item: T) => string): Record<string, T[]>
     selector: 'acr-comment-panel',
     changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [CommentListItem, KeyValuePipe, NgIcon, RouterLink],
+    host: { class: 'flex flex-col h-full' },
     template: `
-        <div class="flex flex-col h-full">
             @if (isViewingLatest()) {
                 <!-- Latest snapshot layout -->
                 <div class="flex items-center justify-between p-2 border-b border-base-300">
@@ -109,7 +109,6 @@ function groupBy<T>(items: T[], keyFn: (item: T) => string): Record<string, T[]>
                     </div>
                 }
             }
-        </div>
     `,
 })
 export class CommentPanel {

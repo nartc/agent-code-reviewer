@@ -13,8 +13,8 @@ const TRANSPORT_TYPES: TransportType[] = ['tmux', 'mcp', 'clipboard'];
     selector: 'acr-settings',
     changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [TitleCasePipe, NgIcon],
+    host: { class: 'block max-w-2xl mx-auto p-6 flex flex-col gap-6' },
     template: `
-        <div class="max-w-2xl mx-auto p-6 flex flex-col gap-6">
             <div class="flex items-center gap-3">
                 <button class="btn btn-sm btn-ghost inline-flex items-center gap-1" (click)="location.back()">
                     <ng-icon name="lucideArrowLeft" class="size-4" />
@@ -71,7 +71,6 @@ const TRANSPORT_TYPES: TransportType[] = ['tmux', 'mcp', 'clipboard'];
                     <p class="text-xs opacity-60">Configured via DB_PATH environment variable on the server.</p>
                 </div>
             </div>
-        </div>
     `,
 })
 export class Settings {

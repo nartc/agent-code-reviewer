@@ -8,9 +8,8 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
     selector: 'acr-comment-card',
     changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [RelativeTime, FormsModule, NgIcon],
-    host: { '[class.ml-6]': 'isReply()' },
+    host: { class: 'card card-compact bg-base-100 border border-base-300', '[class.ml-6]': 'isReply()' },
     template: `
-        <div class="card card-compact bg-base-100 border border-base-300">
             <div class="card-body gap-1">
                 @if (!isReply() && showFileHeader()) {
                     <div class="flex items-center gap-1 flex-wrap text-xs">
@@ -114,7 +113,6 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
                     </div>
                 }
             </div>
-        </div>
     `,
 })
 export class CommentCard {

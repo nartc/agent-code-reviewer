@@ -8,8 +8,8 @@ import { ApiClient } from '../../core/services/api-client';
     selector: 'acr-add-repo',
     changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [NgIcon],
+    host: { class: 'block space-y-6' },
     template: `
-        <div class="space-y-6">
             <div>
                 <h3 class="text-lg font-semibold mb-2">Add Repository</h3>
                 <div class="flex gap-2">
@@ -95,7 +95,6 @@ import { ApiClient } from '../../core/services/api-client';
                     <p class="text-sm opacity-60">No repositories found.</p>
                 }
             </div>
-        </div>
     `,
 })
 export class AddRepo {

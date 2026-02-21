@@ -8,10 +8,9 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
     selector: 'acr-inline-comment',
     changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [RelativeTime, NgIcon],
-    host: { class: 'block' },
+    host: { class: 'block bg-base-200 border border-base-300 rounded-lg p-2 my-1 text-sm' },
     template: `
         @let c = thread().comment;
-        <div class="bg-base-200 border border-base-300 rounded-lg p-2 my-1 text-sm">
             <div class="flex items-center gap-2 text-xs mb-1">
                 <ng-icon
                     [name]="c.author === 'agent' ? 'lucideBot' : 'lucideUser'"
@@ -130,7 +129,6 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
                     }
                 </div>
             }
-        </div>
     `,
 })
 export class InlineComment {

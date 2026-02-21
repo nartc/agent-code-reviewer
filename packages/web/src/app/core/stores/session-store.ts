@@ -2,7 +2,6 @@ import type { FileSummary, SessionWithRepo, SnapshotDiffResponse, SnapshotSummar
 import { httpResource } from '@angular/common/http';
 import { DestroyRef, Injectable, computed, effect, inject, linkedSignal, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
-import { patchState, signalState } from '@ngrx/signals';
 import { map } from 'rxjs';
 import { ApiClient } from '../services/api-client';
 import { UiPreferences } from '../services/ui-preferences';
@@ -51,14 +50,14 @@ export class SessionStore {
         return snapId ? `/api/snapshots/${snapId}/diff` : undefined;
     });
 
-    readonly #nav = signalState({ activeFileIndex: 0 });
+    readonly #activeFileIndex = signal(0);
 
     readonly currentSession = this.#sessionResource.value;
     readonly snapshots = this.#snapshotsResource.value;
     readonly activeSnapshotId = this.#activeSnapshotId.asReadonly();
     readonly currentDiff = computed(() => this.#diffResource.value()?.snapshot ?? null);
     readonly files = computed<FileSummary[]>(() => this.currentDiff()?.files_summary ?? []);
-    readonly activeFileIndex = this.#nav.activeFileIndex;
+    readonly activeFileIndex = this.#activeFileIndex.asReadonly();
     readonly isLoading = computed(() => this.#sessionResource.isLoading() || this.#snapshotsResource.isLoading());
     readonly sessionError = this.#sessionResource.error;
 
@@ -91,7 +90,7 @@ export class SessionStore {
             if (this.#pendingRestore() && files.length > 0 && sessionId) {
                 const stored = this.#prefs.getActiveFileIndex(sessionId);
                 if (stored != null && stored < files.length) {
-                    patchState(this.#nav, { activeFileIndex: stored });
+                    this.#activeFileIndex.set(stored);
                 }
                 this.#pendingRestore.set(false);
             }
@@ -144,30 +143,26 @@ export class SessionStore {
 
     setActiveSnapshot(snapshotId: string): void {
         this.#activeSnapshotId.set(snapshotId);
-        patchState(this.#nav, { activeFileIndex: 0 });
+        this.#activeFileIndex.set(0);
     }
 
     nextFile(): void {
         const len = this.files().length;
         if (len === 0) return;
-        patchState(this.#nav, (s) => ({
-            activeFileIndex: (s.activeFileIndex + 1) % len,
-        }));
+        this.#activeFileIndex.update((i) => (i + 1) % len);
     }
 
     prevFile(): void {
         const len = this.files().length;
         if (len === 0) return;
-        patchState(this.#nav, (s) => ({
-            activeFileIndex: (s.activeFileIndex - 1 + len) % len,
-        }));
+        this.#activeFileIndex.update((i) => (i - 1 + len) % len);
     }
 
     setActiveFile(index: number): void {
         const len = this.files().length;
         if (len === 0) return;
         const clamped = Math.max(0, Math.min(index, len - 1));
-        patchState(this.#nav, { activeFileIndex: clamped });
+        this.#activeFileIndex.set(clamped);
     }
 
     setActiveFileByPath(filePath: string): void {

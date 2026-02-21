@@ -7,9 +7,9 @@ import { RelativeTime } from '../../shared/pipes/relative-time';
     selector: 'acr-repo-card',
     changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [RelativeTime, NgIcon],
+    host: { class: 'card bg-base-200 border border-base-300' },
     template: `
         @let r = repo();
-        <div class="card bg-base-200 border border-base-300">
             <div class="card-body gap-3">
                 <h2 class="card-title">{{ r.name }}</h2>
 
@@ -41,7 +41,6 @@ import { RelativeTime } from '../../shared/pipes/relative-time';
                     </button>
                 </div>
             </div>
-        </div>
     `,
 })
 export class RepoCard {
