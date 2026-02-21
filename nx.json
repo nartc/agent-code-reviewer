@@ -35,6 +35,11 @@
         },
         "serve": {
             "continuous": true
+        },
+        "typecheck": {
+            "inputs": ["default", "^production"],
+            "outputs": ["{projectRoot}/out-tsc/**/*.d.ts", "{projectRoot}/out-tsc/**/*.tsbuildinfo"],
+            "cache": true
         }
     }
 }
