@@ -9,7 +9,7 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
     changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [RelativeTime, NgIcon],
     host: {
-        class: 'card card-compact bg-base-100 shadow-sm hover:bg-base-200 transition-colors cursor-pointer',
+        class: 'card card-compact bg-base-100 border border-base-300 hover:bg-base-200 transition-colors cursor-pointer',
         '[class.opacity-50]': 'thread().comment.status === "resolved"',
         '(click)': 'onClick($event)',
     },
@@ -38,7 +38,7 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
                     class="size-3"
                 />
                 <span
-                    class="badge badge-xs"
+                    class="badge badge-xs badge-outline"
                     [class.badge-primary]="c.author === 'user'"
                     [class.badge-accent]="c.author === 'agent'"
                 >
@@ -47,7 +47,7 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
                 <span class="opacity-50">{{ c.created_at | relativeTime }}</span>
                 @if (showStatus()) {
                     <span
-                        class="badge badge-xs"
+                        class="badge badge-xs badge-outline"
                         [class.badge-warning]="c.status === 'draft'"
                         [class.badge-info]="c.status === 'sent'"
                         [class.badge-success]="c.status === 'resolved'"

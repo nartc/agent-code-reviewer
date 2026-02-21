@@ -13,7 +13,7 @@ const themeIcons: Record<Theme, string> = { light: 'lucideSun', dark: 'lucideMoo
     imports: [RouterOutlet, RouterLink, NgIcon],
     host: { class: 'flex flex-col h-screen' },
     template: `
-        <nav class="navbar bg-base-100 shadow-sm">
+        <nav class="navbar bg-base-100 border-b border-base-300">
             <div class="flex-1">
                 <a routerLink="/" class="btn btn-ghost text-xl">ACR</a>
             </div>

@@ -10,7 +10,7 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
     imports: [RelativeTime, FormsModule, NgIcon],
     host: { '[class.ml-6]': 'isReply()' },
     template: `
-        <div class="card card-compact bg-base-100 shadow-sm">
+        <div class="card card-compact bg-base-100 border border-base-300">
             <div class="card-body gap-1">
                 @if (!isReply() && showFileHeader()) {
                     <div class="flex items-center gap-1 flex-wrap text-xs">
@@ -34,7 +34,7 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
                         class="size-3"
                     />
                     <span
-                        class="badge badge-xs"
+                        class="badge badge-xs badge-outline"
                         [class.badge-primary]="comment().author === 'user'"
                         [class.badge-accent]="comment().author === 'agent'"
                     >
@@ -43,7 +43,7 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
                     <span class="opacity-50">{{ comment().created_at | relativeTime }}</span>
                     @if (showStatus()) {
                         <span
-                            class="badge badge-xs"
+                            class="badge badge-xs badge-outline"
                             [class.badge-warning]="comment().status === 'draft'"
                             [class.badge-info]="comment().status === 'sent'"
                             [class.badge-success]="comment().status === 'resolved'"

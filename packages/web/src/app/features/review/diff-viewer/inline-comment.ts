@@ -18,7 +18,7 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
                     class="size-3"
                 />
                 <span
-                    class="badge badge-xs"
+                    class="badge badge-xs badge-outline"
                     [class.badge-primary]="c.author === 'user'"
                     [class.badge-accent]="c.author === 'agent'"
                 >
@@ -26,7 +26,7 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
                 </span>
                 <span class="opacity-50">{{ c.created_at | relativeTime }}</span>
                 <span
-                    class="badge badge-xs"
+                    class="badge badge-xs badge-outline"
                     [class.badge-warning]="c.status === 'draft'"
                     [class.badge-info]="c.status === 'sent'"
                     [class.badge-success]="c.status === 'resolved'"
@@ -83,7 +83,7 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
                                                 class="size-2.5"
                                             />
                                             <span
-                                                class="badge badge-xs"
+                                                class="badge badge-xs badge-outline"
                                                 [class.badge-primary]="reply.author === 'user'"
                                                 [class.badge-accent]="reply.author === 'agent'"
                                             >

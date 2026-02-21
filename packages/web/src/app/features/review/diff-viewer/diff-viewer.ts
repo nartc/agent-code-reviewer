@@ -3,6 +3,7 @@ import type { DiffLineAnnotation, FileDiffMetadata, OnDiffLineClickProps } from 
 import { parsePatchFiles } from '@pierre/diffs';
 import { ChangeDetectionStrategy, Component, afterRenderEffect, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { NgIcon } from '@ng-icons/core';
+import { ThemeSwitcher } from '../../../core/services/theme-switcher';
 import { UiPreferences } from '../../../core/services/ui-preferences';
 import { CommentStore } from '../../../core/stores/comment-store';
 import { SessionStore } from '../../../core/stores/session-store';
@@ -75,6 +76,7 @@ import { InlineCommentForm } from './inline-comment-form';
                 <acr-file-diff
                     [metadata]="meta"
                     [diffStyle]="diffStyle()"
+                    [themeType]="resolvedTheme()"
                     [lineAnnotations]="annotations()"
                     (lineNumberClicked)="onLineNumberClick($event)"
                     (lineRangeSelected)="onLineRangeSelected($event)"
@@ -88,7 +90,9 @@ import { InlineCommentForm } from './inline-comment-form';
 export class DiffViewer {
     protected readonly store = inject(SessionStore);
     readonly #prefs = inject(UiPreferences);
+    readonly #themeSwitcher = inject(ThemeSwitcher);
     protected readonly diffStyle = this.#prefs.diffStyle;
+    protected readonly resolvedTheme = this.#themeSwitcher.resolvedTheme;
 
     readonly #commentStore = inject(CommentStore);
     private readonly fileDiff = viewChild(AcrFileDiff);

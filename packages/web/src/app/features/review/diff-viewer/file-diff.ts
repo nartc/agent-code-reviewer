@@ -11,6 +11,7 @@ import {
     ElementRef,
     Injector,
     afterRenderEffect,
+    effect,
     inject,
     input,
     output,
@@ -29,6 +30,7 @@ import { InlineCommentForm } from './inline-comment-form';
 export class AcrFileDiff {
     readonly metadata = input.required<FileDiffMetadata>();
     readonly diffStyle = input<'unified' | 'split'>('unified');
+    readonly themeType = input<'light' | 'dark' | 'system'>('system');
     readonly lineAnnotations = input<DiffLineAnnotation<AnnotationMeta>[]>([]);
     readonly lineClicked = output<OnDiffLineClickProps>();
     readonly lineNumberClicked = output<{ lineNumber: number; side: 'old' | 'new' }>();
@@ -56,6 +58,7 @@ export class AcrFileDiff {
 
             this.#instance = new FileDiff<AnnotationMeta>({
                 diffStyle: style,
+                themeType: this.themeType(),
                 diffIndicators: 'bars',
                 lineDiffType: 'word',
                 overflow: 'scroll',
@@ -100,6 +103,12 @@ export class AcrFileDiff {
             });
 
             this.#instance.render({ fileDiff: meta, containerWrapper: container, lineAnnotations: annotations });
+        });
+
+        // Sync theme type reactively (without full re-render)
+        effect(() => {
+            const theme = this.themeType();
+            this.#instance?.setThemeType(theme);
         });
 
         this.#destroyRef.onDestroy(() => {

@@ -9,7 +9,7 @@ import { RelativeTime } from '../../shared/pipes/relative-time';
     imports: [RelativeTime, NgIcon],
     template: `
         @let r = repo();
-        <div class="card bg-base-200 shadow-sm">
+        <div class="card bg-base-200 border border-base-300">
             <div class="card-body gap-3">
                 <h2 class="card-title">{{ r.name }}</h2>
 

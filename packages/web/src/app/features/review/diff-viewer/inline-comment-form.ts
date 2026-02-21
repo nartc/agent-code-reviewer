@@ -14,7 +14,7 @@ import { CommentStore } from '../../../core/stores/comment-store';
         '(keydown.escape)': 'onCancel()',
     },
     template: `
-        <div class="card card-compact bg-base-200">
+        <div class="card card-compact bg-base-200 border border-base-300">
             <div class="card-body gap-2">
                 <div class="flex items-center gap-2 flex-wrap">
                     <span class="badge badge-sm badge-neutral font-mono">{{ filePath() }}</span>
