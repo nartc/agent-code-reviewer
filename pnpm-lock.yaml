@@ -47,12 +47,6 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.26.0
         version: 1.26.0(zod@3.25.76)
-      neverthrow:
-        specifier: ^8.x
-        version: 8.2.0
-      sql.js:
-        specifier: ^1.x
-        version: 1.13.0
       zod:
         specifier: ^3.25
         version: 3.25.76
