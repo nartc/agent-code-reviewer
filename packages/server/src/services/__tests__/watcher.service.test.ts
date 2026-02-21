@@ -298,6 +298,7 @@ describe('WatcherService', () => {
 
         it('computes changed files delta (AC-2.10)', async () => {
             // First snapshot
+            (gitService.getHeadCommit as any).mockReturnValue(okAsync('commit1'));
             (gitService.getDiff as any).mockReturnValue(
                 okAsync({
                     rawDiff: 'diff1',
@@ -310,6 +311,7 @@ describe('WatcherService', () => {
             await service.captureSnapshot(sessionId, '/repo', 'manual');
 
             // Second snapshot — a.ts same, b.ts removed, c.ts added
+            (gitService.getHeadCommit as any).mockReturnValue(okAsync('commit2'));
             (gitService.getDiff as any).mockReturnValue(
                 okAsync({
                     rawDiff: 'diff2',

@@ -15,7 +15,7 @@ function mockExecFile(
 
 function mockExecFileSuccess(stdout = '') {
     mockExecFile((_cmd, _args, cb) => {
-        const child = { stdin: { write: vi.fn(), end: vi.fn() } };
+        const child = { stdin: { write: vi.fn(() => true), end: vi.fn() } };
         queueMicrotask(() => cb(null, stdout, ''));
         return child;
     });
@@ -25,7 +25,7 @@ function mockExecFileSequence(results: Array<{ stdout?: string; error?: Error }>
     let callIdx = 0;
     (execFile as unknown as Mock).mockImplementation(
         (_cmd: string, _args: string[], cb: (err: Error | null, stdout: string, stderr: string) => void) => {
-            const child = { stdin: { write: vi.fn(), end: vi.fn() } };
+            const child = { stdin: { write: vi.fn(() => true), end: vi.fn() } };
             const result = results[callIdx++] ?? { stdout: '' };
             queueMicrotask(() => {
                 if (result.error) {
@@ -67,7 +67,7 @@ describe('TmuxTransport', () => {
 
         it('returns false when tmux list-sessions fails', async () => {
             mockExecFile((_cmd, _args, cb) => {
-                const child = { stdin: { write: vi.fn(), end: vi.fn() } };
+                const child = { stdin: { write: vi.fn(() => true), end: vi.fn() } };
                 queueMicrotask(() => cb(new Error('no server running'), '', ''));
                 return child;
             });
@@ -109,7 +109,7 @@ describe('TmuxTransport', () => {
 
         it('returns TransportError when tmux fails', async () => {
             mockExecFile((_cmd, _args, cb) => {
-                const child = { stdin: { write: vi.fn(), end: vi.fn() } };
+                const child = { stdin: { write: vi.fn(() => true), end: vi.fn() } };
                 queueMicrotask(() => cb(new Error('tmux not found'), '', ''));
                 return child;
             });
@@ -139,7 +139,7 @@ describe('TmuxTransport', () => {
             const calls: string[][] = [];
             (execFile as unknown as Mock).mockImplementation(
                 (cmd: string, args: string[], cb: (err: Error | null, stdout: string, stderr: string) => void) => {
-                    const child = { stdin: { write: vi.fn(), end: vi.fn() } };
+                    const child = { stdin: { write: vi.fn(() => true), end: vi.fn() } };
                     calls.push([cmd, ...args]);
                     queueMicrotask(() => cb(null, '', ''));
                     return child;
@@ -213,7 +213,7 @@ describe('TmuxTransport', () => {
 
         it('returns available false when tmux is not running', async () => {
             mockExecFile((_cmd, _args, cb) => {
-                const child = { stdin: { write: vi.fn(), end: vi.fn() } };
+                const child = { stdin: { write: vi.fn(() => true), end: vi.fn() } };
                 queueMicrotask(() => cb(new Error('no server'), '', ''));
                 return child;
             });

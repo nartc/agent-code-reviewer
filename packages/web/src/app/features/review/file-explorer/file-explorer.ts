@@ -76,7 +76,7 @@ export class FileExplorer {
             if (!activeFile || entries.length === 0) return;
             const el = entries.find((e) => e.nativeElement.getAttribute('data-file-path') === activeFile.path);
             if (el) {
-                el.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                el.nativeElement.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
             }
         });
     }

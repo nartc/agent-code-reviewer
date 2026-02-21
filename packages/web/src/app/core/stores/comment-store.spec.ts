@@ -103,11 +103,11 @@ describe('CommentStore', () => {
         expect(thread?.replies.length).toBe(1);
     });
 
-    it('onSseCommentUpdate is a no-op', () => {
+    it('onSseCommentUpdate reloads comments', () => {
         load();
         apiSpy['listComments'].mockClear();
         store.onSseCommentUpdate('s1');
-        expect(apiSpy['listComments']).not.toHaveBeenCalled();
+        expect(apiSpy['listComments']).toHaveBeenCalledWith({ session_id: 's1' });
     });
 
     it('isLoading is set correctly during load', () => {

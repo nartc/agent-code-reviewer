@@ -94,7 +94,7 @@ describe('TransportService', () => {
         it('dispatches to correct transport', async () => {
             const result = await service.send('tmux', 'main:0.1', payloads);
             expect(result.isOk()).toBe(true);
-            expect(tmux.sendComments).toHaveBeenCalledWith('main:0.1', payloads);
+            expect(tmux.sendComments).toHaveBeenCalledWith('main:0.1', payloads, undefined);
         });
 
         it('returns TransportUnavailableError for unknown type', async () => {

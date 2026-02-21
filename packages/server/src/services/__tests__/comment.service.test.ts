@@ -577,7 +577,7 @@ describe('CommentService', () => {
             );
 
             const reply = expectOk(service.createReply(parent.id, 'Reply', 'user'));
-            expect(reply.status).toBe('draft');
+            expect(reply.status).toBe('sent');
         });
     });
 

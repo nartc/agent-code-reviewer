@@ -1,7 +1,9 @@
 import type { CommentThread } from '@agent-code-reviewer/shared';
 import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { CommentStore } from '../../../core/stores/comment-store';
+import { SessionStore } from '../../../core/stores/session-store';
 import { CommentPanel } from './comment-panel';
 
 function makeDraft(id: string, filePath: string): CommentThread {
@@ -66,9 +68,17 @@ describe('CommentPanel', () => {
             createReply: vi.fn(),
         } as unknown as CommentStore;
 
+        const mockSessionStore = {
+            isViewingLatest: () => true,
+        } as unknown as SessionStore;
+
         await TestBed.configureTestingModule({
             imports: [TestHost],
-            providers: [{ provide: CommentStore, useValue: mockCommentStore }],
+            providers: [
+                provideRouter([]),
+                { provide: CommentStore, useValue: mockCommentStore },
+                { provide: SessionStore, useValue: mockSessionStore },
+            ],
         }).compileComponents();
 
         fixture = TestBed.createComponent(TestHost);

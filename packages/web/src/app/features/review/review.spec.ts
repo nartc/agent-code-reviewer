@@ -94,7 +94,7 @@ describe('Review — send flow', () => {
         (review as any).onSendComments(['c1', 'c2']);
 
         expect(sendCommentsSpy).toHaveBeenCalledWith(
-            { comment_ids: ['c1', 'c2'], transport_type: 'tmux', target_id: 'pane-1' },
+            { comment_ids: ['c1', 'c2'], transport_type: 'tmux', target_id: 'pane-1', snapshot_id: 'snap1' },
             expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) }),
         );
     });
