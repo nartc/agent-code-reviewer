@@ -21,6 +21,7 @@
             }
         }
     ],
+    "bustCache": 1,
     "nxCloudId": "698c4f3d3d2776aa2437559f",
     "targetDefaults": {
         "build": {
