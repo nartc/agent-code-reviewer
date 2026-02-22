@@ -43,16 +43,11 @@ describe('CommentStore', () => {
             createComment: vi.fn().mockReturnValue(of(makeComment({ id: 'c6' }))),
             updateComment: vi.fn().mockReturnValue(of(makeComment({ id: 'c1', content: 'updated' }))),
             deleteComment: vi.fn().mockReturnValue(of(undefined)),
-            sendComments: vi
-                .fn()
-                .mockReturnValue(
-                    of({
-                        comments: [
-                            makeComment({ id: 'c1', status: 'sent' }),
-                            makeComment({ id: 'c2', status: 'sent' }),
-                        ],
-                    }),
-                ),
+            sendComments: vi.fn().mockReturnValue(
+                of({
+                    comments: [makeComment({ id: 'c1', status: 'sent' }), makeComment({ id: 'c2', status: 'sent' })],
+                }),
+            ),
             resolveComment: vi.fn().mockReturnValue(of(makeComment({ id: 'c1', status: 'resolved' }))),
             replyToComment: vi.fn().mockReturnValue(of(makeComment({ id: 'r1', reply_to_id: 'c1' }))),
         };

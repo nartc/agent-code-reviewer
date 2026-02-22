@@ -1,5 +1,15 @@
 import type { FileSummary } from '@agent-code-reviewer/shared';
-import { ChangeDetectionStrategy, Component, computed, effect, ElementRef, input, output, signal, viewChildren } from '@angular/core';
+import {
+    ChangeDetectionStrategy,
+    Component,
+    computed,
+    effect,
+    ElementRef,
+    input,
+    output,
+    signal,
+    viewChildren,
+} from '@angular/core';
 import { NgIcon } from '@ng-icons/core';
 import { buildFileTree, flattenTree } from './build-file-tree';
 
@@ -23,7 +33,12 @@ import { buildFileTree, flattenTree } from './build-file-tree';
                                 [attr.aria-expanded]="!isCollapsed(entry.node.fullPath)"
                                 (click)="toggleDir(entry.node.fullPath)"
                             >
-                                <ng-icon [name]="isCollapsed(entry.node.fullPath) ? 'lucideChevronRight' : 'lucideChevronDown'" class="size-3" />
+                                <ng-icon
+                                    [name]="
+                                        isCollapsed(entry.node.fullPath) ? 'lucideChevronRight' : 'lucideChevronDown'
+                                    "
+                                    class="size-3"
+                                />
                                 <span class="truncate flex-1">{{ entry.node.name }}</span>
                             </button>
                         } @else {
@@ -83,9 +98,7 @@ export class FileExplorer {
 
     protected readonly tree = computed(() => buildFileTree(this.files()));
 
-    protected readonly flatEntries = computed(() =>
-        flattenTree(this.tree(), this.collapsedPaths()),
-    );
+    protected readonly flatEntries = computed(() => flattenTree(this.tree(), this.collapsedPaths()));
 
     protected isCollapsed(fullPath: string): boolean {
         return this.collapsedPaths().has(fullPath);
@@ -123,21 +136,31 @@ export class FileExplorer {
 
     protected statusLetter(status: FileSummary['status']): string {
         switch (status) {
-            case 'added': return 'A';
-            case 'modified': return 'M';
-            case 'deleted': return 'D';
-            case 'renamed': return 'R';
-            default: return '?';
+            case 'added':
+                return 'A';
+            case 'modified':
+                return 'M';
+            case 'deleted':
+                return 'D';
+            case 'renamed':
+                return 'R';
+            default:
+                return '?';
         }
     }
 
     protected statusClass(status: FileSummary['status']): string {
         switch (status) {
-            case 'added': return 'badge-success';
-            case 'modified': return 'badge-warning';
-            case 'deleted': return 'badge-error';
-            case 'renamed': return 'badge-info';
-            default: return '';
+            case 'added':
+                return 'badge-success';
+            case 'modified':
+                return 'badge-warning';
+            case 'deleted':
+                return 'badge-error';
+            case 'renamed':
+                return 'badge-info';
+            default:
+                return '';
         }
     }
 }

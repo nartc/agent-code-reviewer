@@ -4,7 +4,6 @@ import {
     ChangeDetectionStrategy,
     Component,
     ElementRef,
-    afterNextRender,
     computed,
     effect,
     inject,
@@ -48,21 +47,17 @@ function groupBy<T>(items: T[], keyFn: (item: T) => string): Record<string, T[]>
 
         <div class="flex items-center gap-2 px-4 py-2 border-b border-base-300">
             <span class="text-xs font-semibold">Filter:</span>
-            <button
-                class="btn btn-xs"
-                [class.btn-active]="filter() === 'all'"
-                (click)="filter.set('all')"
-            >All</button>
+            <button class="btn btn-xs" [class.btn-active]="filter() === 'all'" (click)="filter.set('all')">All</button>
             <button
                 class="btn btn-xs"
                 [class.btn-active]="filter() === 'unresolved'"
                 (click)="filter.set('unresolved')"
-            >Unresolved</button>
-            <button
-                class="btn btn-xs"
-                [class.btn-active]="filter() === 'resolved'"
-                (click)="filter.set('resolved')"
-            >Resolved</button>
+            >
+                Unresolved
+            </button>
+            <button class="btn btn-xs" [class.btn-active]="filter() === 'resolved'" (click)="filter.set('resolved')">
+                Resolved
+            </button>
         </div>
 
         <div class="flex-1 overflow-auto p-4 space-y-4">
@@ -70,10 +65,16 @@ function groupBy<T>(items: T[], keyFn: (item: T) => string): Record<string, T[]>
                 <div class="text-center text-base-content/50 p-8">No comments for this session</div>
             } @else {
                 @for (group of snapshotGroups(); track group.snapshotId) {
-                    <div #snapshotGroup [attr.data-snapshot-id]="group.snapshotId" class="card bg-base-100 border border-base-300">
+                    <div
+                        #snapshotGroup
+                        [attr.data-snapshot-id]="group.snapshotId"
+                        class="card bg-base-100 border border-base-300"
+                    >
                         <div class="card-body p-3">
                             <div class="flex items-center gap-2">
-                                <span class="badge badge-neutral font-mono" [title]="group.snapshotId">{{ group.snapshotId | slice:0:8 }}</span>
+                                <span class="badge badge-neutral font-mono" [title]="group.snapshotId">
+                                    {{ group.snapshotId | slice: 0 : 8 }}
+                                </span>
                                 <span class="text-xs opacity-50 flex-1">{{ group.comments.length }} comments</span>
                                 @if (group.unresolvedCount > 0) {
                                     <button
@@ -199,7 +200,10 @@ export class CommentHistory {
         this.confirmState.set(null);
     }
 
-    protected onCommentClicked(snapshotId: string, event: { filePath: string; lineStart: number | null; side: string }): void {
+    protected onCommentClicked(
+        snapshotId: string,
+        event: { filePath: string; lineStart: number | null; side: string },
+    ): void {
         this.#router.navigate(['/review', this.sessionId()], {
             queryParams: { snapshot: snapshotId },
         });

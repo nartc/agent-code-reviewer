@@ -351,11 +351,7 @@ export class CommentService {
         return ok(resolved);
     }
 
-    bulkResolve(
-        sessionId: string,
-        snapshotId?: string,
-        commentIds?: string[],
-    ): Result<number, DatabaseError> {
+    bulkResolve(sessionId: string, snapshotId?: string, commentIds?: string[]): Result<number, DatabaseError> {
         return this.db.transaction(() => {
             let query: string;
             const params: Record<string, string> = { $sessionId: sessionId };

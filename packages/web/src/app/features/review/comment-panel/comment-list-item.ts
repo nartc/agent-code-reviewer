@@ -33,10 +33,7 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
             }
 
             <div class="flex items-center gap-2 text-xs">
-                <ng-icon
-                    [name]="c.author === 'agent' ? 'lucideBot' : 'lucideUser'"
-                    class="size-3"
-                />
+                <ng-icon [name]="c.author === 'agent' ? 'lucideBot' : 'lucideUser'" class="size-3" />
                 <span
                     class="badge badge-xs badge-outline"
                     [class.badge-primary]="c.author === 'user'"
@@ -91,23 +88,39 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
                                     <ng-icon name="lucidePencil" class="size-3" />
                                     Edit
                                 </button>
-                                <button class="btn btn-xs btn-ghost text-error" title="Delete comment" (click)="commentDeleted.emit(thread())">
+                                <button
+                                    class="btn btn-xs btn-ghost text-error"
+                                    title="Delete comment"
+                                    (click)="commentDeleted.emit(thread())"
+                                >
                                     <ng-icon name="lucideTrash2" class="size-3" />
                                     Delete
                                 </button>
                             }
                             @case ('sent') {
-                                <button class="btn btn-xs btn-ghost" title="Mark as resolved" (click)="commentResolved.emit(thread())">
+                                <button
+                                    class="btn btn-xs btn-ghost"
+                                    title="Mark as resolved"
+                                    (click)="commentResolved.emit(thread())"
+                                >
                                     <ng-icon name="lucideCheck" class="size-3" />
                                     Resolve
                                 </button>
-                                <button class="btn btn-xs btn-ghost" title="Reply" (click)="replyCreated.emit({ thread: thread(), content: '' })">
+                                <button
+                                    class="btn btn-xs btn-ghost"
+                                    title="Reply"
+                                    (click)="replyCreated.emit({ thread: thread(), content: '' })"
+                                >
                                     <ng-icon name="lucideReply" class="size-3" />
                                     Reply
                                 </button>
                             }
                             @case ('resolved') {
-                                <button class="btn btn-xs btn-ghost" title="Reply" (click)="replyCreated.emit({ thread: thread(), content: '' })">
+                                <button
+                                    class="btn btn-xs btn-ghost"
+                                    title="Reply"
+                                    (click)="replyCreated.emit({ thread: thread(), content: '' })"
+                                >
                                     <ng-icon name="lucideReply" class="size-3" />
                                     Reply
                                 </button>

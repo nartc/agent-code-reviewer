@@ -151,9 +151,8 @@ export class TmuxTransport implements Transport {
                 ),
             )
             .andThen(() =>
-                ResultAsync.fromPromise(
-                    execFileAsync('tmux', ['send-keys', '-t', targetId, 'Enter']),
-                    (e) => transportError(`tmux send-keys failed: ${e instanceof Error ? e.message : String(e)}`, e),
+                ResultAsync.fromPromise(execFileAsync('tmux', ['send-keys', '-t', targetId, 'Enter']), (e) =>
+                    transportError(`tmux send-keys failed: ${e instanceof Error ? e.message : String(e)}`, e),
                 ),
             )
             .andThen(() =>

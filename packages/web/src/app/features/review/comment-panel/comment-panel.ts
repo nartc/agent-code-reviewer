@@ -7,7 +7,6 @@ import { CommentStore } from '../../../core/stores/comment-store';
 import { SessionStore } from '../../../core/stores/session-store';
 import { CommentListItem } from './comment-list-item';
 
-
 function groupBy<T>(items: T[], keyFn: (item: T) => string): Record<string, T[]> {
     const result: Record<string, T[]> = {};
     for (const item of items) {
@@ -23,92 +22,86 @@ function groupBy<T>(items: T[], keyFn: (item: T) => string): Record<string, T[]>
     imports: [CommentListItem, KeyValuePipe, NgIcon, RouterLink],
     host: { class: 'flex flex-col h-full' },
     template: `
-            @if (isViewingLatest()) {
-                <!-- Latest snapshot layout -->
-                <div class="flex items-center justify-between p-2 border-b border-base-300">
-                    <h3 class="font-semibold text-sm">Comments</h3>
-                    <button
-                        class="btn btn-xs btn-primary"
-                        title="Send all draft comments"
-                        [disabled]="!hasDrafts() || !canSend()"
-                        (click)="sendAllDrafts()"
-                    >
-                        <ng-icon name="lucideSend" class="size-3" />
-                        Send All Drafts
-                    </button>
-                </div>
+        @if (isViewingLatest()) {
+            <!-- Latest snapshot layout -->
+            <div class="flex items-center justify-between p-2 border-b border-base-300">
+                <h3 class="font-semibold text-sm">Comments</h3>
+                <button
+                    class="btn btn-xs btn-primary"
+                    title="Send all draft comments"
+                    [disabled]="!hasDrafts() || !canSend()"
+                    (click)="sendAllDrafts()"
+                >
+                    <ng-icon name="lucideSend" class="size-3" />
+                    Send All Drafts
+                </button>
+            </div>
 
-                <div class="flex-1 overflow-auto p-2">
-                    @if (hasDrafts()) {
-                        @for (group of draftsByFile() | keyvalue; track group.key) {
-                            <div class="font-mono text-xs p-1 bg-base-200 rounded mt-2 first:mt-0">{{ group.key }}</div>
-                            @for (thread of group.value; track thread.comment.id) {
-                                <acr-comment-list-item
-                                    class="block mt-1"
-                                    [thread]="thread"
-                                    [showActions]="true"
-                                    [showFileHeader]="false"
-                                    [showStatus]="false"
-                                    (commentClicked)="onCommentClicked($event)"
-                                    (commentDeleted)="onCommentDeletedFromListItem($event)"
-                                />
-                            }
-                        }
-                    } @else {
-                        <div class="text-center text-base-content/50 p-4 text-sm">No draft comments</div>
-                    }
-                </div>
-
-                <div class="p-2 border-t border-base-300">
-                    <a
-                        class="btn btn-xs btn-ghost w-full"
-                        [routerLink]="['/review', sessionId(), 'comments']"
-                    >
-                        <ng-icon name="lucideHistory" class="size-3" />
-                        View Comment History
-                    </a>
-                </div>
-            } @else {
-                <!-- Previous snapshot layout -->
-                <div class="flex items-center justify-between p-2 border-b border-base-300">
-                    <h3 class="font-semibold text-sm">Snapshot Comments</h3>
-                    <a
-                        class="link link-primary text-xs"
-                        [routerLink]="['/review', sessionId(), 'comments']"
-                        [queryParams]="{ snapshot: snapshotId() }"
-                    >
-                        View full history &rarr;
-                    </a>
-                </div>
-
-                <div class="flex-1 overflow-auto p-2">
-                    @if (snapshotComments().length > 0) {
-                        @for (thread of snapshotComments(); track thread.comment.id) {
+            <div class="flex-1 overflow-auto p-2">
+                @if (hasDrafts()) {
+                    @for (group of draftsByFile() | keyvalue; track group.key) {
+                        <div class="font-mono text-xs p-1 bg-base-200 rounded mt-2 first:mt-0">{{ group.key }}</div>
+                        @for (thread of group.value; track thread.comment.id) {
                             <acr-comment-list-item
-                                class="block mt-1 first:mt-0"
+                                class="block mt-1"
                                 [thread]="thread"
                                 [showActions]="true"
+                                [showFileHeader]="false"
+                                [showStatus]="false"
                                 (commentClicked)="onCommentClicked($event)"
-                                (commentResolved)="onCommentResolvedFromListItem($event)"
+                                (commentDeleted)="onCommentDeletedFromListItem($event)"
                             />
                         }
-                    } @else {
-                        <div class="text-center text-base-content/50 p-4 text-sm">No comments for this snapshot</div>
                     }
-                </div>
-
-                @if (unresolvedCount() > 0) {
-                    <div class="p-2 border-t border-base-300">
-                        <button
-                            class="btn btn-xs btn-ghost w-full"
-                            (click)="markAllResolved()"
-                        >
-                            <ng-icon name="lucideCheckCheck" class="size-3" />
-                            Mark all unresolved as resolved ({{ unresolvedCount() }})
-                        </button>
-                    </div>
+                } @else {
+                    <div class="text-center text-base-content/50 p-4 text-sm">No draft comments</div>
                 }
+            </div>
+
+            <div class="p-2 border-t border-base-300">
+                <a class="btn btn-xs btn-ghost w-full" [routerLink]="['/review', sessionId(), 'comments']">
+                    <ng-icon name="lucideHistory" class="size-3" />
+                    View Comment History
+                </a>
+            </div>
+        } @else {
+            <!-- Previous snapshot layout -->
+            <div class="flex items-center justify-between p-2 border-b border-base-300">
+                <h3 class="font-semibold text-sm">Snapshot Comments</h3>
+                <a
+                    class="link link-primary text-xs"
+                    [routerLink]="['/review', sessionId(), 'comments']"
+                    [queryParams]="{ snapshot: snapshotId() }"
+                >
+                    View full history &rarr;
+                </a>
+            </div>
+
+            <div class="flex-1 overflow-auto p-2">
+                @if (snapshotComments().length > 0) {
+                    @for (thread of snapshotComments(); track thread.comment.id) {
+                        <acr-comment-list-item
+                            class="block mt-1 first:mt-0"
+                            [thread]="thread"
+                            [showActions]="true"
+                            (commentClicked)="onCommentClicked($event)"
+                            (commentResolved)="onCommentResolvedFromListItem($event)"
+                        />
+                    }
+                } @else {
+                    <div class="text-center text-base-content/50 p-4 text-sm">No comments for this snapshot</div>
+                }
+            </div>
+
+            @if (unresolvedCount() > 0) {
+                <div class="p-2 border-t border-base-300">
+                    <button class="btn btn-xs btn-ghost w-full" (click)="markAllResolved()">
+                        <ng-icon name="lucideCheckCheck" class="size-3" />
+                        Mark all unresolved as resolved ({{ unresolvedCount() }})
+                    </button>
+                </div>
             }
+        }
     `,
 })
 export class CommentPanel {

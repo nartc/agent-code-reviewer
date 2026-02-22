@@ -24,7 +24,12 @@ export class RepoService {
 
     listRepos(): Result<RepoWithPaths[], DatabaseError> {
         const rowsResult = this.dbService.query<
-            Repo & { path_id: string | null; path: string | null; last_accessed_at: string | null; path_created_at: string | null }
+            Repo & {
+                path_id: string | null;
+                path: string | null;
+                last_accessed_at: string | null;
+                path_created_at: string | null;
+            }
         >(
             `SELECT r.*, rp.id as path_id, rp.path, rp.last_accessed_at, rp.created_at as path_created_at
              FROM repos r LEFT JOIN repo_paths rp ON r.id = rp.repo_id

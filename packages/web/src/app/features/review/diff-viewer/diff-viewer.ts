@@ -1,8 +1,17 @@
 import type { Comment } from '@agent-code-reviewer/shared';
-import type { DiffLineAnnotation, FileDiffMetadata, OnDiffLineClickProps } from '@pierre/diffs';
-import { parsePatchFiles } from '@pierre/diffs';
-import { ChangeDetectionStrategy, Component, afterRenderEffect, computed, effect, inject, signal, viewChild } from '@angular/core';
+import {
+    ChangeDetectionStrategy,
+    Component,
+    afterRenderEffect,
+    computed,
+    effect,
+    inject,
+    signal,
+    viewChild,
+} from '@angular/core';
 import { NgIcon } from '@ng-icons/core';
+import type { DiffLineAnnotation, FileDiffMetadata } from '@pierre/diffs';
+import { parsePatchFiles } from '@pierre/diffs';
 import { ThemeSwitcher } from '../../../core/services/theme-switcher';
 import { UiPreferences } from '../../../core/services/ui-preferences';
 import { CommentStore } from '../../../core/stores/comment-store';
@@ -30,7 +39,9 @@ import { InlineCommentForm } from './inline-comment-form';
                     <button class="btn btn-xs btn-ghost" aria-label="Previous file" (click)="store.prevFile()">
                         <ng-icon name="lucideChevronLeft" class="size-4" />
                     </button>
-                    <span class="text-xs opacity-50 whitespace-nowrap">{{ store.activeFileIndex() + 1 }} / {{ store.totalFiles() }}</span>
+                    <span class="text-xs opacity-50 whitespace-nowrap">
+                        {{ store.activeFileIndex() + 1 }} / {{ store.totalFiles() }}
+                    </span>
                     <button class="btn btn-xs btn-ghost" aria-label="Next file" (click)="store.nextFile()">
                         <ng-icon name="lucideChevronRight" class="size-4" />
                     </button>
@@ -45,11 +56,7 @@ import { InlineCommentForm } from './inline-comment-form';
                 >
                     Unified
                 </button>
-                <button
-                    class="btn btn-xs"
-                    [class.btn-active]="diffStyle() === 'split'"
-                    (click)="setDiffStyle('split')"
-                >
+                <button class="btn btn-xs" [class.btn-active]="diffStyle() === 'split'" (click)="setDiffStyle('split')">
                     Split
                 </button>
                 <div class="flex-1"></div>
@@ -162,9 +169,7 @@ export class DiffViewer {
             const container = fileDiffInstance.diffContainer().nativeElement;
 
             // Find the line row element using @pierre/diffs data-line attribute
-            const lineEl = container.querySelector(
-                `[data-line="${target.lineStart}"]`,
-            ) as HTMLElement | null;
+            const lineEl = container.querySelector(`[data-line="${target.lineStart}"]`) as HTMLElement | null;
 
             if (lineEl) {
                 lineEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -202,7 +207,9 @@ export class DiffViewer {
         // Prevent the subsequent click→onLineNumberClick from overriding this range.
         // setTimeout (not queueMicrotask) because microtasks flush between pointerup and click events.
         this.#rangeJustSelected = true;
-        setTimeout(() => { this.#rangeJustSelected = false; });
+        setTimeout(() => {
+            this.#rangeJustSelected = false;
+        });
 
         this.#activeForm.set({
             type: 'form',
@@ -252,5 +259,4 @@ export class DiffViewer {
     protected setDiffStyle(style: 'unified' | 'split'): void {
         this.#prefs.setDiffStyle(style);
     }
-
 }

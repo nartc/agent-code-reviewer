@@ -1,7 +1,7 @@
 import { createSessionSchema, updateSessionSchema, validation } from '@agent-code-reviewer/shared';
-import { err } from 'neverthrow';
 import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
+import { err } from 'neverthrow';
 import { asyncResultToResponse, resultToResponse } from '../lib/result-to-response.js';
 import type { SessionService } from '../services/session.service.js';
 import type { WatcherService } from '../services/watcher.service.js';
@@ -13,7 +13,10 @@ export function createSessionRoutes(sessionService: SessionService, watcherServi
     // GET / — List sessions (optionally filtered by repo_id)
     app.get('/', (c) => {
         const repoId = c.req.query('repo_id');
-        return resultToResponse(c, sessionService.listSessions(repoId).map((sessions) => ({ sessions })));
+        return resultToResponse(
+            c,
+            sessionService.listSessions(repoId).map((sessions) => ({ sessions })),
+        );
     });
 
     // GET /:id — Get session with repo

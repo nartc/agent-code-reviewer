@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from '@angular/core';
-import { NgIcon } from '@ng-icons/core';
 import { Router } from '@angular/router';
+import { NgIcon } from '@ng-icons/core';
 import { ApiClient } from '../../core/services/api-client';
 import { UiPreferences } from '../../core/services/ui-preferences';
 import { CommentStore } from '../../core/stores/comment-store';
@@ -22,7 +22,16 @@ import { TransportPicker } from './transport-picker/transport-picker';
         '(document:keydown.ArrowLeft)': 'onKeyPrev($event)',
         '(document:keydown.ArrowRight)': 'onKeyNext($event)',
     },
-    imports: [ResizeHandle, DiffViewer, FileExplorer, SessionSidebar, CommentPanel, SnapshotTimeline, TransportPicker, NgIcon],
+    imports: [
+        ResizeHandle,
+        DiffViewer,
+        FileExplorer,
+        SessionSidebar,
+        CommentPanel,
+        SnapshotTimeline,
+        TransportPicker,
+        NgIcon,
+    ],
     template: `
         @let session = store.currentSession();
         @if (session) {
@@ -244,7 +253,12 @@ export class Review {
         if (!transport || !targetId) return;
         this.isSending.set(true);
         this.#commentStore.sendComments(
-            { comment_ids: commentIds, transport_type: transport, target_id: targetId, snapshot_id: this.store.activeSnapshotId() ?? undefined },
+            {
+                comment_ids: commentIds,
+                transport_type: transport,
+                target_id: targetId,
+                snapshot_id: this.store.activeSnapshotId() ?? undefined,
+            },
             {
                 onSuccess: (res) => {
                     this.isSending.set(false);
@@ -263,7 +277,9 @@ export class Review {
 
     #isInputFocused(event: Event): boolean {
         const tag = (event.target as HTMLElement).tagName;
-        return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (event.target as HTMLElement).isContentEditable;
+        return (
+            tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (event.target as HTMLElement).isContentEditable
+        );
     }
 
     private showToast(type: 'success' | 'error', text: string): void {

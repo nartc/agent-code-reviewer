@@ -1,7 +1,7 @@
+import type { ListReposResponse, RepoWithPaths } from '@agent-code-reviewer/shared';
 import { httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import type { ListReposResponse, RepoWithPaths } from '@agent-code-reviewer/shared';
 import { ApiClient } from '../../core/services/api-client';
 import { AddRepo } from './add-repo';
 import { RepoCard } from './repo-card';

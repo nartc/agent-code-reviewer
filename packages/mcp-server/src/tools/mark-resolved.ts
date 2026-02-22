@@ -17,7 +17,9 @@ export function registerMarkResolved(server: McpServer, client: ApiClient): void
                 return { content: [{ type: 'text' as const, text: `Comment [${comment_id}] marked as resolved.` }] };
             } catch (e) {
                 console.error('[mcp-server] mark_comment_resolved error:', e);
-                return { content: [{ type: 'text' as const, text: `Error: ${e instanceof Error ? e.message : String(e)}` }] };
+                return {
+                    content: [{ type: 'text' as const, text: `Error: ${e instanceof Error ? e.message : String(e)}` }],
+                };
             }
         },
     );

@@ -15,48 +15,48 @@ import { CommentStore } from '../../../core/stores/comment-store';
         '(keydown.escape)': 'onCancel()',
     },
     template: `
-            <div class="card-body gap-2">
-                <div class="flex items-center gap-2 flex-wrap">
-                    <span class="badge badge-sm badge-neutral font-mono">{{ filePath() }}</span>
-                    @if (isFileLevel()) {
-                        <span class="badge badge-sm badge-ghost">File comment</span>
-                    } @else if (lineEnd(); as end) {
-                        <span class="badge badge-sm badge-ghost">Lines {{ lineStart() }}-{{ end }}</span>
-                    } @else {
-                        <span class="badge badge-sm badge-ghost">Line {{ lineStart() }}</span>
-                    }
-                    <span class="badge badge-sm badge-outline">{{ side() }}</span>
-                </div>
-
-                <textarea
-                    class="textarea textarea-bordered w-full"
-                    rows="3"
-                    placeholder="Write a comment..."
-                    aria-label="Add comment"
-                    [(ngModel)]="content"
-                    #textareaEl
-                ></textarea>
-
-                <div class="flex justify-end gap-2">
-                    <button class="btn btn-sm btn-ghost" title="Cancel (Esc)" (click)="onCancel()">
-                        <ng-icon name="lucideX" class="size-3.5" />
-                        Cancel
-                    </button>
-                    <button
-                        class="btn btn-sm btn-primary"
-                        title="Save Draft (Cmd+Enter)"
-                        [disabled]="!content().trim() || isSaving()"
-                        (click)="onSave()"
-                    >
-                        @if (isSaving()) {
-                            <span class="loading loading-spinner loading-xs"></span>
-                        } @else {
-                            <ng-icon name="lucideSave" class="size-3.5" />
-                        }
-                        Save Draft
-                    </button>
-                </div>
+        <div class="card-body gap-2">
+            <div class="flex items-center gap-2 flex-wrap">
+                <span class="badge badge-sm badge-neutral font-mono">{{ filePath() }}</span>
+                @if (isFileLevel()) {
+                    <span class="badge badge-sm badge-ghost">File comment</span>
+                } @else if (lineEnd(); as end) {
+                    <span class="badge badge-sm badge-ghost">Lines {{ lineStart() }}-{{ end }}</span>
+                } @else {
+                    <span class="badge badge-sm badge-ghost">Line {{ lineStart() }}</span>
+                }
+                <span class="badge badge-sm badge-outline">{{ side() }}</span>
             </div>
+
+            <textarea
+                class="textarea textarea-bordered w-full"
+                rows="3"
+                placeholder="Write a comment..."
+                aria-label="Add comment"
+                [(ngModel)]="content"
+                #textareaEl
+            ></textarea>
+
+            <div class="flex justify-end gap-2">
+                <button class="btn btn-sm btn-ghost" title="Cancel (Esc)" (click)="onCancel()">
+                    <ng-icon name="lucideX" class="size-3.5" />
+                    Cancel
+                </button>
+                <button
+                    class="btn btn-sm btn-primary"
+                    title="Save Draft (Cmd+Enter)"
+                    [disabled]="!content().trim() || isSaving()"
+                    (click)="onSave()"
+                >
+                    @if (isSaving()) {
+                        <span class="loading loading-spinner loading-xs"></span>
+                    } @else {
+                        <ng-icon name="lucideSave" class="size-3.5" />
+                    }
+                    Save Draft
+                </button>
+            </div>
+        </div>
     `,
 })
 export class InlineCommentForm {

@@ -44,7 +44,9 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
                         >
                             <span class="truncate flex-1 text-left">{{ session.branch }}</span>
                             <acr-notification-dot [visible]="session.is_watching" />
-                            <span class="text-xs opacity-50 whitespace-nowrap">{{ session.created_at | relativeTime }}</span>
+                            <span class="text-xs opacity-50 whitespace-nowrap">
+                                {{ session.created_at | relativeTime }}
+                            </span>
                         </button>
                     </li>
                 }
@@ -63,9 +65,8 @@ export class SessionSidebar {
 
     protected readonly sessionsResource = rxResource<Session[], string>({
         params: () => this.repoId(),
-        stream: ({ params: repoId }) => this.#api.listSessions(repoId).pipe(
-            map((r: ListSessionsResponse) => r.sessions),
-        ),
+        stream: ({ params: repoId }) =>
+            this.#api.listSessions(repoId).pipe(map((r: ListSessionsResponse) => r.sessions)),
         defaultValue: [],
     });
 

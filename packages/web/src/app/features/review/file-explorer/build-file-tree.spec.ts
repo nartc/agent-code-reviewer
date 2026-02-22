@@ -19,9 +19,7 @@ describe('buildFileTree', () => {
     it('should handle a single root-level file', () => {
         const file = makeFile('single.ts');
         const tree = buildFileTree([file]);
-        expect(tree).toEqual([
-            { name: 'single.ts', fullPath: 'single.ts', children: [], file },
-        ]);
+        expect(tree).toEqual([{ name: 'single.ts', fullPath: 'single.ts', children: [], file }]);
     });
 
     it('should handle flat files with no directories', () => {
@@ -56,12 +54,7 @@ describe('buildFileTree', () => {
     });
 
     it('should sort directories first, then files, both alphabetical', () => {
-        const files = [
-            makeFile('z-file.ts'),
-            makeFile('src/index.ts'),
-            makeFile('a-file.ts'),
-            makeFile('lib/util.ts'),
-        ];
+        const files = [makeFile('z-file.ts'), makeFile('src/index.ts'), makeFile('a-file.ts'), makeFile('lib/util.ts')];
         const tree = buildFileTree(files);
 
         // Directories first: lib, src; then files: a-file.ts, z-file.ts
@@ -80,11 +73,7 @@ describe('buildFileTree', () => {
     });
 
     it('should handle mixed root-level files and directories', () => {
-        const files = [
-            makeFile('README.md'),
-            makeFile('src/app.ts'),
-            makeFile('package.json'),
-        ];
+        const files = [makeFile('README.md'), makeFile('src/app.ts'), makeFile('package.json')];
         const tree = buildFileTree(files);
 
         // src dir first, then files

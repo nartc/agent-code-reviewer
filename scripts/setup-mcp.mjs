@@ -30,31 +30,43 @@ console.log();
 console.log(`${CYAN}${BOLD}── Claude Code (.mcp.json) ──────────────────────────────────────────────────${RESET}`);
 console.log(`Add to ${BOLD}.mcp.json${RESET} in your target repo:`);
 console.log();
-console.log(JSON.stringify({
-    mcpServers: {
-        'agent-code-reviewer': {
-            type: 'stdio',
-            command: 'node',
-            args: [MCP_ENTRY],
-            env: { SERVER_URL },
+console.log(
+    JSON.stringify(
+        {
+            mcpServers: {
+                'agent-code-reviewer': {
+                    type: 'stdio',
+                    command: 'node',
+                    args: [MCP_ENTRY],
+                    env: { SERVER_URL },
+                },
+            },
         },
-    },
-}, null, 2));
+        null,
+        2,
+    ),
+);
 console.log();
 
 // OpenCode
 console.log(`${CYAN}${BOLD}── OpenCode (opencode.json) ─────────────────────────────────────────────────${RESET}`);
 console.log(`Add to ${BOLD}opencode.json${RESET} in your target repo under the ${BOLD}mcp${RESET} key:`);
 console.log();
-console.log(JSON.stringify({
-    mcp: {
-        'agent-code-reviewer': {
-            type: 'local',
-            command: `node ${MCP_ENTRY}`,
-            env: { SERVER_URL },
+console.log(
+    JSON.stringify(
+        {
+            mcp: {
+                'agent-code-reviewer': {
+                    type: 'local',
+                    command: `node ${MCP_ENTRY}`,
+                    env: { SERVER_URL },
+                },
+            },
         },
-    },
-}, null, 2));
+        null,
+        2,
+    ),
+);
 console.log();
 
 console.log(`${YELLOW}Note:${RESET} SERVER_URL points to the running agent-code-reviewer server.`);

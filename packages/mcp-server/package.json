@@ -13,7 +13,6 @@
     "dependencies": {
         "@agent-code-reviewer/shared": "workspace:*",
         "@modelcontextprotocol/sdk": "^1.26.0",
-
         "zod": "^3.25"
     },
     "devDependencies": {

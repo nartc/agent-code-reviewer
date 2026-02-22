@@ -57,7 +57,9 @@ export function formatCommentsForTransport(comments: CommentPayload[], options?:
     // Primary path: agent resolves via mark_resolved; fallback: user resolves via UI or bulk resolve (F7)
     lines.push('To respond to these comments, use the agent-code-reviewer MCP tools:');
     if (options?.snapshot_id) {
-        lines.push(`- check_comments: list pending comments (use snapshot_id: "${options.snapshot_id}" to scope to this review)`);
+        lines.push(
+            `- check_comments: list pending comments (use snapshot_id: "${options.snapshot_id}" to scope to this review)`,
+        );
     } else {
         lines.push('- check_comments: list pending comments');
     }

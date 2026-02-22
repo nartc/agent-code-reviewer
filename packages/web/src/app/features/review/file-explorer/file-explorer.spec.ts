@@ -56,11 +56,11 @@ describe('FileExplorer', () => {
         await fixture.whenStable();
         const badges = el.querySelectorAll('.badge');
         // Alphabetical order: app.ts(M), moved.ts(R), new-file.ts(A), no-changes.ts(M), old-file.ts(D)
-        expect(badges[0].textContent!.trim()).toBe('M');  // app.ts
-        expect(badges[1].textContent!.trim()).toBe('R');  // moved.ts
-        expect(badges[2].textContent!.trim()).toBe('A');  // new-file.ts
-        expect(badges[3].textContent!.trim()).toBe('M');  // no-changes.ts
-        expect(badges[4].textContent!.trim()).toBe('D');  // old-file.ts
+        expect(badges[0].textContent!.trim()).toBe('M'); // app.ts
+        expect(badges[1].textContent!.trim()).toBe('R'); // moved.ts
+        expect(badges[2].textContent!.trim()).toBe('A'); // new-file.ts
+        expect(badges[3].textContent!.trim()).toBe('M'); // no-changes.ts
+        expect(badges[4].textContent!.trim()).toBe('D'); // old-file.ts
     });
 
     it('shows correct badge classes', async () => {

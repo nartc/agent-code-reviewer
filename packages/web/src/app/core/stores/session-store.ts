@@ -4,8 +4,8 @@ import { DestroyRef, Injectable, computed, effect, inject, linkedSignal, signal 
 import { rxResource } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
 import { ApiClient } from '../services/api-client';
-import { UiPreferences } from '../services/ui-preferences';
 import { SseConnection } from '../services/sse-connection';
+import { UiPreferences } from '../services/ui-preferences';
 import { CommentStore } from './comment-store';
 
 @Injectable({ providedIn: 'root' })

@@ -1,7 +1,5 @@
 import type { Comment } from '@agent-code-reviewer/shared';
-import type { DiffLineAnnotation, FileDiffMetadata, OnDiffLineClickProps } from '@pierre/diffs';
-import { FileDiff } from '@pierre/diffs';
-import { DomPortalOutlet, ComponentPortal } from '@angular/cdk/portal';
+import { ComponentPortal, DomPortalOutlet } from '@angular/cdk/portal';
 import {
     ApplicationRef,
     ChangeDetectionStrategy,
@@ -17,6 +15,8 @@ import {
     output,
     viewChild,
 } from '@angular/core';
+import type { DiffLineAnnotation, FileDiffMetadata, OnDiffLineClickProps } from '@pierre/diffs';
+import { FileDiff } from '@pierre/diffs';
 import type { AnnotationMeta } from './annotation-meta';
 import { InlineComment } from './inline-comment';
 import { InlineCommentForm } from './inline-comment-form';
@@ -25,7 +25,9 @@ import { InlineCommentForm } from './inline-comment-form';
     selector: 'acr-file-diff',
     changeDetection: ChangeDetectionStrategy.OnPush,
     host: { class: 'flex flex-col flex-1 overflow-hidden' },
-    template: `<div #diffContainer class="flex-1 overflow-auto"></div>`,
+    template: `
+        <div #diffContainer class="flex-1 overflow-auto"></div>
+    `,
 })
 export class AcrFileDiff {
     readonly metadata = input.required<FileDiffMetadata>();
@@ -75,7 +77,8 @@ export class AcrFileDiff {
                     const btn = document.createElement('button');
                     btn.type = 'button';
                     btn.className = 'btn btn-circle btn-xs btn-ghost text-primary opacity-70 hover:opacity-100';
-                    btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+                    btn.innerHTML =
+                        '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
                     btn.addEventListener('click', (e) => {
                         e.stopPropagation();
                         const hovered = getHoveredRow();

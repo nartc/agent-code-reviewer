@@ -10,7 +10,9 @@ import { Review } from './review';
 
 @Component({
     imports: [Review],
-    template: `<acr-review [sessionId]="'s1'" />`,
+    template: `
+        <acr-review [sessionId]="'s1'" />
+    `,
     schemas: [CUSTOM_ELEMENTS_SCHEMA],
 })
 class TestHost {

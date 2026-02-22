@@ -26,7 +26,9 @@ export function registerReplyToComment(server: McpServer, client: ApiClient): vo
                 return { content: [{ type: 'text' as const, text: lines.join('\n') }] };
             } catch (e) {
                 console.error('[mcp-server] reply_to_comment error:', e);
-                return { content: [{ type: 'text' as const, text: `Error: ${e instanceof Error ? e.message : String(e)}` }] };
+                return {
+                    content: [{ type: 'text' as const, text: `Error: ${e instanceof Error ? e.message : String(e)}` }],
+                };
             }
         },
     );

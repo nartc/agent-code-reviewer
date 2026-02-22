@@ -59,7 +59,9 @@ export class ApiClient {
     }
 
     listSessions(repoId: string): Observable<ListSessionsResponse> {
-        return this.#http.get<ListSessionsResponse>('/api/sessions', { params: new HttpParams().set('repo_id', repoId) });
+        return this.#http.get<ListSessionsResponse>('/api/sessions', {
+            params: new HttpParams().set('repo_id', repoId),
+        });
     }
 
     getSession(id: string): Observable<SessionWithRepo> {
@@ -128,7 +130,11 @@ export class ApiClient {
         return this.#http.post<Comment>(`/api/comments/${id}/reply`, body);
     }
 
-    bulkResolveComments(body: { session_id: string; snapshot_id?: string; comment_ids?: string[] }): Observable<{ resolved_count: number }> {
+    bulkResolveComments(body: {
+        session_id: string;
+        snapshot_id?: string;
+        comment_ids?: string[];
+    }): Observable<{ resolved_count: number }> {
         return this.#http.post<{ resolved_count: number }>('/api/comments/bulk-resolve', body);
     }
 

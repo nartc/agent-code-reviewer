@@ -3,7 +3,7 @@
 
 /* Ghost Light */
 @plugin "daisyui/theme" {
-    name: "light";
+    name: 'light';
     default: true;
     color-scheme: light;
 
@@ -42,7 +42,7 @@
 
 /* Ghost Dark */
 @plugin "daisyui/theme" {
-    name: "dark";
+    name: 'dark';
     prefersdark: true;
     color-scheme: dark;
 
@@ -88,4 +88,3 @@
     --diffs-font-family: 'JetBrains Mono', monospace;
     --diffs-font-size: 12px;
 }
-

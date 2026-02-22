@@ -16,42 +16,42 @@ interface DotPosition {
     imports: [SlicePipe, NgIcon],
     host: { class: 'relative flex items-center h-10 px-2 border-b border-base-300 gap-1' },
     template: `
-            <button class="btn btn-xs btn-ghost" [disabled]="!canGoPrev()" (click)="goPrev()">
-                <ng-icon name="lucideChevronLeft" class="size-4" />
-            </button>
+        <button class="btn btn-xs btn-ghost" [disabled]="!canGoPrev()" (click)="goPrev()">
+            <ng-icon name="lucideChevronLeft" class="size-4" />
+        </button>
 
-            <div class="relative flex-1 h-2 bg-base-200 rounded-full mx-1">
-                @for (dot of dotPositions(); track dot.id) {
-                    <button
-                        class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 rounded-full transition-all"
-                        [class]="
-                            dot.isActive
-                                ? 'w-4 h-4 bg-primary'
-                                : dot.hasReviewComments
-                                  ? 'w-3 h-3 bg-warning ring-2 ring-warning/30'
-                                  : 'w-2 h-2 bg-base-content/40 hover:bg-base-content/70'
-                        "
-                        [style.left.%]="dot.left"
-                        [attr.title]="dot.id | slice: 0 : 8"
-                        [attr.aria-label]="'Snapshot ' + (dot.id | slice: 0 : 8)"
-                        [attr.aria-current]="dot.isActive ? 'step' : null"
-                        (click)="snapshotSelected.emit(dot.id)"
-                    ></button>
-                }
-            </div>
-
-            <button class="btn btn-xs btn-ghost" [disabled]="!canGoNext()" (click)="goNext()">
-                <ng-icon name="lucideChevronRight" class="size-4" />
-            </button>
-
-            @if (!isViewingLatest()) {
-                <button class="btn btn-xs btn-accent gap-1" (click)="jumpToLatest.emit()">
-                    @if (hasNewChanges()) {
-                        <span class="badge badge-xs badge-error"></span>
-                    }
-                    Latest
-                </button>
+        <div class="relative flex-1 h-2 bg-base-200 rounded-full mx-1">
+            @for (dot of dotPositions(); track dot.id) {
+                <button
+                    class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 rounded-full transition-all"
+                    [class]="
+                        dot.isActive
+                            ? 'w-4 h-4 bg-primary'
+                            : dot.hasReviewComments
+                              ? 'w-3 h-3 bg-warning ring-2 ring-warning/30'
+                              : 'w-2 h-2 bg-base-content/40 hover:bg-base-content/70'
+                    "
+                    [style.left.%]="dot.left"
+                    [attr.title]="dot.id | slice: 0 : 8"
+                    [attr.aria-label]="'Snapshot ' + (dot.id | slice: 0 : 8)"
+                    [attr.aria-current]="dot.isActive ? 'step' : null"
+                    (click)="snapshotSelected.emit(dot.id)"
+                ></button>
             }
+        </div>
+
+        <button class="btn btn-xs btn-ghost" [disabled]="!canGoNext()" (click)="goNext()">
+            <ng-icon name="lucideChevronRight" class="size-4" />
+        </button>
+
+        @if (!isViewingLatest()) {
+            <button class="btn btn-xs btn-accent gap-1" (click)="jumpToLatest.emit()">
+                @if (hasNewChanges()) {
+                    <span class="badge badge-xs badge-error"></span>
+                }
+                Latest
+            </button>
+        }
     `,
 })
 export class SnapshotTimeline {
@@ -67,7 +67,14 @@ export class SnapshotTimeline {
         const activeId = this.activeSnapshotId();
         if (snaps.length === 0) return [];
         if (snaps.length === 1) {
-            return [{ id: snaps[0].id, left: 50, hasReviewComments: snaps[0].has_review_comments, isActive: snaps[0].id === activeId }];
+            return [
+                {
+                    id: snaps[0].id,
+                    left: 50,
+                    hasReviewComments: snaps[0].has_review_comments,
+                    isActive: snaps[0].id === activeId,
+                },
+            ];
         }
 
         const timestamps = snaps.map((s) => new Date(s.created_at).getTime());

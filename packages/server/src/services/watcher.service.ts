@@ -1,4 +1,6 @@
 import {
+    generateId,
+    watcherError,
     type DatabaseError,
     type FileSummary,
     type GitError,
@@ -6,8 +8,6 @@ import {
     type Snapshot,
     type SnapshotTrigger,
     type WatcherError,
-    generateId,
-    watcherError,
 } from '@agent-code-reviewer/shared';
 import { ResultAsync, errAsync, okAsync } from 'neverthrow';
 import { watch, type FSWatcher } from 'node:fs';

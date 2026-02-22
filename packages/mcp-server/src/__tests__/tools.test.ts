@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Comment, CommentThread } from '@agent-code-reviewer/shared';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiClient } from '../api-client.js';
 import { registerCheckComments } from '../tools/check-comments.js';
 import { registerGetDetails } from '../tools/get-details.js';
@@ -74,11 +74,24 @@ describe('MCP Tools', () => {
 
     describe('check_comments', () => {
         it('finds sent unresolved comments by repo_name', async () => {
-            const reply = makeComment({ id: 'reply1', reply_to_id: 'c1', author: 'agent', content: 'I will add a try-catch block', status: 'draft' });
+            const reply = makeComment({
+                id: 'reply1',
+                reply_to_id: 'c1',
+                author: 'agent',
+                content: 'I will add a try-catch block',
+                status: 'draft',
+            });
             vi.mocked(client.getUnresolvedComments).mockResolvedValue({
                 threads: [
                     makeThread({}, [reply]),
-                    makeThread({ id: 'c2', file_path: 'src/utils.ts', line_start: 5, line_end: null, side: null, content: 'This function should be pure' }),
+                    makeThread({
+                        id: 'c2',
+                        file_path: 'src/utils.ts',
+                        line_start: 5,
+                        line_end: null,
+                        side: null,
+                        content: 'This function should be pure',
+                    }),
                 ],
                 repo_name: 'my-app',
             });
@@ -144,7 +157,13 @@ describe('MCP Tools', () => {
         });
 
         it('includes reply information', async () => {
-            const reply = makeComment({ id: 'reply1', reply_to_id: 'c1', author: 'agent', content: 'I will add a try-catch block', status: 'draft' });
+            const reply = makeComment({
+                id: 'reply1',
+                reply_to_id: 'c1',
+                author: 'agent',
+                content: 'I will add a try-catch block',
+                status: 'draft',
+            });
             vi.mocked(client.getUnresolvedComments).mockResolvedValue({
                 threads: [makeThread({}, [reply])],
                 repo_name: 'my-app',
@@ -159,7 +178,14 @@ describe('MCP Tools', () => {
 
     describe('get_comment_details', () => {
         it('returns full comment with replies', async () => {
-            const reply = makeComment({ id: 'reply1', reply_to_id: 'c1', author: 'agent', content: 'I will add a try-catch block', status: 'draft', created_at: '2024-01-01T01:00:00Z' });
+            const reply = makeComment({
+                id: 'reply1',
+                reply_to_id: 'c1',
+                author: 'agent',
+                content: 'I will add a try-catch block',
+                status: 'draft',
+                created_at: '2024-01-01T01:00:00Z',
+            });
             vi.mocked(client.getCommentThread).mockResolvedValue({
                 thread: makeThread({}, [reply]),
             });
@@ -190,7 +216,13 @@ describe('MCP Tools', () => {
     describe('reply_to_comment', () => {
         it('creates reply successfully', async () => {
             vi.mocked(client.createReply).mockResolvedValue(
-                makeComment({ id: 'new-reply', reply_to_id: 'c1', author: 'agent', content: 'Fixed in latest commit', status: 'sent' }),
+                makeComment({
+                    id: 'new-reply',
+                    reply_to_id: 'c1',
+                    author: 'agent',
+                    content: 'Fixed in latest commit',
+                    status: 'sent',
+                }),
             );
 
             const result = await handlers['reply_to_comment']({
@@ -228,7 +260,7 @@ describe('MCP Tools', () => {
         });
 
         it('rejects draft comment', async () => {
-            vi.mocked(client.resolveComment).mockRejectedValue(new Error("Cannot resolve draft comments, send first"));
+            vi.mocked(client.resolveComment).mockRejectedValue(new Error('Cannot resolve draft comments, send first'));
 
             const result = await handlers['mark_comment_resolved']({ comment_id: 'c3' });
             const text = getText(result);

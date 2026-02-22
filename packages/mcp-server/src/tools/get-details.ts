@@ -48,14 +48,18 @@ export function registerGetDetails(server: McpServer, client: ApiClient): void {
                     lines.push(`Replies (${replies.length}):`);
                     for (let i = 0; i < replies.length; i++) {
                         const reply = replies[i];
-                        lines.push(`  ${i + 1}. [${reply.id}] ${reply.author} (${reply.status}): "${reply.content}" — ${reply.created_at}`);
+                        lines.push(
+                            `  ${i + 1}. [${reply.id}] ${reply.author} (${reply.status}): "${reply.content}" — ${reply.created_at}`,
+                        );
                     }
                 }
 
                 return { content: [{ type: 'text' as const, text: lines.join('\n') }] };
             } catch (e) {
                 console.error('[mcp-server] get_comment_details error:', e);
-                return { content: [{ type: 'text' as const, text: `Error: ${e instanceof Error ? e.message : String(e)}` }] };
+                return {
+                    content: [{ type: 'text' as const, text: `Error: ${e instanceof Error ? e.message : String(e)}` }],
+                };
             }
         },
     );

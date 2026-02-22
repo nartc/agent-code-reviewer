@@ -1,6 +1,6 @@
+import type { ScannedRepo } from '@agent-code-reviewer/shared';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, input, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import type { ScannedRepo } from '@agent-code-reviewer/shared';
 import { NgIcon } from '@ng-icons/core';
 import { ApiClient } from '../../core/services/api-client';
 
@@ -10,91 +10,83 @@ import { ApiClient } from '../../core/services/api-client';
     imports: [NgIcon],
     host: { class: 'block space-y-6' },
     template: `
-            <div>
-                <h3 class="text-lg font-semibold mb-2">Add Repository</h3>
-                <div class="flex gap-2">
-                    <input
-                        class="input input-bordered flex-1"
-                        placeholder="Enter repository path..."
-                        aria-label="Repository path"
-                        [value]="manualPath()"
-                        (input)="onManualInput($any($event.target).value)"
-                    />
-                    <button
-                        class="btn btn-primary"
-                        [disabled]="!manualPath()"
-                        (click)="addRepo()"
-                    >
-                        <ng-icon name="lucideFolderPlus" class="size-4" />
-                        Add
-                    </button>
-                </div>
-                @if (manualError()) {
-                    <p class="text-error text-sm mt-1">{{ manualError() }}</p>
-                }
+        <div>
+            <h3 class="text-lg font-semibold mb-2">Add Repository</h3>
+            <div class="flex gap-2">
+                <input
+                    class="input input-bordered flex-1"
+                    placeholder="Enter repository path..."
+                    aria-label="Repository path"
+                    [value]="manualPath()"
+                    (input)="onManualInput($any($event.target).value)"
+                />
+                <button class="btn btn-primary" [disabled]="!manualPath()" (click)="addRepo()">
+                    <ng-icon name="lucideFolderPlus" class="size-4" />
+                    Add
+                </button>
+            </div>
+            @if (manualError()) {
+                <p class="text-error text-sm mt-1">{{ manualError() }}</p>
+            }
+        </div>
+
+        <div>
+            <div class="flex items-center gap-3 mb-2">
+                <h3 class="text-lg font-semibold">Scan Filesystem</h3>
+                <button class="btn btn-secondary btn-sm" [disabled]="isScanning()" (click)="scan()">
+                    @if (isScanning()) {
+                        <span class="loading loading-spinner loading-xs"></span>
+                        Scanning...
+                    } @else {
+                        <ng-icon name="lucideScan" class="size-3.5" />
+                        Scan
+                    }
+                </button>
             </div>
 
-            <div>
-                <div class="flex items-center gap-3 mb-2">
-                    <h3 class="text-lg font-semibold">Scan Filesystem</h3>
-                    <button
-                        class="btn btn-secondary btn-sm"
-                        [disabled]="isScanning()"
-                        (click)="scan()"
-                    >
-                        @if (isScanning()) {
-                            <span class="loading loading-spinner loading-xs"></span>
-                            Scanning...
-                        } @else {
-                            <ng-icon name="lucideScan" class="size-3.5" />
-                            Scan
-                        }
-                    </button>
-                </div>
+            @if (scanError()) {
+                <p class="text-error text-sm mb-2">{{ scanError() }}</p>
+            }
 
-                @if (scanError()) {
-                    <p class="text-error text-sm mb-2">{{ scanError() }}</p>
-                }
-
-                @if (scanResults().length > 0) {
-                    <div class="overflow-x-auto">
-                        <table class="table table-sm">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Path</th>
-                                    <th>Branch</th>
-                                    <th>Remote</th>
-                                    <th></th>
+            @if (scanResults().length > 0) {
+                <div class="overflow-x-auto">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Path</th>
+                                <th>Branch</th>
+                                <th>Remote</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (result of scanResults(); track result.path) {
+                                @let dimmed = isRegistered(result.path);
+                                <tr [class.opacity-50]="dimmed">
+                                    <td>{{ result.name }}</td>
+                                    <td class="font-mono text-xs truncate max-w-48">{{ result.path }}</td>
+                                    <td>{{ result.current_branch }}</td>
+                                    <td class="font-mono text-xs truncate max-w-32">{{ result.remote_url ?? '-' }}</td>
+                                    <td>
+                                        @if (dimmed) {
+                                            <span class="badge badge-ghost badge-sm">Added</span>
+                                        } @else {
+                                            <button class="btn btn-success btn-xs" (click)="addScanned(result.path)">
+                                                <ng-icon name="lucidePlus" class="size-3" />
+                                                Add
+                                            </button>
+                                        }
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                @for (result of scanResults(); track result.path) {
-                                    @let dimmed = isRegistered(result.path);
-                                    <tr [class.opacity-50]="dimmed">
-                                        <td>{{ result.name }}</td>
-                                        <td class="font-mono text-xs truncate max-w-48">{{ result.path }}</td>
-                                        <td>{{ result.current_branch }}</td>
-                                        <td class="font-mono text-xs truncate max-w-32">{{ result.remote_url ?? '-' }}</td>
-                                        <td>
-                                            @if (dimmed) {
-                                                <span class="badge badge-ghost badge-sm">Added</span>
-                                            } @else {
-                                                <button class="btn btn-success btn-xs" (click)="addScanned(result.path)">
-                                                    <ng-icon name="lucidePlus" class="size-3" />
-                                                    Add
-                                                </button>
-                                            }
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                } @else if (!isScanning() && hasScanned()) {
-                    <p class="text-sm opacity-60">No repositories found.</p>
-                }
-            </div>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            } @else if (!isScanning() && hasScanned()) {
+                <p class="text-sm opacity-60">No repositories found.</p>
+            }
+        </div>
     `,
 })
 export class AddRepo {
