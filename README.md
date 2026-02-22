@@ -27,7 +27,7 @@ pnpm install
 cp packages/server/.env.example packages/server/.env
 ```
 
-Edit `packages/server/.env` — at minimum set `SCAN_ROOTS`:
+Edit `packages/server/.env` — at a minimum, set `SCAN_ROOTS`:
 
 ```env
 # comma-separated directories containing git repos you want to review
@@ -61,41 +61,41 @@ Example `.mcp.json` for a target repo:
 
 ```json
 {
-  "mcpServers": {
-    "agent-code-reviewer": {
-      "type": "stdio",
-      "command": "node",
-      "args": ["/absolute/path/to/agent-code-reviewer/packages/mcp-server/dist/index.js"],
-      "env": { "SERVER_URL": "http://localhost:3847" }
+    "mcpServers": {
+        "agent-code-reviewer": {
+            "type": "stdio",
+            "command": "node",
+            "args": ["/absolute/path/to/agent-code-reviewer/packages/mcp-server/dist/index.js"],
+            "env": { "SERVER_URL": "http://localhost:3847" }
+        }
     }
-  }
 }
 ```
 
 ### MCP Tools
 
-| Tool | Description |
-|------|-------------|
-| `check_comments` | List unresolved comments for the current repo |
-| `get_comment_details` | Get a comment thread with replies |
-| `reply_to_comment` | Reply to a comment as the agent |
-| `mark_comment_resolved` | Mark a comment as resolved |
+| Tool                    | Description                                   |
+| ----------------------- | --------------------------------------------- |
+| `check_comments`        | List unresolved comments for the current repo |
+| `get_comment_details`   | Get a comment thread with replies             |
+| `reply_to_comment`      | Reply to a comment as the agent               |
+| `mark_comment_resolved` | Mark a comment as resolved                    |
 
 ## Environment Variables
 
 ### Server (`packages/server/.env`)
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `SCAN_ROOTS` | `$HOME` | Comma-separated directories to scan for git repos |
-| `SCAN_MAX_DEPTH` | `3` | Max depth when scanning for repos |
-| `PORT` | `3847` | Server port |
-| `DB_PATH` | `.data/reviewer.db` | SQLite database file path |
+| Variable         | Default             | Description                                       |
+| ---------------- | ------------------- | ------------------------------------------------- |
+| `SCAN_ROOTS`     | `$HOME`             | Comma-separated directories to scan for git repos |
+| `SCAN_MAX_DEPTH` | `3`                 | Max depth when scanning for repos                 |
+| `PORT`           | `3847`              | Server port                                       |
+| `DB_PATH`        | `.data/reviewer.db` | SQLite database file path                         |
 
 ### MCP Server
 
-| Variable | Default | Description |
-|----------|---------|-------------|
+| Variable     | Default                 | Description               |
+| ------------ | ----------------------- | ------------------------- |
 | `SERVER_URL` | `http://localhost:3847` | URL of the running server |
 
 ## Development
