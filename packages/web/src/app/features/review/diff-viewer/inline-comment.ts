@@ -21,6 +21,11 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
                 {{ c.author }}
             </span>
             <span class="opacity-50">{{ c.created_at | relativeTime }}</span>
+            @if (c.line_start != null) {
+                <span class="badge badge-xs badge-ghost">
+                    L{{ c.line_start }}@if (c.line_end != null && c.line_end !== c.line_start) {-{{ c.line_end }}}
+                </span>
+            }
             <span
                 class="badge badge-xs badge-outline"
                 [class.badge-warning]="c.status === 'draft'"
