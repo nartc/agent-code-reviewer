@@ -1,4 +1,4 @@
-import { formatCommentsForTransport, type CommentPayload, type TransportType } from '@agent-code-reviewer/shared';
+import { formatCommentsForTransport, type Comment, type CommentPayload, type CommentThread, type Target, type TransportType } from '@agent-code-reviewer/shared';
 import { ChangeDetectionStrategy, Component, computed, inject, linkedSignal, signal } from '@angular/core';
 import { CommentStore } from '../../../core/stores/comment-store';
 import { TransportStore } from '../../../core/stores/transport-store';
@@ -90,7 +90,7 @@ export class TransportPicker {
     protected readonly filteredTargets = computed(() => {
         const type = this.selectedType();
         if (!type) return [];
-        return this.transportStore.targets().filter((t) => t.transport === type);
+        return this.transportStore.targets().filter((t: Target) => t.transport === type);
     });
 
     protected readonly showPreview = signal(false);
@@ -98,7 +98,7 @@ export class TransportPicker {
     protected readonly previewText = computed(() => {
         const drafts = this.commentStore.draftComments();
         if (drafts.length === 0) return '';
-        const payloads: CommentPayload[] = drafts.map((t) => ({
+        const payloads: CommentPayload[] = drafts.map((t: CommentThread) => ({
             file_path: t.comment.file_path,
             line_start: t.comment.line_start,
             line_end: t.comment.line_end,
@@ -106,7 +106,7 @@ export class TransportPicker {
             content: t.comment.content,
             status: t.comment.status,
             author: t.comment.author,
-            thread_replies: t.replies.map((r) => ({ content: r.content, author: r.author })),
+            thread_replies: t.replies.map((r: Comment) => ({ content: r.content, author: r.author })),
         }));
         return formatCommentsForTransport(payloads);
     });
@@ -127,7 +127,7 @@ export class TransportPicker {
 
     protected onTypeChange(type: TransportType): void {
         this.selectedType.set(type);
-        const targets = this.transportStore.targets().filter((t) => t.transport === type);
+        const targets = this.transportStore.targets().filter((t: Target) => t.transport === type);
         const firstTarget = targets[0];
         this.selectedTargetId.set(firstTarget?.id ?? null);
         this.transportStore.setActiveTransport(type, firstTarget?.id);

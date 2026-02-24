@@ -1,4 +1,4 @@
-import { generateId } from '@agent-code-reviewer/shared';
+import { generateId, type Comment } from '@agent-code-reviewer/shared';
 import { vi } from 'vitest';
 import { expectErr, expectOk } from '../../__tests__/helpers.js';
 import { initInMemoryDatabase } from '../../db/client.js';
@@ -657,7 +657,7 @@ describe('CommentService', () => {
             const r3 = expectOk(service.createReply(parent.id, 'Third', 'user'));
 
             const threads = expectOk(service.getSessionComments(sessionId));
-            expect(threads[0].replies.map((r) => r.id)).toEqual([r1.id, r2.id, r3.id]);
+            expect(threads[0].replies.map((r: Comment) => r.id)).toEqual([r1.id, r2.id, r3.id]);
         });
 
         it('excludes orphan replies', () => {

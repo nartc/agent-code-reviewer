@@ -1,4 +1,4 @@
-import type { ListReposResponse, RepoWithPaths } from '@agent-code-reviewer/shared';
+import type { ListReposResponse, RepoPath, RepoWithPaths } from '@agent-code-reviewer/shared';
 import { httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
@@ -48,7 +48,7 @@ export class Home {
 
     readonly #reposResource = httpResource<ListReposResponse>(() => '/api/repos');
     readonly repos = computed(() => this.#reposResource.value()?.repos ?? []);
-    readonly existingPaths = computed(() => this.repos().flatMap((r) => r.paths.map((p) => p.path)));
+    readonly existingPaths = computed(() => this.repos().flatMap((r: RepoWithPaths) => r.paths.map((p: RepoPath) => p.path)));
     readonly isLoading = computed(() => this.#reposResource.isLoading());
 
     protected onRepoOpened(repo: RepoWithPaths): void {

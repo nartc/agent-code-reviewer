@@ -55,7 +55,7 @@ export class CommentStore {
                         if (t.comment.id === id) {
                             return { ...t, comment: updated };
                         }
-                        const replyIdx = t.replies.findIndex((r) => r.id === id);
+                        const replyIdx = t.replies.findIndex((r: Comment) => r.id === id);
                         if (replyIdx !== -1) {
                             const replies = [...t.replies];
                             replies[replyIdx] = updated;
@@ -78,7 +78,7 @@ export class CommentStore {
                     }
                     return comments.map((t) => ({
                         ...t,
-                        replies: t.replies.filter((r) => r.id !== id),
+                        replies: t.replies.filter((r: Comment) => r.id !== id),
                     }));
                 });
             },
@@ -93,7 +93,7 @@ export class CommentStore {
             next: (res) => {
                 this.#comments.update((comments) =>
                     comments.map((t) => {
-                        const match = res.comments.find((c) => c.id === t.comment.id);
+                        const match = res.comments.find((c: Comment) => c.id === t.comment.id);
                         if (match) {
                             return { ...t, comment: match };
                         }

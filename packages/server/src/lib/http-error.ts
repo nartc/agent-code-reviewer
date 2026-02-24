@@ -29,5 +29,7 @@ export function toHttpError(error: AppError): HttpError {
             return { status: 502, code: 'TRANSPORT_ERROR', message: 'Internal server error' };
         case 'TRANSPORT_UNAVAILABLE':
             return { status: 503, code: 'TRANSPORT_UNAVAILABLE', message: error.message };
+        default:
+            return { status: 500, code: 'UNKNOWN', message: 'Internal server error' };
     }
 }

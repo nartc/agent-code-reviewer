@@ -1,3 +1,4 @@
+import type { RepoPath, RepoWithPaths } from '@agent-code-reviewer/shared';
 import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
 import { z } from 'zod';
@@ -37,9 +38,9 @@ export function createMcpRoutes(
         if (reposResult.isErr()) return resultToResponse(c, reposResult);
 
         const repos = reposResult.value;
-        let foundRepo = repo_path ? repos.find((r) => r.paths.some((p) => p.path === repo_path)) : undefined;
+        let foundRepo = repo_path ? repos.find((r: RepoWithPaths) => r.paths.some((p: RepoPath) => p.path === repo_path)) : undefined;
         if (!foundRepo && repo_name) {
-            foundRepo = repos.find((r) => r.name === repo_name);
+            foundRepo = repos.find((r: RepoWithPaths) => r.name === repo_name);
         }
 
         if (!foundRepo) {
