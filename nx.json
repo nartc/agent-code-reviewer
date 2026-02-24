@@ -37,9 +37,15 @@
             "continuous": true
         },
         "typecheck": {
-            "dependsOn": ["^build"],
+            "dependsOn": ["^typecheck"],
             "inputs": ["default", "^production"],
-            "outputs": ["{projectRoot}/out-tsc/**/*.d.ts", "{projectRoot}/out-tsc/**/*.tsbuildinfo"],
+            "outputs": [
+                "{projectRoot}/out-tsc/**/*.d.ts",
+                "{projectRoot}/out-tsc/**/*.tsbuildinfo",
+                "{projectRoot}/dist/**/*.d.ts",
+                "{projectRoot}/dist/**/*.tsbuildinfo",
+                "{projectRoot}/*.tsbuildinfo"
+            ],
             "cache": true
         }
     }
