@@ -28,4 +28,5 @@ jobs:
 
             - run: pnpm install --frozen-lockfile
 
+            - run: pnpm nx run shared:typecheck
             - run: pnpm nx run-many -t lint test build typecheck

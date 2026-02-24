@@ -4,6 +4,5 @@
         "outDir": "./dist/test",
         "types": ["node", "vitest/globals"]
     },
-    "include": ["src/**/*.ts"],
-    "references": [{ "path": "../shared/tsconfig.lib.json" }]
+    "include": ["src/**/*.ts"]
 }
