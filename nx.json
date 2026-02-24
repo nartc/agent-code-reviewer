@@ -21,7 +21,7 @@
             }
         }
     ],
-    "bustCache": 2,
+    "bustCache": 1,
     "nxCloudId": "698c4f3d3d2776aa2437559f",
     "targetDefaults": {
         "build": {
@@ -37,15 +37,8 @@
             "continuous": true
         },
         "typecheck": {
-            "dependsOn": ["^typecheck"],
             "inputs": ["default", "^production"],
-            "outputs": [
-                "{projectRoot}/out-tsc/**/*.d.ts",
-                "{projectRoot}/out-tsc/**/*.tsbuildinfo",
-                "{projectRoot}/dist/**/*.d.ts",
-                "{projectRoot}/dist/**/*.tsbuildinfo",
-                "{projectRoot}/*.tsbuildinfo"
-            ],
+            "outputs": ["{projectRoot}/out-tsc/**/*.d.ts", "{projectRoot}/out-tsc/**/*.tsbuildinfo"],
             "cache": true
         }
     }
