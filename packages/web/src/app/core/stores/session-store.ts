@@ -183,6 +183,11 @@ export class SessionStore {
         this.#scrollTarget.set(null);
     }
 
+    refreshSnapshots(): void {
+        this.#initialSnapshotId.set(undefined);
+        this.#snapshotsResource.reload();
+    }
+
     jumpToLatest(): void {
         const snaps = this.snapshots();
         if (snaps.length === 0) return;

@@ -15,6 +15,7 @@ import { idParamSchema } from './params.js';
 
 function buildPayload(comment: Comment, replies: Comment[] = []): CommentPayload {
     return {
+        id: comment.id,
         file_path: comment.file_path,
         line_start: comment.line_start,
         line_end: comment.line_end,
@@ -22,7 +23,7 @@ function buildPayload(comment: Comment, replies: Comment[] = []): CommentPayload
         content: comment.content,
         status: comment.status,
         author: comment.author,
-        thread_replies: replies.map((r) => ({ content: r.content, author: r.author })),
+        thread_replies: replies.map((r) => ({ id: r.id, content: r.content, author: r.author })),
     };
 }
 

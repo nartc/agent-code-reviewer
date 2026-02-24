@@ -37,6 +37,7 @@ describe('ClipboardTransport', () => {
         it('returns formatted text matching formatCommentsForTransport output', async () => {
             const payloads = [
                 {
+                    id: 'c1',
                     file_path: 'src/app.ts',
                     line_start: 10,
                     line_end: null,
@@ -47,6 +48,7 @@ describe('ClipboardTransport', () => {
                     thread_replies: [],
                 },
                 {
+                    id: 'c2',
                     file_path: 'src/utils.ts',
                     line_start: 5,
                     line_end: 8,
@@ -67,6 +69,7 @@ describe('ClipboardTransport', () => {
         it('accepts any targetId', async () => {
             const payloads = [
                 {
+                    id: 'c1',
                     file_path: 'test.ts',
                     line_start: 1,
                     line_end: null,

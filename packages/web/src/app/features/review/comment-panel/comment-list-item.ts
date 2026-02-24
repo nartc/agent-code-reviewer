@@ -10,7 +10,8 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
     imports: [RelativeTime, NgIcon],
     host: {
         class: 'card card-compact bg-base-100 border border-base-300 hover:bg-base-200 transition-colors cursor-pointer',
-        '[class.opacity-50]': 'thread().comment.status === "resolved"',
+        '[class.border-l-4]': 'thread().comment.status === "resolved"',
+        '[class.border-success]': 'thread().comment.status === "resolved"',
         '(click)': 'onClick($event)',
     },
     template: `
@@ -18,11 +19,11 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
 
         <div class="card-body gap-1">
             @if (showFileHeader()) {
-                <div class="flex items-center gap-1 flex-wrap text-xs">
+                <div class="flex items-center gap-1 flex-wrap text-xs min-w-0">
                     @if (c.file_path === '[general]') {
                         <span class="badge badge-xs badge-neutral">General</span>
                     } @else {
-                        <span class="badge badge-xs badge-neutral font-mono max-w-xs" [title]="c.file_path">
+                        <span class="badge badge-xs badge-neutral font-mono max-w-full" [title]="c.file_path">
                             <span class="truncate min-w-0">{{ c.file_path }}</span>
                         </span>
                         @if (c.line_start != null) {

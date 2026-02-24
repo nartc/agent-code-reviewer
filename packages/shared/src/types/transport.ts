@@ -13,6 +13,7 @@ export interface Target {
 }
 
 export interface CommentPayload {
+    id: string;
     file_path: string;
     line_start: number | null;
     line_end: number | null;
@@ -20,7 +21,7 @@ export interface CommentPayload {
     content: string;
     status: CommentStatus;
     author: CommentAuthor;
-    thread_replies?: Array<{ content: string; author: CommentAuthor }>;
+    thread_replies?: Array<{ id: string; content: string; author: CommentAuthor }>;
 }
 
 export const SUPPORTED_AGENT_HARNESSES = {

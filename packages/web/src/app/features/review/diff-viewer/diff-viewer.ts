@@ -60,10 +60,12 @@ import { InlineCommentForm } from './inline-comment-form';
                     Split
                 </button>
                 <div class="flex-1"></div>
-                <button class="btn btn-xs btn-outline" title="Add a file-level comment" (click)="onFileComment()">
-                    <ng-icon name="lucideMessageSquare" class="size-3" />
-                    Comment on file
-                </button>
+                @if (store.isViewingLatest()) {
+                    <button class="btn btn-xs btn-outline" title="Add a file-level comment" (click)="onFileComment()">
+                        <ng-icon name="lucideMessageSquare" class="size-3" />
+                        Comment on file
+                    </button>
+                }
             </div>
 
             @if (fileLevelForm(); as form) {
@@ -85,6 +87,7 @@ import { InlineCommentForm } from './inline-comment-form';
                     [diffStyle]="diffStyle()"
                     [themeType]="resolvedTheme()"
                     [lineAnnotations]="annotations()"
+                    [enableComments]="store.isViewingLatest()"
                     (lineNumberClicked)="onLineNumberClick($event)"
                     (lineRangeSelected)="onLineRangeSelected($event)"
                     (formSaved)="onFormSaved($event)"
@@ -180,6 +183,7 @@ export class DiffViewer {
     }
 
     protected onLineNumberClick(event: { lineNumber: number; side: 'old' | 'new' }): void {
+        if (!this.store.isViewingLatest()) return;
         // Skip if onLineRangeSelected already handled this interaction (multi-line drag)
         if (this.#rangeJustSelected) return;
 
@@ -199,6 +203,7 @@ export class DiffViewer {
     }
 
     protected onLineRangeSelected(event: { lineStart: number; lineEnd: number; side: 'old' | 'new' }): void {
+        if (!this.store.isViewingLatest()) return;
         const snapshotId = this.store.activeSnapshotId();
         const sessionId = this.store.currentSession()?.id;
         const meta = this.activeMetadata();
@@ -223,6 +228,7 @@ export class DiffViewer {
     }
 
     protected onFileComment(): void {
+        if (!this.store.isViewingLatest()) return;
         const snapshotId = this.store.activeSnapshotId();
         const sessionId = this.store.currentSession()?.id;
         const meta = this.activeMetadata();

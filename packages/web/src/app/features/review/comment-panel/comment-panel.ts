@@ -53,8 +53,25 @@ function groupBy<T>(items: T[], keyFn: (item: T) => string): Record<string, T[]>
                             />
                         }
                     }
-                } @else {
-                    <div class="text-center text-base-content/50 p-4 text-sm">No draft comments</div>
+                }
+
+                @if (latestSubmittedComments().length > 0) {
+                    @if (hasDrafts()) {
+                        <div class="divider divider-start text-xs opacity-50 my-1">Submitted</div>
+                    }
+                    @for (thread of latestSubmittedComments(); track thread.comment.id) {
+                        <acr-comment-list-item
+                            class="block mt-1"
+                            [thread]="thread"
+                            [showActions]="true"
+                            (commentClicked)="onCommentClicked($event)"
+                            (commentResolved)="onCommentResolvedFromListItem($event)"
+                        />
+                    }
+                }
+
+                @if (!hasLatestContent()) {
+                    <div class="text-center text-base-content/50 p-4 text-sm">No comments</div>
                 }
             </div>
 
@@ -132,7 +149,15 @@ export class CommentPanel {
         () => this.snapshotComments().filter((t) => t.comment.status === 'sent').length,
     );
 
+    protected readonly latestSubmittedComments = computed(() => {
+        const snapId = this.snapshotId();
+        const sent = this.#commentStore.sentComments();
+        const resolved = this.#commentStore.resolvedComments();
+        return [...sent, ...resolved].filter((t) => t.comment.snapshot_id === snapId);
+    });
+
     protected readonly hasDrafts = computed(() => this.#commentStore.draftComments().length > 0);
+    protected readonly hasLatestContent = computed(() => this.hasDrafts() || this.latestSubmittedComments().length > 0);
 
     protected sendAllDrafts(): void {
         const ids = this.#commentStore.draftComments().map((t) => t.comment.id);

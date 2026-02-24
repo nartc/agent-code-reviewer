@@ -450,9 +450,14 @@ describe('createIgnoreFunction', () => {
 });
 
 describe('computeChangedFiles', () => {
+    const makeDiff = (files: Record<string, string>) =>
+        Object.entries(files)
+            .map(([path, content]) => `diff --git a/${path} b/${path}\n${content}`)
+            .join('\n');
+
     it('returns empty for first snapshot (no previous)', () => {
         const current: FileSummary[] = [{ path: 'a.ts', status: 'modified', additions: 5, deletions: 2 }];
-        expect(computeChangedFiles(current, [])).toEqual([]);
+        expect(computeChangedFiles(current, [], 'diff', '')).toEqual([]);
     });
 
     it('detects added and removed files', () => {
@@ -464,7 +469,9 @@ describe('computeChangedFiles', () => {
             { path: 'a.ts', status: 'modified', additions: 5, deletions: 2 },
             { path: 'c.ts', status: 'added', additions: 3, deletions: 0 },
         ];
-        const result = computeChangedFiles(current, previous);
+        const prevDiff = makeDiff({ 'a.ts': 'same', 'b.ts': 'old' });
+        const curDiff = makeDiff({ 'a.ts': 'same', 'c.ts': 'new' });
+        const result = computeChangedFiles(current, previous, curDiff, prevDiff);
         expect(result).toEqual(expect.arrayContaining(['b.ts', 'c.ts']));
         expect(result).toHaveLength(2);
     });
@@ -472,6 +479,23 @@ describe('computeChangedFiles', () => {
     it('detects modified files (different additions/deletions)', () => {
         const previous: FileSummary[] = [{ path: 'a.ts', status: 'modified', additions: 5, deletions: 2 }];
         const current: FileSummary[] = [{ path: 'a.ts', status: 'modified', additions: 10, deletions: 2 }];
-        expect(computeChangedFiles(current, previous)).toEqual(['a.ts']);
+        const prevDiff = makeDiff({ 'a.ts': 'v1' });
+        const curDiff = makeDiff({ 'a.ts': 'v2' });
+        expect(computeChangedFiles(current, previous, curDiff, prevDiff)).toEqual(['a.ts']);
+    });
+
+    it('detects content changes even when stats are identical', () => {
+        const previous: FileSummary[] = [{ path: 'a.ts', status: 'modified', additions: 5, deletions: 2 }];
+        const current: FileSummary[] = [{ path: 'a.ts', status: 'modified', additions: 5, deletions: 2 }];
+        const prevDiff = makeDiff({ 'a.ts': '-old line\n+new line' });
+        const curDiff = makeDiff({ 'a.ts': '-old line\n+different line' });
+        expect(computeChangedFiles(current, previous, curDiff, prevDiff)).toEqual(['a.ts']);
+    });
+
+    it('returns empty when diffs are identical', () => {
+        const previous: FileSummary[] = [{ path: 'a.ts', status: 'modified', additions: 5, deletions: 2 }];
+        const current: FileSummary[] = [{ path: 'a.ts', status: 'modified', additions: 5, deletions: 2 }];
+        const diff = makeDiff({ 'a.ts': 'same content' });
+        expect(computeChangedFiles(current, previous, diff, diff)).toEqual([]);
     });
 });

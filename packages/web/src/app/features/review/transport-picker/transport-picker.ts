@@ -99,6 +99,7 @@ export class TransportPicker {
         const drafts = this.commentStore.draftComments();
         if (drafts.length === 0) return '';
         const payloads: CommentPayload[] = drafts.map((t) => ({
+            id: t.comment.id,
             file_path: t.comment.file_path,
             line_start: t.comment.line_start,
             line_end: t.comment.line_end,
@@ -106,7 +107,7 @@ export class TransportPicker {
             content: t.comment.content,
             status: t.comment.status,
             author: t.comment.author,
-            thread_replies: t.replies.map((r) => ({ content: r.content, author: r.author })),
+            thread_replies: t.replies.map((r) => ({ id: r.id, content: r.content, author: r.author })),
         }));
         return formatCommentsForTransport(payloads);
     });

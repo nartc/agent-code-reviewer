@@ -124,6 +124,7 @@ describe('TmuxTransport', () => {
     describe('sendComments', () => {
         const payloads = [
             {
+                id: 'c1',
                 file_path: 'src/app.ts',
                 line_start: 10,
                 line_end: null,

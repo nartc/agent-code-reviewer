@@ -53,6 +53,15 @@ import { TransportPicker } from './transport-picker/transport-picker';
                     <ng-icon [name]="isWatching() ? 'lucideEyeOff' : 'lucideEye'" class="size-3.5" />
                     {{ isWatching() ? 'Stop Watching' : 'Start Watching' }}
                 </button>
+                @if (!isWatching()) {
+                    <button
+                        class="btn btn-xs btn-ghost"
+                        title="Refresh snapshots"
+                        (click)="refreshSnapshots()"
+                    >
+                        <ng-icon name="lucideRefreshCw" class="size-3.5" />
+                    </button>
+                }
             </header>
 
             <acr-snapshot-timeline
@@ -207,6 +216,10 @@ export class Review {
     protected onRightResize(delta: number): void {
         const clamped = Math.max(250, Math.min(500, this.rightWidth() - delta));
         this.#prefs.setPanelRightWidth(clamped);
+    }
+
+    protected refreshSnapshots(): void {
+        this.store.refreshSnapshots();
     }
 
     protected toggleWatcher(): void {

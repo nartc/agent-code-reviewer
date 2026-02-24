@@ -34,6 +34,7 @@ export class AcrFileDiff {
     readonly diffStyle = input<'unified' | 'split'>('unified');
     readonly themeType = input<'light' | 'dark' | 'system'>('system');
     readonly lineAnnotations = input<DiffLineAnnotation<AnnotationMeta>[]>([]);
+    readonly enableComments = input(true);
     readonly lineClicked = output<OnDiffLineClickProps>();
     readonly lineNumberClicked = output<{ lineNumber: number; side: 'old' | 'new' }>();
     readonly lineRangeSelected = output<{ lineStart: number; lineEnd: number; side: 'old' | 'new' }>();
@@ -54,6 +55,7 @@ export class AcrFileDiff {
             const style = this.diffStyle();
             const annotations = this.lineAnnotations();
             const container = this.diffContainer().nativeElement;
+            const commentsEnabled = this.enableComments();
 
             this.#disposeOutlets();
             this.#instance?.cleanUp();
@@ -65,20 +67,40 @@ export class AcrFileDiff {
                 lineDiffType: 'word',
                 overflow: 'scroll',
                 onLineClick: (props) => this.lineClicked.emit(props),
-                onLineNumberClick: (props) => {
-                    this.lineClicked.emit(props);
-                    this.lineNumberClicked.emit({
-                        lineNumber: props.lineNumber,
-                        side: props.annotationSide === 'deletions' ? 'old' : 'new',
-                    });
-                },
+                onLineNumberClick: commentsEnabled
+                    ? (props) => {
+                            this.lineClicked.emit(props);
+                            this.lineNumberClicked.emit({
+                                lineNumber: props.lineNumber,
+                                side: props.annotationSide === 'deletions' ? 'old' : 'new',
+                            });
+                        }
+                    : undefined,
                 renderAnnotation: (annotation) => this.#renderAnnotation(annotation),
                 renderHoverUtility: (getHoveredRow) => {
                     const btn = document.createElement('button');
                     btn.type = 'button';
-                    btn.className = 'btn btn-circle btn-xs btn-ghost text-primary opacity-70 hover:opacity-100';
+                    Object.assign(btn.style, {
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '20px',
+                        height: '100%',
+                        border: 'none',
+                        background: 'transparent',
+                        cursor: 'pointer',
+                        color: 'inherit',
+                        opacity: '0.5',
+                        transition: 'opacity 0.15s',
+                    });
                     btn.innerHTML =
-                        '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+                        '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+                    btn.addEventListener('mouseenter', () => {
+                        btn.style.opacity = '1';
+                    });
+                    btn.addEventListener('mouseleave', () => {
+                        btn.style.opacity = '0.5';
+                    });
                     btn.addEventListener('click', (e) => {
                         e.stopPropagation();
                         const hovered = getHoveredRow();
@@ -91,8 +113,8 @@ export class AcrFileDiff {
                     });
                     return btn;
                 },
-                enableHoverUtility: true,
-                enableLineSelection: true,
+                enableHoverUtility: commentsEnabled,
+                enableLineSelection: commentsEnabled,
                 onLineSelected: (range) => {
                     if (!range) return;
                     const start = Math.min(range.start, range.end);

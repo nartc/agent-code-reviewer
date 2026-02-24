@@ -63,10 +63,40 @@ function shouldIgnore(filePath: string, repoPath: string): boolean {
     return false;
 }
 
-function computeChangedFiles(current: FileSummary[], previous: FileSummary[]): string[] {
-    if (previous.length === 0) return [];
+function splitDiffByFile(rawDiff: string): Map<string, string> {
+    const result = new Map<string, string>();
+    const sections = rawDiff.split(/(?=^diff --git )/m);
+    for (const section of sections) {
+        const match = section.match(/^diff --git a\/(.+?) b\/(.+)/m);
+        if (match) {
+            result.set(match[2], section);
+        }
+    }
+    return result;
+}
 
-    const changed: string[] = [];
+function computeChangedFiles(
+    current: FileSummary[],
+    previous: FileSummary[],
+    currentRawDiff: string,
+    previousRawDiff: string,
+): string[] {
+    if (previous.length === 0) return [];
+    if (currentRawDiff === previousRawDiff) return [];
+
+    const changed = new Set<string>();
+    const currentPatches = splitDiffByFile(currentRawDiff);
+    const previousPatches = splitDiffByFile(previousRawDiff);
+
+    // Compare per-file diff content (catches edits that don't change stats)
+    const allDiffPaths = new Set([...currentPatches.keys(), ...previousPatches.keys()]);
+    for (const path of allDiffPaths) {
+        if (currentPatches.get(path) !== previousPatches.get(path)) {
+            changed.add(path);
+        }
+    }
+
+    // Also compare files_summary stats (catches renames and path-format mismatches)
     const previousMap: Record<string, FileSummary> = {};
     for (const file of previous) {
         previousMap[file.path] = file;
@@ -77,23 +107,23 @@ function computeChangedFiles(current: FileSummary[], previous: FileSummary[]): s
         currentPaths.add(file.path);
         const prev = previousMap[file.path];
         if (!prev) {
-            changed.push(file.path);
+            changed.add(file.path);
         } else if (
             prev.additions !== file.additions ||
             prev.deletions !== file.deletions ||
             prev.status !== file.status
         ) {
-            changed.push(file.path);
+            changed.add(file.path);
         }
     }
 
     for (const file of previous) {
         if (!currentPaths.has(file.path)) {
-            changed.push(file.path);
+            changed.add(file.path);
         }
     }
 
-    return changed;
+    return [...changed];
 }
 
 export { computeChangedFiles, shouldIgnore as createIgnoreFunction };
@@ -197,8 +227,9 @@ export class WatcherService {
             if (prevResult.isErr()) return errAsync(prevResult.error);
 
             const previousFiles: FileSummary[] = prevResult.value ? JSON.parse(prevResult.value.files_summary) : [];
+            const previousRawDiff = prevResult.value?.raw_diff ?? '';
 
-            const changedFiles = computeChangedFiles(files, previousFiles);
+            const changedFiles = computeChangedFiles(files, previousFiles, rawDiff, previousRawDiff);
 
             return this.gitService.getHeadCommit(repoPath).andThen((headCommit) => {
                 // Skip snapshot if HEAD hasn't changed since last snapshot
