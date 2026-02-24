@@ -27,7 +27,9 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
                             <span class="truncate min-w-0">{{ c.file_path }}</span>
                         </span>
                         @if (c.line_start != null) {
-                            <span class="badge badge-xs badge-ghost">L{{ c.line_start }}</span>
+                            <span class="badge badge-xs badge-ghost">
+                                L{{ c.line_start }}@if (c.line_end != null && c.line_end !== c.line_start) {-{{ c.line_end }}}
+                            </span>
                         }
                     }
                 </div>

@@ -136,7 +136,7 @@ export class DiffViewer {
             if (c.snapshot_id !== activeSnapId) continue;
             result.push({
                 side: (c.side ?? 'new') === 'old' ? 'deletions' : 'additions',
-                lineNumber: c.line_start,
+                lineNumber: c.line_end ?? c.line_start,
                 metadata: { type: 'comment', thread },
             });
         }
