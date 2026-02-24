@@ -88,3 +88,12 @@
     --diffs-font-family: 'JetBrains Mono', monospace;
     --diffs-font-size: 12px;
 }
+
+/* Only show the + icon when hovering over the gutter (line number column), not the entire line */
+[data-column-number] [data-hover-slot] {
+    visibility: hidden;
+}
+
+[data-column-number]:hover [data-hover-slot] {
+    visibility: visible;
+}

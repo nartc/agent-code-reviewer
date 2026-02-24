@@ -1,5 +1,15 @@
 import type { Comment } from '@agent-code-reviewer/shared';
-import { ChangeDetectionStrategy, Component, inject, input, output, signal } from '@angular/core';
+import {
+    ChangeDetectionStrategy,
+    Component,
+    ElementRef,
+    afterNextRender,
+    inject,
+    input,
+    output,
+    signal,
+    viewChild,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NgIcon } from '@ng-icons/core';
 import { CommentStore } from '../../../core/stores/comment-store';
@@ -73,8 +83,15 @@ export class InlineCommentForm {
 
     protected readonly content = signal('');
     protected readonly isSaving = signal(false);
+    private readonly textareaEl = viewChild<ElementRef<HTMLTextAreaElement>>('textareaEl');
 
     readonly #commentStore = inject(CommentStore);
+
+    constructor() {
+        afterNextRender(() => {
+            this.textareaEl()?.nativeElement.focus();
+        });
+    }
 
     protected onSave(): void {
         const text = this.content().trim();
