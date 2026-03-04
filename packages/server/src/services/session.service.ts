@@ -23,12 +23,9 @@ interface SessionRow {
 interface SessionWithRepoRow extends SessionRow {
     repo_remote_url: string | null;
     repo_name: string;
+    repo_path: string;
     repo_base_branch: string;
     repo_created_at: string;
-    repo_path_id: string | null;
-    repo_path_path: string | null;
-    repo_path_last_accessed_at: string | null;
-    repo_path_created_at: string | null;
 }
 
 function castSession(row: SessionRow): Session {
@@ -44,25 +41,14 @@ function castSession(row: SessionRow): Session {
 
 function castSessionWithRepo(row: SessionWithRepoRow): SessionWithRepo {
     return {
-        id: row.id,
-        repo_id: row.repo_id,
-        branch: row.branch,
-        base_branch: row.base_branch,
-        is_watching: !!row.is_watching,
-        created_at: row.created_at,
+        ...castSession(row),
         repo: {
             id: row.repo_id,
             remote_url: row.repo_remote_url,
             name: row.repo_name,
+            path: row.repo_path,
             base_branch: row.repo_base_branch,
             created_at: row.repo_created_at,
-        },
-        repo_path: {
-            id: row.repo_path_id ?? '',
-            repo_id: row.repo_id,
-            path: row.repo_path_path ?? '',
-            last_accessed_at: row.repo_path_last_accessed_at,
-            created_at: row.repo_path_created_at ?? '',
         },
     };
 }
@@ -76,13 +62,10 @@ export class SessionService {
     getSession(id: string): Result<SessionWithRepo, DatabaseError | NotFoundError> {
         const result = this.dbService.queryOne<SessionWithRepoRow>(
             `SELECT s.*, r.remote_url as repo_remote_url, r.name as repo_name,
-				r.base_branch as repo_base_branch, r.created_at as repo_created_at,
-				rp.id as repo_path_id, rp.path as repo_path_path,
-				rp.last_accessed_at as repo_path_last_accessed_at,
-				rp.created_at as repo_path_created_at
+				r.path as repo_path, r.base_branch as repo_base_branch,
+				r.created_at as repo_created_at
 			FROM sessions s
 			JOIN repos r ON s.repo_id = r.id
-			LEFT JOIN repo_paths rp ON rp.repo_id = r.id
 			WHERE s.id = $id
 			LIMIT 1`,
             { $id: id },

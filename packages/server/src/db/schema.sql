@@ -3,17 +3,10 @@ PRAGMA foreign_keys = ON;
 
 CREATE TABLE IF NOT EXISTS repos (
     id TEXT PRIMARY KEY,
-    remote_url TEXT UNIQUE,
+    remote_url TEXT,
     name TEXT NOT NULL,
-    base_branch TEXT NOT NULL DEFAULT 'main',
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
-CREATE TABLE IF NOT EXISTS repo_paths (
-    id TEXT PRIMARY KEY,
-    repo_id TEXT NOT NULL REFERENCES repos(id) ON DELETE CASCADE,
     path TEXT UNIQUE NOT NULL,
-    last_accessed_at TEXT,
+    base_branch TEXT NOT NULL DEFAULT 'main',
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -69,7 +62,6 @@ CREATE TABLE IF NOT EXISTS app_config (
     value TEXT
 );
 
-CREATE INDEX IF NOT EXISTS idx_repo_paths_repo ON repo_paths(repo_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_repo ON sessions(repo_id);
 CREATE INDEX IF NOT EXISTS idx_snapshots_session ON snapshots(session_id);
 CREATE INDEX IF NOT EXISTS idx_snapshots_created ON snapshots(session_id, created_at);

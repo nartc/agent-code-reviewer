@@ -1,4 +1,4 @@
-import type { ListReposResponse, RepoWithPaths } from '@agent-code-reviewer/shared';
+import type { ListReposResponse, Repo } from '@agent-code-reviewer/shared';
 import { httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
@@ -48,17 +48,11 @@ export class Home {
 
     readonly #reposResource = httpResource<ListReposResponse>(() => '/api/repos');
     readonly repos = computed(() => this.#reposResource.value()?.repos ?? []);
-    readonly existingPaths = computed(() => this.repos().flatMap((r) => r.paths.map((p) => p.path)));
+    readonly existingPaths = computed(() => this.repos().map((r) => r.path));
     readonly isLoading = computed(() => this.#reposResource.isLoading());
 
-    protected onRepoOpened(repo: RepoWithPaths): void {
-        const path = repo.paths[0]?.path;
-        if (!path) {
-            console.error('Repo has no paths:', repo.id);
-            return;
-        }
-
-        this.#api.createSession({ repo_id: repo.id, path }).subscribe({
+    protected onRepoOpened(repo: Repo): void {
+        this.#api.createSession({ repo_id: repo.id, path: repo.path }).subscribe({
             next: (res) => {
                 this.#router.navigate(['/review', res.session.id]);
             },

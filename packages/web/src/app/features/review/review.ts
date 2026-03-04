@@ -38,7 +38,7 @@ import { TransportPicker } from './transport-picker/transport-picker';
             <header class="flex items-center gap-3 px-4 py-2 border-b border-base-300">
                 <h1 class="text-lg font-bold">{{ session.repo.name }}</h1>
                 <span class="badge badge-neutral badge-sm">{{ session.branch }}</span>
-                <span class="text-xs opacity-50 font-mono truncate flex-1">{{ session.repo_path.path }}</span>
+                <span class="text-xs opacity-50 font-mono truncate flex-1">{{ session.repo.path }}</span>
                 <span
                     class="badge badge-xs"
                     [class.badge-success]="store.isConnected()"
@@ -219,7 +219,11 @@ export class Review {
     }
 
     protected refreshSnapshots(): void {
-        this.store.refreshSnapshots();
+        this.#api.captureSnapshot(this.sessionId()).subscribe({
+            error: (err) => {
+                console.error('Failed to capture snapshot:', err);
+            },
+        });
     }
 
     protected toggleWatcher(): void {

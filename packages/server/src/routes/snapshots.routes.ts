@@ -102,7 +102,7 @@ export function createSnapshotRoutes(
         if (sessionResult.isErr()) {
             return resultToResponse(c, sessionResult);
         }
-        const repoPath = sessionResult.value.repo_path.path;
+        const repoPath = sessionResult.value.repo.path;
         return asyncResultToResponse(c, watcherService.captureSnapshot(id, repoPath, 'manual'), 201);
     });
 

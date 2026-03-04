@@ -1,4 +1,4 @@
-import type { RepoWithPaths } from '@agent-code-reviewer/shared';
+import type { Repo } from '@agent-code-reviewer/shared';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { NgIcon } from '@ng-icons/core';
 import { RelativeTime } from '../../shared/pipes/relative-time';
@@ -19,14 +19,7 @@ import { RelativeTime } from '../../shared/pipes/relative-time';
                 {{ r.remote_url ?? 'Local only' }}
             </p>
 
-            @for (p of r.paths; track p.id) {
-                <div class="text-xs opacity-60 truncate">
-                    {{ p.path }}
-                    @if (p.last_accessed_at) {
-                        <span class="ml-1">{{ p.last_accessed_at | relativeTime }}</span>
-                    }
-                </div>
-            }
+            <div class="text-xs opacity-60 truncate">{{ r.path }}</div>
 
             <p class="text-xs opacity-50">Created {{ r.created_at | relativeTime }}</p>
 
@@ -44,7 +37,7 @@ import { RelativeTime } from '../../shared/pipes/relative-time';
     `,
 })
 export class RepoCard {
-    readonly repo = input.required<RepoWithPaths>();
-    readonly opened = output<RepoWithPaths>();
+    readonly repo = input.required<Repo>();
+    readonly opened = output<Repo>();
     readonly deleted = output<string>();
 }

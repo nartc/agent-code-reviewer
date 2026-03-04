@@ -1,4 +1,4 @@
-import type { Repo, RepoPath } from './repo.js';
+import type { Repo } from './repo.js';
 
 export interface Session {
     id: string;
@@ -11,5 +11,4 @@ export interface Session {
 
 export interface SessionWithRepo extends Session {
     repo: Repo;
-    repo_path: RepoPath;
 }

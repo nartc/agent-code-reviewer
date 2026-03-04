@@ -43,32 +43,31 @@ describe('RepoService', () => {
     });
 
     describe('createOrGetFromPath', () => {
-        it('creates new repo + path when not in DB', async () => {
+        it('creates new repo when not in DB', async () => {
             const result = await service.createOrGetFromPath('/home/user/my-app');
 
-            const { repo, repoPath, isNew } = expectOk(result);
+            const { repo, isNew } = expectOk(result);
             expect(isNew).toBe(true);
             expect(repo.name).toBe('my-app');
+            expect(repo.path).toBe('/home/user/my-app');
             expect(repo.remote_url).toBe('https://github.com/user/repo.git');
             expect(repo.base_branch).toBe('main');
-            expect(repoPath.path).toBe('/home/user/my-app');
-            expect(repoPath.repo_id).toBe(repo.id);
         });
 
-        it('finds existing repo via remote URL and adds new path', async () => {
-            // First call creates
+        it('creates separate repo for different path even with same remote URL', async () => {
             await service.createOrGetFromPath('/home/user/my-app');
-
-            // Second call from different path with same remote
             const result = await service.createOrGetFromPath('/tmp/my-app-clone');
 
-            const { repo, repoPath, isNew } = expectOk(result);
-            expect(isNew).toBe(false);
+            const { repo, isNew } = expectOk(result);
+            expect(isNew).toBe(true);
+            expect(repo.path).toBe('/tmp/my-app-clone');
             expect(repo.remote_url).toBe('https://github.com/user/repo.git');
-            expect(repoPath.path).toBe('/tmp/my-app-clone');
+
+            const repos = expectOk(service.listRepos());
+            expect(repos).toHaveLength(2);
         });
 
-        it('returns existing repo + existing path on duplicate call', async () => {
+        it('returns existing repo on duplicate call', async () => {
             await service.createOrGetFromPath('/home/user/my-app');
             const result = await service.createOrGetFromPath('/home/user/my-app');
 
@@ -86,7 +85,7 @@ describe('RepoService', () => {
             expect((error as any).code).toBe('NOT_A_GIT_REPO');
         });
 
-        it('handles null remote_url with path-based lookup', async () => {
+        it('handles null remote_url', async () => {
             (gitService.getRemoteUrl as any).mockReturnValue(okAsync(null));
 
             const result1 = await service.createOrGetFromPath('/home/user/local-repo');
@@ -99,29 +98,22 @@ describe('RepoService', () => {
     });
 
     describe('listRepos', () => {
-        it('returns RepoWithPaths[] with correct nested paths', async () => {
-            // Create two repos
+        it('returns repos with path', async () => {
             await service.createOrGetFromPath('/home/user/app-a');
 
             (gitService.getRemoteUrl as any).mockReturnValue(okAsync('https://github.com/user/app-b.git'));
             await service.createOrGetFromPath('/home/user/app-b');
 
-            // Add second path to first repo
+            // Same remote as app-a but different path — creates separate entry
             (gitService.getRemoteUrl as any).mockReturnValue(okAsync('https://github.com/user/repo.git'));
             await service.createOrGetFromPath('/tmp/app-a-clone');
 
             const result = service.listRepos();
             const repos = expectOk(result);
-            expect(repos).toHaveLength(2);
-
-            // Find the repo with 2 paths
-            const repoWithTwoPaths = repos.find((r) => r.remote_url === 'https://github.com/user/repo.git');
-            expect(repoWithTwoPaths).toBeDefined();
-            expect(repoWithTwoPaths!.paths).toHaveLength(2);
-
-            const repoWithOnePath = repos.find((r) => r.remote_url === 'https://github.com/user/app-b.git');
-            expect(repoWithOnePath).toBeDefined();
-            expect(repoWithOnePath!.paths).toHaveLength(1);
+            expect(repos).toHaveLength(3);
+            expect(repos.map((r) => r.path)).toEqual(
+                expect.arrayContaining(['/home/user/app-a', '/home/user/app-b', '/tmp/app-a-clone']),
+            );
         });
 
         it('returns empty array for empty DB', () => {
@@ -131,20 +123,15 @@ describe('RepoService', () => {
     });
 
     describe('deleteRepo', () => {
-        it('removes repo and cascading paths', async () => {
+        it('removes repo', async () => {
             const createResult = await service.createOrGetFromPath('/home/user/my-app');
             const { repo } = expectOk(createResult);
 
             const deleteResult = service.deleteRepo(repo.id);
             expect(deleteResult.isOk()).toBe(true);
 
-            // Verify repo is gone
             const repos = service.listRepos();
             expect(expectOk(repos)).toHaveLength(0);
-
-            // Verify paths are gone
-            const paths = service.getRepoPaths(repo.id);
-            expect(expectOk(paths)).toHaveLength(0);
         });
 
         it('returns NOT_FOUND for nonexistent ID', () => {
@@ -167,24 +154,6 @@ describe('RepoService', () => {
             const result = service.updateRepo('nonexistent', { baseBranch: 'develop' });
             const error = expectErr(result);
             expect(error.type).toBe('NOT_FOUND');
-        });
-    });
-
-    describe('getRepoPaths', () => {
-        it('returns paths for given repoId', async () => {
-            const createResult = await service.createOrGetFromPath('/home/user/my-app');
-            const { repo } = expectOk(createResult);
-
-            // Add second path
-            await service.createOrGetFromPath('/tmp/my-app-clone');
-
-            const result = service.getRepoPaths(repo.id);
-            expect(expectOk(result)).toHaveLength(2);
-        });
-
-        it('returns empty array for repo with no paths', () => {
-            const result = service.getRepoPaths('nonexistent-repo');
-            expect(expectOk(result)).toEqual([]);
         });
     });
 });

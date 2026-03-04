@@ -26,7 +26,6 @@ describe('SessionService', () => {
     let gitService: GitService;
     let service: SessionService;
     let repoId: string;
-    let repoPathId: string;
 
     beforeEach(async () => {
         const dbResult = await initInMemoryDatabase();
@@ -36,19 +35,17 @@ describe('SessionService', () => {
         gitService = createMockGitService();
         service = new SessionService(dbService, gitService);
 
-        // Seed a repo and repo_path for FK constraints
+        // Seed a repo for FK constraints
         repoId = generateId();
-        repoPathId = generateId();
-        dbService.execute("INSERT INTO repos (id, remote_url, name, base_branch) VALUES ($id, $url, $name, 'main')", {
-            $id: repoId,
-            $url: 'https://github.com/user/test.git',
-            $name: 'test-repo',
-        });
-        dbService.execute('INSERT INTO repo_paths (id, repo_id, path) VALUES ($id, $repoId, $path)', {
-            $id: repoPathId,
-            $repoId: repoId,
-            $path: '/home/user/test-repo',
-        });
+        dbService.execute(
+            "INSERT INTO repos (id, remote_url, name, path, base_branch) VALUES ($id, $url, $name, $path, 'main')",
+            {
+                $id: repoId,
+                $url: 'https://github.com/user/test.git',
+                $name: 'test-repo',
+                $path: '/home/user/test-repo',
+            },
+        );
     });
 
     afterEach(() => {
@@ -106,7 +103,7 @@ describe('SessionService', () => {
             expect(sessionWithRepo.repo.name).toBe('test-repo');
             expect(sessionWithRepo.repo.remote_url).toBe('https://github.com/user/test.git');
             expect(sessionWithRepo.repo.base_branch).toBe('main');
-            expect(sessionWithRepo.repo_path.path).toBe('/home/user/test-repo');
+            expect(sessionWithRepo.repo.path).toBe('/home/user/test-repo');
         });
 
         it('returns NOT_FOUND for nonexistent ID', () => {
@@ -139,14 +136,13 @@ describe('SessionService', () => {
         it('filters by repoId', async () => {
             // Create a second repo
             const repoId2 = generateId();
-            dbService.execute("INSERT INTO repos (id, name, base_branch) VALUES ($id, 'repo2', 'main')", {
-                $id: repoId2,
-            });
-            dbService.execute('INSERT INTO repo_paths (id, repo_id, path) VALUES ($id, $repoId, $path)', {
-                $id: generateId(),
-                $repoId: repoId2,
-                $path: '/home/user/repo2',
-            });
+            dbService.execute(
+                "INSERT INTO repos (id, name, path, base_branch) VALUES ($id, 'repo2', $path, 'main')",
+                {
+                    $id: repoId2,
+                    $path: '/home/user/repo2',
+                },
+            );
 
             // Create sessions for both repos
             await service.getOrCreateSession(repoId, '/home/user/test-repo');
@@ -161,8 +157,9 @@ describe('SessionService', () => {
 
         it('returns all when no filter', async () => {
             const repoId2 = generateId();
-            dbService.execute("INSERT INTO repos (id, name, base_branch) VALUES ($id, 'repo2', 'main')", {
+            dbService.execute("INSERT INTO repos (id, name, path, base_branch) VALUES ($id, 'repo2', $path, 'main')", {
                 $id: repoId2,
+                $path: '/home/user/repo2',
             });
 
             await service.getOrCreateSession(repoId, '/home/user/test-repo');

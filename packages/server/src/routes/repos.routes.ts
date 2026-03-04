@@ -24,8 +24,8 @@ export function createRepoRoutes(repoService: RepoService): Hono {
         if (result.isErr()) {
             return resultToResponse(c, result);
         }
-        const { repo, repoPath, isNew } = result.value;
-        return c.json({ repo, repo_path: repoPath, is_new: isNew }, isNew ? 201 : 200);
+        const { repo, isNew } = result.value;
+        return c.json({ repo, is_new: isNew }, isNew ? 201 : 200);
     });
 
     // PATCH /:id — Update base branch

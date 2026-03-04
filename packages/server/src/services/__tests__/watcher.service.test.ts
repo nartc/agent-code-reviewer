@@ -85,19 +85,17 @@ describe('WatcherService', () => {
 
         service = new WatcherService(dbService, gitService, sessionService, sseService);
 
-        // Seed repo + repo_path + session
+        // Seed repo + session
         repoId = generateId();
-        const repoPathId = generateId();
-        dbService.execute("INSERT INTO repos (id, remote_url, name, base_branch) VALUES ($id, $url, $name, 'main')", {
-            $id: repoId,
-            $url: 'https://github.com/user/test.git',
-            $name: 'test-repo',
-        });
-        dbService.execute('INSERT INTO repo_paths (id, repo_id, path) VALUES ($id, $repoId, $path)', {
-            $id: repoPathId,
-            $repoId: repoId,
-            $path: '/repo',
-        });
+        dbService.execute(
+            "INSERT INTO repos (id, remote_url, name, path, base_branch) VALUES ($id, $url, $name, $path, 'main')",
+            {
+                $id: repoId,
+                $url: 'https://github.com/user/test.git',
+                $name: 'test-repo',
+                $path: '/repo',
+            },
+        );
 
         const sessionResult = await sessionService.getOrCreateSession(repoId, '/repo');
         sessionId = expectOk(sessionResult).id;
@@ -404,12 +402,8 @@ describe('WatcherService', () => {
         it('closes all watchers (AC-2.16)', async () => {
             // Create another session
             const repoId2 = generateId();
-            dbService.execute("INSERT INTO repos (id, name, base_branch) VALUES ($id, 'repo2', 'main')", {
+            dbService.execute("INSERT INTO repos (id, name, path, base_branch) VALUES ($id, 'repo2', $path, 'main')", {
                 $id: repoId2,
-            });
-            dbService.execute('INSERT INTO repo_paths (id, repo_id, path) VALUES ($id, $repoId, $path)', {
-                $id: generateId(),
-                $repoId: repoId2,
                 $path: '/repo2',
             });
             const session2Result = await sessionService.getOrCreateSession(repoId2, '/repo2');

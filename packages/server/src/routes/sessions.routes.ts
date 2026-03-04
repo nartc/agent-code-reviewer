@@ -53,7 +53,7 @@ export function createSessionRoutes(sessionService: SessionService, watcherServi
         if (sessionResult.isErr()) {
             return resultToResponse(c, sessionResult);
         }
-        const repoPath = sessionResult.value.repo_path.path;
+        const repoPath = sessionResult.value.repo.path;
         return asyncResultToResponse(
             c,
             watcherService.startWatching(id, repoPath).map(() => ({ message: 'Watching started' })),

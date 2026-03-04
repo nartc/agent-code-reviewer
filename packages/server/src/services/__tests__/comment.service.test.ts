@@ -36,7 +36,9 @@ describe('CommentService', () => {
         snapB = generateId();
         snapC = generateId();
 
-        dbService.execute("INSERT INTO repos (id, name) VALUES ($id, 'test-repo')", { $id: repoId });
+        dbService.execute("INSERT INTO repos (id, name, path) VALUES ($id, 'test-repo', '/test-repo')", {
+            $id: repoId,
+        });
         dbService.execute("INSERT INTO sessions (id, repo_id, branch) VALUES ($id, $repoId, 'main')", {
             $id: sessionId,
             $repoId: repoId,

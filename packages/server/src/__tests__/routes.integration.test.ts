@@ -138,7 +138,7 @@ describe('Repo Routes', () => {
         const body = (await res.json()) as any;
         expect(body.is_new).toBe(true);
         expect(body.repo).toBeDefined();
-        expect(body.repo_path).toBeDefined();
+        expect(body.repo.path).toBeDefined();
     });
 
     it('POST same path again → 200 with is_new: false', async () => {
@@ -283,7 +283,7 @@ describe('Session Routes', () => {
         expect(res.status).toBe(200);
         const body = (await res.json()) as any;
         expect(body.repo).toBeDefined();
-        expect(body.repo_path).toBeDefined();
+        expect(body.repo.path).toBeDefined();
     });
 
     it('PATCH /api/sessions/:id → 200', async () => {

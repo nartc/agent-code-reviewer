@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { Comment, CommentThread } from './comment.js';
 import { commentStatusSchema } from './comment.js';
-import type { Repo, RepoPath, RepoWithPaths } from './repo.js';
+import type { Repo } from './repo.js';
 import type { Session } from './session.js';
 import type { Snapshot, SnapshotSummary } from './snapshot.js';
 import type { Target, TransportStatus, TransportType } from './transport.js';
@@ -19,12 +19,11 @@ export const updateRepoSchema = z.object({
 export type CreateRepoRequest = z.infer<typeof createRepoSchema>;
 export interface CreateRepoResponse {
     repo: Repo;
-    repo_path: RepoPath;
     is_new: boolean;
 }
 export type UpdateRepoRequest = z.infer<typeof updateRepoSchema>;
 export interface ListReposResponse {
-    repos: RepoWithPaths[];
+    repos: Repo[];
 }
 
 // --- Session schemas ---

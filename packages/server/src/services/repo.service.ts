@@ -3,8 +3,6 @@ import {
     type GitError,
     type NotFoundError,
     type Repo,
-    type RepoPath,
-    type RepoWithPaths,
     generateId,
     notAGitRepo,
     notFound,
@@ -14,7 +12,7 @@ import { basename } from 'node:path';
 import type { DbService } from './db.service.js';
 import type { GitService } from './git.service.js';
 
-type CreateOrGetResult = { repo: Repo; repoPath: RepoPath; isNew: boolean };
+type CreateOrGetResult = { repo: Repo; isNew: boolean };
 
 export class RepoService {
     constructor(
@@ -22,45 +20,8 @@ export class RepoService {
         private gitService: GitService,
     ) {}
 
-    listRepos(): Result<RepoWithPaths[], DatabaseError> {
-        const rowsResult = this.dbService.query<
-            Repo & {
-                path_id: string | null;
-                path: string | null;
-                last_accessed_at: string | null;
-                path_created_at: string | null;
-            }
-        >(
-            `SELECT r.*, rp.id as path_id, rp.path, rp.last_accessed_at, rp.created_at as path_created_at
-             FROM repos r LEFT JOIN repo_paths rp ON r.id = rp.repo_id
-             ORDER BY r.created_at DESC`,
-        );
-        if (rowsResult.isErr()) return err(rowsResult.error);
-
-        const repoMap = new Map<string, RepoWithPaths>();
-        for (const row of rowsResult.value) {
-            if (!repoMap.has(row.id)) {
-                repoMap.set(row.id, {
-                    id: row.id,
-                    remote_url: row.remote_url,
-                    name: row.name,
-                    base_branch: row.base_branch,
-                    created_at: row.created_at,
-                    paths: [],
-                });
-            }
-            if (row.path_id != null) {
-                repoMap.get(row.id)!.paths.push({
-                    id: row.path_id,
-                    repo_id: row.id,
-                    path: row.path!,
-                    last_accessed_at: row.last_accessed_at,
-                    created_at: row.path_created_at!,
-                });
-            }
-        }
-
-        return ok([...repoMap.values()]);
+    listRepos(): Result<Repo[], DatabaseError> {
+        return this.dbService.query<Repo>('SELECT * FROM repos ORDER BY created_at DESC');
     }
 
     createOrGetFromPath(path: string): ResultAsync<CreateOrGetResult, GitError | DatabaseError | NotFoundError> {
@@ -69,12 +30,27 @@ export class RepoService {
                 return errAsync(notAGitRepo(path));
             }
 
-            return this.gitService.getRemoteUrl(path).andThen((remoteUrl) => {
-                if (remoteUrl !== null) {
-                    return this.findOrCreateByRemoteUrl(path, remoteUrl);
-                }
-                return this.findOrCreateByPath(path);
-            });
+            const existing = this.dbService.queryOne<Repo>('SELECT * FROM repos WHERE path = $path', { $path: path });
+            if (existing.isErr()) return errAsync(existing.error);
+            if (existing.value) return okAsync({ repo: existing.value, isNew: false });
+
+            return this.gitService.getRemoteUrl(path).andThen((remoteUrl) =>
+                this.gitService.getDefaultBranch(path).andThen((baseBranch) => {
+                    const id = generateId();
+                    const name = basename(path);
+
+                    const insertResult = this.dbService.execute(
+                        'INSERT INTO repos (id, remote_url, name, path, base_branch) VALUES ($id, $remoteUrl, $name, $path, $baseBranch)',
+                        { $id: id, $remoteUrl: remoteUrl, $name: name, $path: path, $baseBranch: baseBranch },
+                    );
+                    if (insertResult.isErr()) return err(insertResult.error);
+
+                    const repo = this.dbService.queryOne<Repo>('SELECT * FROM repos WHERE id = $id', { $id: id });
+                    if (repo.isErr()) return err(repo.error);
+
+                    return ok({ repo: repo.value!, isNew: true });
+                }),
+            );
         });
     }
 
@@ -105,117 +81,5 @@ export class RepoService {
         if (!updated.value) return err(notFound('Repo not found after update'));
 
         return ok(updated.value);
-    }
-
-    getRepoPaths(repoId: string): Result<RepoPath[], DatabaseError> {
-        return this.dbService.query<RepoPath>('SELECT * FROM repo_paths WHERE repo_id = $repoId', { $repoId: repoId });
-    }
-
-    private findOrCreateByRemoteUrl(
-        path: string,
-        remoteUrl: string,
-    ): ResultAsync<CreateOrGetResult, GitError | DatabaseError | NotFoundError> {
-        const existingRepo = this.dbService.queryOne<Repo>('SELECT * FROM repos WHERE remote_url = $url', {
-            $url: remoteUrl,
-        });
-
-        if (existingRepo.isErr()) return errAsync(existingRepo.error);
-
-        if (existingRepo.value) {
-            return this.ensureRepoPath(existingRepo.value, path, false);
-        }
-
-        return this.createNewRepo(path, remoteUrl);
-    }
-
-    private findOrCreateByPath(path: string): ResultAsync<CreateOrGetResult, GitError | DatabaseError | NotFoundError> {
-        const existingRepo = this.dbService.queryOne<Repo>(
-            'SELECT r.* FROM repos r JOIN repo_paths rp ON r.id = rp.repo_id WHERE rp.path = $path',
-            { $path: path },
-        );
-
-        if (existingRepo.isErr()) return errAsync(existingRepo.error);
-
-        if (existingRepo.value) {
-            return this.ensureRepoPath(existingRepo.value, path, false);
-        }
-
-        return this.createNewRepo(path, null);
-    }
-
-    private ensureRepoPath(
-        repo: Repo,
-        path: string,
-        isNew: boolean,
-    ): ResultAsync<CreateOrGetResult, DatabaseError | NotFoundError> {
-        const existingPath = this.dbService.queryOne<RepoPath>(
-            'SELECT * FROM repo_paths WHERE repo_id = $repoId AND path = $path',
-            { $repoId: repo.id, $path: path },
-        );
-
-        if (existingPath.isErr()) return errAsync(existingPath.error);
-
-        if (existingPath.value) {
-            return okAsync({ repo, repoPath: existingPath.value, isNew: false });
-        }
-
-        const pathId = generateId();
-        const insertResult = this.dbService.execute(
-            'INSERT INTO repo_paths (id, repo_id, path) VALUES ($id, $repoId, $path)',
-            { $id: pathId, $repoId: repo.id, $path: path },
-        );
-
-        if (insertResult.isErr()) return errAsync(insertResult.error);
-
-        const newPath = this.dbService.queryOne<RepoPath>('SELECT * FROM repo_paths WHERE id = $id', { $id: pathId });
-
-        if (newPath.isErr()) return errAsync(newPath.error);
-        if (!newPath.value) return errAsync(notFound('Repo path not found after insert'));
-
-        return okAsync({ repo, repoPath: newPath.value, isNew });
-    }
-
-    private createNewRepo(
-        path: string,
-        remoteUrl: string | null,
-    ): ResultAsync<CreateOrGetResult, GitError | DatabaseError> {
-        return this.gitService.getDefaultBranch(path).andThen((baseBranch) => {
-            const repoId = generateId();
-            const pathId = generateId();
-            const name = basename(path);
-
-            const txResult = this.dbService.transaction(() => {
-                const insertRepo = this.dbService.execute(
-                    'INSERT INTO repos (id, remote_url, name, base_branch) VALUES ($id, $remoteUrl, $name, $baseBranch)',
-                    {
-                        $id: repoId,
-                        $remoteUrl: remoteUrl,
-                        $name: name,
-                        $baseBranch: baseBranch,
-                    },
-                );
-                if (insertRepo.isErr()) return err(insertRepo.error);
-
-                const insertPath = this.dbService.execute(
-                    'INSERT INTO repo_paths (id, repo_id, path) VALUES ($id, $repoId, $path)',
-                    { $id: pathId, $repoId: repoId, $path: path },
-                );
-                if (insertPath.isErr()) return err(insertPath.error);
-
-                return ok(undefined);
-            });
-
-            if (txResult.isErr()) return err(txResult.error);
-
-            const repo = this.dbService.queryOne<Repo>('SELECT * FROM repos WHERE id = $id', { $id: repoId });
-            if (repo.isErr()) return err(repo.error);
-
-            const repoPath = this.dbService.queryOne<RepoPath>('SELECT * FROM repo_paths WHERE id = $id', {
-                $id: pathId,
-            });
-            if (repoPath.isErr()) return err(repoPath.error);
-
-            return ok({ repo: repo.value!, repoPath: repoPath.value!, isNew: true });
-        });
     }
 }

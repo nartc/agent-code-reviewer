@@ -41,9 +41,9 @@ describe('DbService', () => {
 
     describe('query', () => {
         it('returns rows', () => {
-            service.execute("INSERT INTO repos (id, name) VALUES ('r1', 'repo1')");
-            service.execute("INSERT INTO repos (id, name) VALUES ('r2', 'repo2')");
-            service.execute("INSERT INTO repos (id, name) VALUES ('r3', 'repo3')");
+            service.execute("INSERT INTO repos (id, name, path) VALUES ('r1', 'repo1', '/path/r1')");
+            service.execute("INSERT INTO repos (id, name, path) VALUES ('r2', 'repo2', '/path/r2')");
+            service.execute("INSERT INTO repos (id, name, path) VALUES ('r3', 'repo3', '/path/r3')");
 
             const result = service.query<{ id: string; name: string }>('SELECT id, name FROM repos');
 
@@ -62,7 +62,7 @@ describe('DbService', () => {
 
     describe('queryOne', () => {
         it('returns single row', () => {
-            service.execute("INSERT INTO repos (id, name) VALUES ('r1', 'test')");
+            service.execute("INSERT INTO repos (id, name, path) VALUES ('r1', 'test', '/path/r1')");
 
             const result = service.queryOne<{ id: string; name: string }>('SELECT * FROM repos WHERE id = $id', {
                 $id: 'r1',
@@ -83,7 +83,7 @@ describe('DbService', () => {
 
     describe('execute', () => {
         it('returns changes count', () => {
-            const result = service.execute("INSERT INTO repos (id, name) VALUES ('r1', 'test')");
+            const result = service.execute("INSERT INTO repos (id, name, path) VALUES ('r1', 'test', '/path/r1')");
 
             expect(expectOk(result)).toEqual({ changes: 1 });
         });
@@ -98,7 +98,7 @@ describe('DbService', () => {
     describe('transaction', () => {
         it('commits on success', () => {
             const result = service.transaction(() => {
-                service.execute("INSERT INTO repos (id, name) VALUES ('r1', 'test')");
+                service.execute("INSERT INTO repos (id, name, path) VALUES ('r1', 'test', '/path/r1')");
                 return ok('done');
             });
 
@@ -111,7 +111,7 @@ describe('DbService', () => {
 
         it('rolls back on error', () => {
             const result = service.transaction(() => {
-                service.execute("INSERT INTO repos (id, name) VALUES ('r1', 'test')");
+                service.execute("INSERT INTO repos (id, name, path) VALUES ('r1', 'test', '/path/r1')");
                 return err(databaseError('intentional fail'));
             });
 
@@ -128,7 +128,7 @@ describe('DbService', () => {
             const { mkdirSync } = await import('node:fs');
             mkdirSync(tmpDir, { recursive: true });
 
-            service.execute("INSERT INTO repos (id, name) VALUES ('r1', 'saved-repo')");
+            service.execute("INSERT INTO repos (id, name, path) VALUES ('r1', 'saved-repo', '/path/r1')");
 
             const result = service.save();
             expect(result.isOk()).toBe(true);

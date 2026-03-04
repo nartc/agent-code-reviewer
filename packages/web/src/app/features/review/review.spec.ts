@@ -47,9 +47,8 @@ describe('Review — send flow', () => {
         const mockSessionStore = {
             currentSession: () => ({
                 id: 's1',
-                repo: { name: 'test-repo' },
+                repo: { name: 'test-repo', path: '/test' },
                 branch: 'main',
-                repo_path: { path: '/test' },
                 repo_id: 'r1',
             }),
             isConnected: () => true,

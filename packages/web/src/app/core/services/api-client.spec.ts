@@ -35,7 +35,7 @@ describe('ApiClient', () => {
         const req = httpMock.expectOne('/api/repos');
         expect(req.request.method).toBe('POST');
         expect(req.request.body).toEqual(body);
-        req.flush({ repo: {}, repo_path: {}, is_new: true });
+        req.flush({ repo: {}, is_new: true });
     });
 
     it('updateRepo makes PATCH /api/repos/:id', () => {

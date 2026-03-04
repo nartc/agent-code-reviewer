@@ -37,7 +37,7 @@ export function createMcpRoutes(
         if (reposResult.isErr()) return resultToResponse(c, reposResult);
 
         const repos = reposResult.value;
-        let foundRepo = repo_path ? repos.find((r) => r.paths.some((p) => p.path === repo_path)) : undefined;
+        let foundRepo = repo_path ? repos.find((r) => r.path === repo_path) : undefined;
         if (!foundRepo && repo_name) {
             foundRepo = repos.find((r) => r.name === repo_name);
         }

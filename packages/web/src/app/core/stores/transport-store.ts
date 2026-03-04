@@ -15,7 +15,7 @@ export class TransportStore {
     readonly #sessionStore = inject(SessionStore);
 
     readonly #targetsResource = httpResource<ListTargetsResponse>(() => {
-        const repoPath = this.#sessionStore.currentSession()?.repo_path?.path;
+        const repoPath = this.#sessionStore.currentSession()?.repo?.path;
         if (!repoPath) return '/api/transport/targets';
         return `/api/transport/targets?repo_path=${encodeURIComponent(repoPath)}`;
     });

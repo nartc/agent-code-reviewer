@@ -15,8 +15,7 @@ const mockSession: SessionWithRepo = {
     base_branch: null,
     is_watching: false,
     created_at: '2025-01-01',
-    repo: { id: 'r1', remote_url: null, name: 'test', base_branch: 'main', created_at: '2025-01-01' },
-    repo_path: { id: 'rp1', repo_id: 'r1', path: '/test', last_accessed_at: null, created_at: '2025-01-01' },
+    repo: { id: 'r1', remote_url: null, name: 'test', path: '/test', base_branch: 'main', created_at: '2025-01-01' },
 };
 
 const mockFiles: FileSummary[] = [

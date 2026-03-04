@@ -7,7 +7,7 @@ import { initDatabase, initInMemoryDatabase } from '../client.js';
 
 describe('Database Client', () => {
     describe('initInMemoryDatabase', () => {
-        it('creates all 7 tables', async () => {
+        it('creates all 6 tables', async () => {
             const result = await initInMemoryDatabase();
             expect(result.isOk()).toBe(true);
 
@@ -17,16 +17,16 @@ describe('Database Client', () => {
 
             expect(tableNames).toContain('app_config');
             expect(tableNames).toContain('comments');
-            expect(tableNames).toContain('repo_paths');
             expect(tableNames).toContain('repos');
             expect(tableNames).toContain('sessions');
             expect(tableNames).toContain('snapshots');
             expect(tableNames).toContain('transport_config');
+            expect(tableNames).not.toContain('repo_paths');
 
             db.close();
         });
 
-        it('creates all 9 indexes', async () => {
+        it('creates all 8 indexes', async () => {
             const result = await initInMemoryDatabase();
 
             const db = expectOk(result);
@@ -41,7 +41,6 @@ describe('Database Client', () => {
                 'idx_comments_session',
                 'idx_comments_snapshot',
                 'idx_comments_status',
-                'idx_repo_paths_repo',
                 'idx_sessions_repo',
                 'idx_snapshots_created',
                 'idx_snapshots_session',
@@ -68,7 +67,7 @@ describe('Database Client', () => {
             const db = expectOk(result);
             const version = db.exec("SELECT value FROM app_config WHERE key = 'schema_version'");
 
-            expect(version[0].values[0][0]).toBe('1');
+            expect(version[0].values[0][0]).toBe('2');
 
             db.close();
         });
