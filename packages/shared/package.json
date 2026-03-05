@@ -9,11 +9,11 @@
         "test": "vitest run"
     },
     "dependencies": {
-        "nanoid": "^5.x",
-        "zod": "^3.x"
+        "nanoid": "^5.1.6",
+        "zod": "^4.3.6"
     },
     "devDependencies": {
-        "vitest": "^4.0.8"
+        "vitest": "^4.0.18"
     },
     "nx": {
         "name": "shared"
