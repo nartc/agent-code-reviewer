@@ -1,6 +1,6 @@
 import { zValidator } from '@hono/zod-validator';
 import type { ValidationTargets } from 'hono';
-import type { ZodSchema } from 'zod';
+import { z, type ZodSchema } from 'zod';
 
 /**
  * Validation middleware wrapper around @hono/zod-validator.
@@ -15,7 +15,7 @@ export function validate<Target extends keyof ValidationTargets, T extends ZodSc
                     error: {
                         type: 'VALIDATION' as const,
                         message: 'Validation failed',
-                        details: result.error.flatten().fieldErrors,
+                        details: z.flattenError(result.error).fieldErrors,
                     },
                 },
                 400,

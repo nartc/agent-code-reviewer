@@ -37,7 +37,7 @@ export function createGitRoutes(gitService: GitService, config: AppConfig): Hono
     // GET /scan?roots=...&max_depth=...
     app.get('/scan', zValidator('query', gitScanQuerySchema), (c) => {
         const query = c.req.valid('query');
-        const roots = query.roots?.split(',').map((s) => s.trim()) ?? config.scanRoots;
+        const roots = query.roots?.split(',').map((s: string) => s.trim()) ?? config.scanRoots;
         const maxDepth = query.max_depth ? parseInt(query.max_depth, 10) : config.scanMaxDepth;
 
         c.header('Content-Type', 'application/x-ndjson');
