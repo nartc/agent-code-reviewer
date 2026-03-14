@@ -4,6 +4,7 @@ import { createApp } from '../app.js';
 import { initInMemoryDatabase } from '../db/client.js';
 import { CommentService } from '../services/comment.service.js';
 import { DbService } from '../services/db.service.js';
+import { PrImportService } from '../services/pr-import.service.js';
 import { GitService } from '../services/git.service.js';
 import { RepoService } from '../services/repo.service.js';
 import { SessionService } from '../services/session.service.js';
@@ -44,6 +45,9 @@ function createMockGitService(): GitService {
         getInfo: vi.fn(),
         listBranches: vi.fn(),
         scanForRepos: vi.fn(),
+        fetchOrigin: vi.fn(),
+        resolveBaseBranchRef: vi.fn(),
+        getFileContent: vi.fn(),
     } as unknown as GitService;
 }
 
@@ -74,6 +78,8 @@ describe('App Integration', () => {
         } as unknown as Transport;
         const transportService = new TransportService([mockTransport], dbService);
 
+        const prImportService = new PrImportService(dbService, sseService);
+
         app = createApp({
             dbService,
             sseService,
@@ -83,6 +89,7 @@ describe('App Integration', () => {
             commentService,
             transportService,
             gitService,
+            prImportService,
             config: { port: 3847, dbPath: ':memory:', scanRoots: ['/tmp'], scanMaxDepth: 2 },
         });
     });

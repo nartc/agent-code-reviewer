@@ -1,5 +1,6 @@
-import type { CommentThread } from '@agent-code-reviewer/shared';
+import type { Comment, CommentThread } from '@agent-code-reviewer/shared';
 import { ChangeDetectionStrategy, Component, inject, input, output, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { NgIcon } from '@ng-icons/core';
 import { CommentStore } from '../../../core/stores/comment-store';
 import { RelativeTime } from '../../../shared/pipes/relative-time';
@@ -7,7 +8,7 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
 @Component({
     selector: 'acr-comment-list-item',
     changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [RelativeTime, NgIcon],
+    imports: [RelativeTime, FormsModule, NgIcon],
     host: {
         class: 'card card-compact bg-base-100 border border-base-300 hover:bg-base-200 transition-colors cursor-pointer',
         '[class.border-l-4]': 'thread().comment.status === "resolved"',
@@ -83,6 +84,59 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
                     {{ c.content }}
                 </p>
 
+                @if (thread().replies.length > 0) {
+                    <div class="mt-1 ml-3 space-y-1">
+                        @for (reply of thread().replies; track reply.id) {
+                            <div class="text-xs flex items-center gap-1">
+                                <ng-icon
+                                    [name]="reply.author === 'agent' ? 'lucideBot' : 'lucideUser'"
+                                    class="size-2.5"
+                                />
+                                <span
+                                    class="badge badge-xs badge-outline"
+                                    [class.badge-primary]="reply.author === 'user'"
+                                    [class.badge-accent]="reply.author === 'agent'"
+                                >
+                                    {{ reply.author }}
+                                </span>
+                                @if (reply.status === 'draft') {
+                                    <span class="badge badge-xs badge-outline badge-warning">draft</span>
+                                }
+                                <span class="truncate opacity-70">{{ reply.content }}</span>
+                                @if (reply.status === 'draft') {
+                                    <button class="btn btn-xs btn-ghost btn-square" title="Edit reply" (click)="startEditReply(reply); $event.stopPropagation()">
+                                        <ng-icon name="lucidePencil" class="size-2.5" />
+                                    </button>
+                                    <button class="btn btn-xs btn-ghost btn-square text-error" title="Delete reply" (click)="deleteReply(reply.id); $event.stopPropagation()">
+                                        <ng-icon name="lucideTrash2" class="size-2.5" />
+                                    </button>
+                                }
+                            </div>
+                            @if (editingReplyId() === reply.id) {
+                                <div class="ml-6" (click)="$event.stopPropagation()">
+                                    <textarea
+                                        class="textarea textarea-sm textarea-bordered w-full"
+                                        rows="2"
+                                        aria-label="Edit reply"
+                                        [value]="editContent()"
+                                        (input)="editContent.set($any($event.target).value)"
+                                    ></textarea>
+                                    <div class="flex justify-end gap-1 mt-0.5">
+                                        <button class="btn btn-xs btn-ghost" (click)="cancelEditReply()">Cancel</button>
+                                        <button
+                                            class="btn btn-xs btn-primary"
+                                            [disabled]="!editContent().trim()"
+                                            (click)="saveEditReply(reply.id)"
+                                        >
+                                            Save
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </div>
+                }
+
                 @if (showActions()) {
                     <div class="flex justify-end gap-1">
                         @switch (c.status) {
@@ -112,7 +166,7 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
                                 <button
                                     class="btn btn-xs btn-ghost"
                                     title="Reply"
-                                    (click)="replyCreated.emit({ thread: thread(), content: '' })"
+                                    (click)="showReplyForm.set(true)"
                                 >
                                     <ng-icon name="lucideReply" class="size-3" />
                                     Reply
@@ -122,7 +176,7 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
                                 <button
                                     class="btn btn-xs btn-ghost"
                                     title="Reply"
-                                    (click)="replyCreated.emit({ thread: thread(), content: '' })"
+                                    (click)="showReplyForm.set(true)"
                                 >
                                     <ng-icon name="lucideReply" class="size-3" />
                                     Reply
@@ -131,6 +185,32 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
                         }
                     </div>
                 }
+            }
+
+            @if (showReplyForm()) {
+                <div class="mt-1" (click)="$event.stopPropagation()">
+                    <textarea
+                        class="textarea textarea-bordered textarea-sm w-full"
+                        rows="2"
+                        placeholder="Write a reply..."
+                        aria-label="Reply to comment"
+                        [(ngModel)]="replyContent"
+                    ></textarea>
+                    <div class="flex justify-end gap-1 mt-1">
+                        <button class="btn btn-xs btn-ghost" (click)="cancelReply()">
+                            <ng-icon name="lucideX" class="size-3" />
+                            Cancel
+                        </button>
+                        <button
+                            class="btn btn-xs btn-primary"
+                            [disabled]="!replyContent().trim()"
+                            (click)="submitReply()"
+                        >
+                            <ng-icon name="lucideReply" class="size-3" />
+                            Reply
+                        </button>
+                    </div>
+                </div>
             }
         </div>
     `,
@@ -150,7 +230,10 @@ export class CommentListItem {
 
     protected readonly expanded = signal(false);
     protected readonly editing = signal(false);
+    protected readonly editingReplyId = signal<string | null>(null);
     protected readonly editContent = signal('');
+    protected readonly showReplyForm = signal(false);
+    protected readonly replyContent = signal('');
 
     protected toggleExpand(): void {
         this.expanded.update((v) => !v);
@@ -185,5 +268,40 @@ export class CommentListItem {
         this.#commentStore.updateComment(this.thread().comment.id, { content });
         this.editing.set(false);
         this.editContent.set('');
+    }
+
+    protected startEditReply(reply: Comment): void {
+        this.editContent.set(reply.content);
+        this.editingReplyId.set(reply.id);
+    }
+
+    protected cancelEditReply(): void {
+        this.editingReplyId.set(null);
+        this.editContent.set('');
+    }
+
+    protected saveEditReply(replyId: string): void {
+        const content = this.editContent().trim();
+        if (!content) return;
+        this.#commentStore.updateComment(replyId, { content });
+        this.editingReplyId.set(null);
+        this.editContent.set('');
+    }
+
+    protected deleteReply(replyId: string): void {
+        this.#commentStore.deleteComment(replyId);
+    }
+
+    protected cancelReply(): void {
+        this.showReplyForm.set(false);
+        this.replyContent.set('');
+    }
+
+    protected submitReply(): void {
+        const content = this.replyContent().trim();
+        if (!content) return;
+        this.#commentStore.createReply(this.thread().comment.id, { content });
+        this.showReplyForm.set(false);
+        this.replyContent.set('');
     }
 }

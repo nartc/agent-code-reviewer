@@ -51,17 +51,15 @@ import { TransportPicker } from './transport-picker/transport-picker';
                     (click)="toggleWatcher()"
                 >
                     <ng-icon [name]="isWatching() ? 'lucideEyeOff' : 'lucideEye'" class="size-3.5" />
-                    {{ isWatching() ? 'Stop Watching' : 'Start Watching' }}
+                    {{ isWatching() ? 'Stop Monitoring' : 'Monitor Commits' }}
                 </button>
-                @if (!isWatching()) {
-                    <button
-                        class="btn btn-xs btn-ghost"
-                        title="Refresh snapshots"
-                        (click)="refreshSnapshots()"
-                    >
-                        <ng-icon name="lucideRefreshCw" class="size-3.5" />
-                    </button>
-                }
+                <button
+                    class="btn btn-xs btn-ghost"
+                    title="Capture snapshot"
+                    (click)="refreshSnapshots()"
+                >
+                    <ng-icon name="lucideRefreshCw" class="size-3.5" />
+                </button>
             </header>
 
             <acr-snapshot-timeline

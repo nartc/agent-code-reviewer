@@ -63,8 +63,20 @@ export function registerCheckComments(server: McpServer, client: ApiClient): voi
                     lines.push(`${i + 1}. [${c.id}] ${lineRef}`);
                     lines.push(`   "${c.content}"`);
 
+                    // Find the last agent reply timestamp to detect new user replies
+                    let lastAgentReplyAt: string | null = null;
                     for (const reply of replies) {
-                        lines.push(`   ↳ [${reply.author}] "${reply.content}" (${reply.status})`);
+                        if (reply.author === 'agent') {
+                            lastAgentReplyAt = reply.created_at;
+                        }
+                    }
+
+                    for (const reply of replies) {
+                        const isNew =
+                            reply.author === 'user' &&
+                            (!lastAgentReplyAt || reply.created_at > lastAgentReplyAt);
+                        const newMarker = isNew ? ' [NEW]' : '';
+                        lines.push(`   ↳ [${reply.author}]${newMarker} "${reply.content}" (${reply.status})`);
                     }
 
                     lines.push('');

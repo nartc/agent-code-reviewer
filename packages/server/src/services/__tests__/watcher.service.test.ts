@@ -7,25 +7,7 @@ import { DbService } from '../db.service.js';
 import type { GitService } from '../git.service.js';
 import { SessionService } from '../session.service.js';
 import type { SseService } from '../sse.service.js';
-import { WatcherService, computeChangedFiles, createIgnoreFunction } from '../watcher.service.js';
-
-// Mock node:fs — replace watch with a controllable mock
-const mockWatcherClose = vi.fn();
-let capturedChangeHandler: ((event: string, filename: string | null) => void) | null = null;
-
-vi.mock('node:fs', async (importOriginal) => {
-    const original = await importOriginal<typeof import('node:fs')>();
-    return {
-        ...original,
-        watch: vi.fn((_path: string, _opts: any, listener: (event: string, filename: string | null) => void) => {
-            capturedChangeHandler = listener;
-            return {
-                close: mockWatcherClose,
-                on: vi.fn().mockReturnThis(),
-            };
-        }),
-    };
-});
+import { WatcherService, computeChangedFiles } from '../watcher.service.js';
 
 function createMockGitService(overrides: Partial<GitService> = {}): GitService {
     return {
@@ -43,6 +25,10 @@ function createMockGitService(overrides: Partial<GitService> = {}): GitService {
         ) as any,
         listBranches: vi.fn() as any,
         scanForRepos: vi.fn() as any,
+        fetchOrigin: vi.fn().mockReturnValue(okAsync(undefined)) as any,
+        resolveBaseBranchRef: vi.fn().mockImplementation((_path: string, baseBranch: string) =>
+            okAsync(baseBranch),
+        ) as any,
         ...overrides,
     } as GitService;
 }
@@ -68,11 +54,6 @@ describe('WatcherService', () => {
 
     beforeEach(async () => {
         vi.useFakeTimers();
-        capturedChangeHandler = null;
-        mockWatcherClose.mockReset();
-
-        const fs = await import('node:fs');
-        vi.mocked(fs.watch).mockClear();
 
         const dbResult = await initInMemoryDatabase();
         expect(dbResult.isOk()).toBe(true);
@@ -111,12 +92,8 @@ describe('WatcherService', () => {
         }
     });
 
-    function triggerFileChange(filename = 'src/app.ts') {
-        capturedChangeHandler?.('change', filename);
-    }
-
     describe('startWatching', () => {
-        it('creates a file watcher (AC-2.1)', async () => {
+        it('starts HEAD polling (AC-2.1)', async () => {
             const result = await service.startWatching(sessionId, '/repo');
 
             expect(result.isOk()).toBe(true);
@@ -137,13 +114,10 @@ describe('WatcherService', () => {
         });
 
         it('is idempotent (AC-2.2)', async () => {
-            const fs = await import('node:fs');
-
             await service.startWatching(sessionId, '/repo');
             const result = await service.startWatching(sessionId, '/repo');
 
             expect(result.isOk()).toBe(true);
-            expect(fs.watch).toHaveBeenCalledTimes(1);
         });
 
         it('fails for non-existent session (AC-2.3)', async () => {
@@ -160,7 +134,6 @@ describe('WatcherService', () => {
             const result = await service.stopWatching(sessionId);
 
             expect(result.isOk()).toBe(true);
-            expect(mockWatcherClose).toHaveBeenCalled();
             expect(service.isWatching(sessionId)).toBe(false);
 
             const dbRow = dbService.queryOne<{ is_watching: number }>(
@@ -182,19 +155,14 @@ describe('WatcherService', () => {
         });
     });
 
-    describe('debounce', () => {
-        it('file change triggers snapshot after 1.5s debounce (AC-2.6)', async () => {
+    describe('HEAD polling', () => {
+        it('captures snapshot when HEAD changes (AC-2.6)', async () => {
             await service.startWatching(sessionId, '/repo');
 
-            // Fire file change
-            triggerFileChange();
+            // Change HEAD on next poll
+            (gitService.getHeadCommit as any).mockReturnValue(okAsync('def456'));
 
-            // Before debounce
-            await vi.advanceTimersByTimeAsync(1499);
-            expect(gitService.getDiff).not.toHaveBeenCalled();
-
-            // After debounce
-            await vi.advanceTimersByTimeAsync(1);
+            await vi.advanceTimersByTimeAsync(3000);
             expect(gitService.getDiff).toHaveBeenCalled();
 
             // Verify snapshot in DB
@@ -207,59 +175,11 @@ describe('WatcherService', () => {
             expect(rowData[0].trigger).toBe('fs_watch');
         });
 
-        it('debounce resets on rapid changes (AC-2.7)', async () => {
+        it('does not capture snapshot when HEAD unchanged', async () => {
             await service.startWatching(sessionId, '/repo');
 
-            // File change at t=0
-            triggerFileChange();
-
-            // File change at t=500ms
-            await vi.advanceTimersByTimeAsync(500);
-            triggerFileChange();
-
-            // File change at t=1000ms
-            await vi.advanceTimersByTimeAsync(500);
-            triggerFileChange();
-
-            // At t=1500ms (first debounce would have fired but was reset)
-            await vi.advanceTimersByTimeAsync(500);
-            expect(gitService.getDiff).not.toHaveBeenCalled();
-
-            // At t=2500ms (1000 + 1500 debounce)
-            await vi.advanceTimersByTimeAsync(1000);
-            expect(gitService.getDiff).toHaveBeenCalledTimes(1);
-        });
-
-        it('enforces minimum 3s gap between snapshots (AC-2.8)', async () => {
-            await service.startWatching(sessionId, '/repo');
-
-            // First snapshot at t=0 (trigger immediately to set lastSnapshotAt)
-            triggerFileChange();
-            await vi.advanceTimersByTimeAsync(1500);
-            expect(gitService.getDiff).toHaveBeenCalledTimes(1);
-
-            // File change at t=2000ms
-            await vi.advanceTimersByTimeAsync(500);
-            triggerFileChange();
-
-            // Debounce fires at t=3500ms (2000 + 1500)
-            // At that point, elapsed = 3500 - 1500 = 2000ms < 3000ms
-            // remaining = 1000ms → reschedule to t=4500ms
-            await vi.advanceTimersByTimeAsync(1500);
-            expect(gitService.getDiff).toHaveBeenCalledTimes(1); // Not yet
-
-            // At t=4500ms, the rescheduled timer fires
-            await vi.advanceTimersByTimeAsync(1000);
-            expect(gitService.getDiff).toHaveBeenCalledTimes(2);
-        });
-
-        it('ignores changes in ignored directories', async () => {
-            await service.startWatching(sessionId, '/repo');
-
-            // Trigger change in node_modules
-            capturedChangeHandler?.('change', 'node_modules/foo/bar.js');
-
-            await vi.advanceTimersByTimeAsync(2000);
+            // HEAD stays the same
+            await vi.advanceTimersByTimeAsync(3000);
             expect(gitService.getDiff).not.toHaveBeenCalled();
         });
     });
@@ -292,6 +212,13 @@ describe('WatcherService', () => {
             expect(JSON.parse(row.files_summary)).toEqual([
                 { path: 'src/a.ts', status: 'modified', additions: 5, deletions: 2 },
             ]);
+        });
+
+        it('calls fetchOrigin and resolveBaseBranchRef', async () => {
+            await service.captureSnapshot(sessionId, '/repo', 'manual');
+
+            expect(gitService.fetchOrigin).toHaveBeenCalledWith('/repo');
+            expect(gitService.resolveBaseBranchRef).toHaveBeenCalledWith('/repo', 'main');
         });
 
         it('computes changed files delta (AC-2.10)', async () => {
@@ -384,22 +311,21 @@ describe('WatcherService', () => {
             sessionService.updateBaseBranch(sessionId, 'develop');
 
             await service.captureSnapshot(sessionId, '/repo', 'manual');
-            expect(gitService.getDiff).toHaveBeenCalledWith('/repo', 'develop');
+            expect(gitService.resolveBaseBranchRef).toHaveBeenCalledWith('/repo', 'develop');
 
             // Reset and test fallback
-            (gitService.getDiff as any).mockClear();
-            sessionService.updateBaseBranch(sessionId, null as any);
+            (gitService.resolveBaseBranchRef as any).mockClear();
 
             // Need to re-nullify base_branch via direct DB update since updateBaseBranch doesn't accept null
             dbService.execute('UPDATE sessions SET base_branch = NULL WHERE id = $id', { $id: sessionId });
 
             await service.captureSnapshot(sessionId, '/repo', 'manual');
-            expect(gitService.getDiff).toHaveBeenCalledWith('/repo', 'main');
+            expect(gitService.resolveBaseBranchRef).toHaveBeenCalledWith('/repo', 'main');
         });
     });
 
     describe('stopAll', () => {
-        it('closes all watchers (AC-2.16)', async () => {
+        it('stops all watchers (AC-2.16)', async () => {
             // Create another session
             const repoId2 = generateId();
             dbService.execute("INSERT INTO repos (id, name, path, base_branch) VALUES ($id, 'repo2', $path, 'main')", {
@@ -419,27 +345,7 @@ describe('WatcherService', () => {
 
             expect(service.isWatching(sessionId)).toBe(false);
             expect(service.isWatching(sessionId2)).toBe(false);
-            expect(mockWatcherClose).toHaveBeenCalledTimes(2);
         });
-    });
-});
-
-describe('createIgnoreFunction', () => {
-    it.each([
-        ['/repo/node_modules/foo/bar.js', true, 'node_modules'],
-        ['/repo/.git/HEAD', true, '.git'],
-        ['/repo/dist/index.js', true, 'dist'],
-        ['/repo/build/output.js', true, 'build'],
-        ['/repo/.next/cache', true, '.next'],
-        ['/repo/.cache/file', true, '.cache'],
-        ['/repo/coverage/lcov.info', true, 'coverage'],
-        ['/repo/__pycache__/mod.pyc', true, '__pycache__'],
-        ['/repo/.venv/bin/python', true, '.venv'],
-        ['/repo/.DS_Store', true, '.DS_Store'],
-        ['/repo/src/app.ts', false, 'normal source'],
-        ['/repo/src/utils/build-helpers.ts', false, 'build as substring'],
-    ])('ignores %s → %s (%s) (AC-2.15)', (path, expected, _reason) => {
-        expect(createIgnoreFunction(path, '/repo')).toBe(expected);
     });
 });
 

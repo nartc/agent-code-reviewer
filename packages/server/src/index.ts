@@ -9,6 +9,7 @@ import { RepoService } from './services/repo.service.js';
 import { SessionService } from './services/session.service.js';
 import { SseService } from './services/sse.service.js';
 import { TransportService } from './services/transport.service.js';
+import { PrImportService } from './services/pr-import.service.js';
 import { WatcherService } from './services/watcher.service.js';
 import { ClipboardTransport } from './transport/clipboard.transport.js';
 import { TmuxTransport } from './transport/tmux.transport.js';
@@ -36,6 +37,7 @@ async function main() {
     const sessionService = new SessionService(dbService, gitService);
     const commentService = new CommentService(dbService, sseService);
     const watcherService = new WatcherService(dbService, gitService, sessionService, sseService);
+    const prImportService = new PrImportService(dbService, sseService);
 
     // Transport
     const tmuxTransport = new TmuxTransport();
@@ -51,6 +53,7 @@ async function main() {
         commentService,
         transportService,
         gitService,
+        prImportService,
         config,
     });
 

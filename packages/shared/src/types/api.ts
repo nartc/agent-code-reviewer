@@ -138,6 +138,36 @@ export type GitBranchesRequest = z.infer<typeof gitBranchesQuerySchema>;
 export interface GitBranchesResponse {
     branches: string[];
 }
+// --- GitHub PR import schemas ---
+export const githubPrCommentSchema = z.object({
+    id: z.number(),
+    body: z.string(),
+    path: z.string(),
+    line: z.number().nullable(),
+    side: z.enum(['LEFT', 'RIGHT']).nullable(),
+    in_reply_to_id: z.number().nullable(),
+    user: z.object({ login: z.string() }),
+    created_at: z.string(),
+});
+
+export const importPrCommentsSchema = z.object({
+    repo_path: z.string().min(1),
+    branch: z.string().min(1),
+    base_branch: z.string().min(1),
+    pr_number: z.number().int().positive(),
+    raw_diff: z.string(),
+    comments: z.array(githubPrCommentSchema),
+});
+
+// --- GitHub PR import ---
+export type GithubPrComment = z.infer<typeof githubPrCommentSchema>;
+export type ImportPrCommentsRequest = z.infer<typeof importPrCommentsSchema>;
+export interface ImportPrCommentsResponse {
+    session_id: string;
+    snapshot_id: string;
+    imported_count: number;
+}
+
 export type GitScanParams = z.infer<typeof gitScanQuerySchema>;
 export interface ScannedRepo {
     path: string;

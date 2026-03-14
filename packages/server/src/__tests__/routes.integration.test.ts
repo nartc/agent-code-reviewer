@@ -9,6 +9,7 @@ import { GitService } from '../services/git.service.js';
 import { RepoService } from '../services/repo.service.js';
 import { SessionService } from '../services/session.service.js';
 import { SseService } from '../services/sse.service.js';
+import { PrImportService } from '../services/pr-import.service.js';
 import { TransportService } from '../services/transport.service.js';
 import type { WatcherService } from '../services/watcher.service.js';
 import type { Transport } from '../transport/transport.interface.js';
@@ -56,6 +57,9 @@ beforeEach(async () => {
             }),
         ),
         scanForRepos: vi.fn(),
+        fetchOrigin: vi.fn().mockReturnValue(okAsync(undefined)),
+        resolveBaseBranchRef: vi.fn().mockReturnValue(okAsync('origin/main')),
+        getFileContent: vi.fn().mockReturnValue(okAsync('file content')),
     } as unknown as GitService;
 
     sseService = createMockSseService();
@@ -106,6 +110,8 @@ beforeEach(async () => {
     } as unknown as Transport;
     const transportService = new TransportService([mockTransport], dbService);
 
+    const prImportService = new PrImportService(dbService, sseService);
+
     app = createApp({
         dbService,
         sseService,
@@ -115,6 +121,7 @@ beforeEach(async () => {
         commentService,
         transportService,
         gitService,
+        prImportService,
         config: { port: 3847, dbPath: ':memory:', scanRoots: ['/tmp'], scanMaxDepth: 2 },
     });
 });

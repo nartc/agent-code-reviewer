@@ -95,6 +95,13 @@ export class ApiClient {
         return this.#http.get<SnapshotDiffResponse>(`/api/snapshots/${snapshotId}/diff`);
     }
 
+    getFileContent(snapshotId: string, filePath: string): Observable<{ oldContent: string | null; newContent: string | null }> {
+        return this.#http.get<{ oldContent: string | null; newContent: string | null }>(
+            `/api/snapshots/${snapshotId}/file-content`,
+            { params: { file: filePath } },
+        );
+    }
+
     captureSnapshot(sessionId: string): Observable<{ snapshot: Snapshot }> {
         return this.#http.post<{ snapshot: Snapshot }>(`/api/sessions/${sessionId}/snapshots`, null);
     }

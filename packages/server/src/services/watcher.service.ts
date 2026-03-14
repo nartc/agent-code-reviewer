@@ -10,22 +10,18 @@ import {
     type WatcherError,
 } from '@agent-code-reviewer/shared';
 import { ResultAsync, errAsync, okAsync } from 'neverthrow';
-import { watch, type FSWatcher } from 'node:fs';
-import { relative } from 'node:path';
 import type { DbService } from './db.service.js';
 import type { GitService } from './git.service.js';
 import type { SessionService } from './session.service.js';
 import type { SseService } from './sse.service.js';
 
-const DEBOUNCE_MS = 1500;
-const MIN_SNAPSHOT_GAP_MS = 3000;
+const POLL_INTERVAL_MS = 3000;
 
 interface ActiveWatcher {
-    watcher: FSWatcher;
+    pollTimer: NodeJS.Timeout;
     sessionId: string;
     repoPath: string;
-    debounceTimer: NodeJS.Timeout | null;
-    lastSnapshotAt: number;
+    lastHeadCommit: string | null;
 }
 
 interface SnapshotRow {
@@ -38,29 +34,6 @@ interface SnapshotRow {
     changed_files: string | null;
     has_review_comments: number;
     created_at: string;
-}
-
-const IGNORED_DIRS = new Set([
-    'node_modules',
-    '.git',
-    'dist',
-    'build',
-    '.next',
-    '.cache',
-    'coverage',
-    '__pycache__',
-    '.venv',
-]);
-const IGNORED_FILES = new Set(['.DS_Store']);
-
-function shouldIgnore(filePath: string, repoPath: string): boolean {
-    const rel = relative(repoPath, filePath);
-    const segments = rel.split('/');
-    for (const segment of segments) {
-        if (IGNORED_DIRS.has(segment)) return true;
-        if (IGNORED_FILES.has(segment)) return true;
-    }
-    return false;
 }
 
 function splitDiffByFile(rawDiff: string): Map<string, string> {
@@ -126,7 +99,7 @@ function computeChangedFiles(
     return [...changed];
 }
 
-export { computeChangedFiles, shouldIgnore as createIgnoreFunction };
+export { computeChangedFiles, splitDiffByFile };
 
 export class WatcherService {
     private activeWatchers: Record<string, ActiveWatcher> = {};
@@ -148,29 +121,33 @@ export class WatcherService {
         if (this.activeWatchers[sessionId]) return okAsync(undefined);
 
         try {
-            const watcher = watch(repoPath, { recursive: true }, (_event, filename) => {
-                if (filename && shouldIgnore(`${repoPath}/${filename}`, repoPath)) return;
-                this.handleFileChange(sessionId, repoPath);
-            });
-
-            watcher.on('error', (err) => {
-                console.error(`[watcher] fs.watch error for session ${sessionId}:`, err);
-            });
+            const pollTimer = setInterval(() => {
+                this.pollForCommit(sessionId, repoPath);
+            }, POLL_INTERVAL_MS);
 
             const active: ActiveWatcher = {
-                watcher,
+                pollTimer,
                 sessionId,
                 repoPath,
-                debounceTimer: null,
-                lastSnapshotAt: 0,
+                lastHeadCommit: null,
             };
             this.activeWatchers[sessionId] = active;
+
+            // Initialize lastHeadCommit
+            this.gitService.getHeadCommit(repoPath).match(
+                (commit) => {
+                    if (this.activeWatchers[sessionId]) {
+                        this.activeWatchers[sessionId].lastHeadCommit = commit;
+                    }
+                },
+                () => {},
+            );
 
             const dbResult = this.dbService.execute('UPDATE sessions SET is_watching = 1 WHERE id = $id', {
                 $id: sessionId,
             });
             if (dbResult.isErr()) {
-                watcher.close();
+                clearInterval(pollTimer);
                 delete this.activeWatchers[sessionId];
                 return errAsync(dbResult.error);
             }
@@ -182,7 +159,7 @@ export class WatcherService {
 
             return okAsync(undefined);
         } catch (e) {
-            return errAsync(watcherError('Failed to start file watcher', e));
+            return errAsync(watcherError('Failed to start commit monitor', e));
         }
     }
 
@@ -190,8 +167,7 @@ export class WatcherService {
         const active = this.activeWatchers[sessionId];
 
         if (active) {
-            if (active.debounceTimer) clearTimeout(active.debounceTimer);
-            active.watcher.close();
+            clearInterval(active.pollTimer);
             delete this.activeWatchers[sessionId];
         }
 
@@ -219,7 +195,11 @@ export class WatcherService {
         const session = sessionResult.value;
         const baseBranch = session.base_branch ?? session.repo.base_branch;
 
-        return this.gitService.getDiff(repoPath, baseBranch).andThen(({ rawDiff, files }) => {
+        return this.gitService
+            .fetchOrigin(repoPath)
+            .andThen(() => this.gitService.resolveBaseBranchRef(repoPath, baseBranch))
+            .andThen((resolvedRef) => this.gitService.getDiff(repoPath, resolvedRef))
+            .andThen(({ rawDiff, files }) => {
             const prevResult = this.dbService.queryOne<SnapshotRow>(
                 'SELECT id, session_id, raw_diff, files_summary, head_commit, trigger, changed_files, has_review_comments, created_at FROM snapshots WHERE session_id = $sessionId ORDER BY created_at DESC LIMIT 1',
                 { $sessionId: sessionId },
@@ -294,40 +274,29 @@ export class WatcherService {
 
     stopAll(): void {
         for (const active of Object.values(this.activeWatchers)) {
-            if (active.debounceTimer) clearTimeout(active.debounceTimer);
-            active.watcher.close();
+            clearInterval(active.pollTimer);
         }
         this.activeWatchers = {};
     }
 
-    private handleFileChange(sessionId: string, repoPath: string): void {
+    private pollForCommit(sessionId: string, repoPath: string): void {
         const active = this.activeWatchers[sessionId];
         if (!active) return;
 
-        if (active.debounceTimer) clearTimeout(active.debounceTimer);
-
-        active.debounceTimer = setTimeout(() => {
-            const now = Date.now();
-            const elapsed = now - active.lastSnapshotAt;
-            if (elapsed < MIN_SNAPSHOT_GAP_MS) {
-                const remaining = MIN_SNAPSHOT_GAP_MS - elapsed;
-                active.debounceTimer = setTimeout(() => {
-                    this.executeSnapshot(sessionId, repoPath, active);
-                }, remaining);
-            } else {
-                this.executeSnapshot(sessionId, repoPath, active);
-            }
-        }, DEBOUNCE_MS);
-    }
-
-    private executeSnapshot(sessionId: string, repoPath: string, active: ActiveWatcher): void {
-        active.debounceTimer = null;
-        this.captureSnapshot(sessionId, repoPath, 'fs_watch').match(
-            () => {
-                active.lastSnapshotAt = Date.now();
+        this.gitService.getHeadCommit(repoPath).match(
+            (headCommit) => {
+                if (active.lastHeadCommit !== null && headCommit !== active.lastHeadCommit) {
+                    this.captureSnapshot(sessionId, repoPath, 'fs_watch').match(
+                        () => {},
+                        (error) => {
+                            console.error('[watcher] snapshot failed:', error);
+                        },
+                    );
+                }
+                active.lastHeadCommit = headCommit;
             },
             (error) => {
-                console.error('[watcher] snapshot failed:', error);
+                console.error('[watcher] HEAD poll failed:', error);
             },
         );
     }

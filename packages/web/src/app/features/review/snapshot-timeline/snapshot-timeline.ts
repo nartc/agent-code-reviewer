@@ -77,14 +77,13 @@ export class SnapshotTimeline {
             ];
         }
 
-        const timestamps = snaps.map((s) => new Date(s.created_at).getTime());
-        const min = Math.min(...timestamps);
-        const max = Math.max(...timestamps);
-        const range = max - min || 1;
+        // snaps are DESC (newest first) — reverse so oldest is index 0 (leftmost)
+        const ordered = [...snaps].reverse();
+        const count = ordered.length;
 
-        return snaps.map((s, i) => ({
+        return ordered.map((s, i) => ({
             id: s.id,
-            left: ((timestamps[i] - min) / range) * 100,
+            left: (i / (count - 1)) * 100,
             hasReviewComments: s.has_review_comments,
             isActive: s.id === activeId,
         }));

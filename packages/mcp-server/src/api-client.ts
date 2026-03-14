@@ -1,4 +1,4 @@
-import type { Comment, CommentThread } from '@agent-code-reviewer/shared';
+import type { Comment, CommentThread, ImportPrCommentsRequest, ImportPrCommentsResponse } from '@agent-code-reviewer/shared';
 
 interface ErrorBody {
     error?: { message?: string };
@@ -56,5 +56,35 @@ export class ApiClient {
             throw new Error(body?.error?.message ?? `HTTP ${res.status}`);
         }
         return res.json() as Promise<Comment>;
+    }
+
+    async captureSnapshot(input: { repo_path?: string; repo_name?: string }): Promise<{
+        snapshot: { id: string; head_commit: string | null; trigger: string; files_count: number; created_at: string };
+    }> {
+        const res = await fetch(new URL('/api/mcp/capture-snapshot', this.baseUrl), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(input),
+        });
+        if (!res.ok) {
+            const body = (await res.json().catch(() => ({}))) as ErrorBody;
+            throw new Error(body?.error?.message ?? `HTTP ${res.status}`);
+        }
+        return res.json() as Promise<{
+            snapshot: { id: string; head_commit: string | null; trigger: string; files_count: number; created_at: string };
+        }>;
+    }
+
+    async importPrComments(input: ImportPrCommentsRequest): Promise<ImportPrCommentsResponse> {
+        const res = await fetch(new URL('/api/mcp/import-pr', this.baseUrl), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(input),
+        });
+        if (!res.ok) {
+            const body = (await res.json().catch(() => ({}))) as ErrorBody;
+            throw new Error(body?.error?.message ?? `HTTP ${res.status}`);
+        }
+        return res.json() as Promise<ImportPrCommentsResponse>;
     }
 }

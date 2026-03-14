@@ -14,6 +14,7 @@ import { createTransportRoutes } from './routes/transport.routes.js';
 import type { CommentService } from './services/comment.service.js';
 import type { DbService } from './services/db.service.js';
 import type { GitService } from './services/git.service.js';
+import type { PrImportService } from './services/pr-import.service.js';
 import type { RepoService } from './services/repo.service.js';
 import type { SessionService } from './services/session.service.js';
 import type { SseService } from './services/sse.service.js';
@@ -29,6 +30,7 @@ export interface AppDependencies {
     commentService: CommentService;
     transportService: TransportService;
     gitService: GitService;
+    prImportService: PrImportService;
     config: AppConfig;
 }
 
@@ -51,7 +53,7 @@ export function createApp(deps: AppDependencies): Hono {
     app.route('/api/sse', createSseRoutes(deps.sseService));
 
     // API routes
-    app.route('/api/mcp', createMcpRoutes(deps.repoService, deps.sessionService, deps.commentService));
+    app.route('/api/mcp', createMcpRoutes(deps.repoService, deps.sessionService, deps.commentService, deps.prImportService, deps.watcherService));
     app.route('/api/repos', createRepoRoutes(deps.repoService));
     app.route('/api/sessions', createSessionRoutes(deps.sessionService, deps.watcherService));
     app.route('/api/comments', createCommentRoutes(deps.commentService, deps.transportService));
@@ -59,7 +61,7 @@ export function createApp(deps: AppDependencies): Hono {
     app.route('/api/git', createGitRoutes(deps.gitService, deps.config));
 
     // Snapshots — mixed mount points (/sessions/:id/snapshots + /snapshots/:id/diff)
-    app.route('/api', createSnapshotRoutes(deps.dbService, deps.watcherService, deps.sessionService));
+    app.route('/api', createSnapshotRoutes(deps.dbService, deps.watcherService, deps.sessionService, deps.gitService));
 
     return app;
 }

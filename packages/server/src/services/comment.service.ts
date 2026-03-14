@@ -178,6 +178,7 @@ export class CommentService {
         commentId: string,
         content: string,
         author: CommentAuthor,
+        status: CommentStatus = 'sent',
     ): Result<Comment, DatabaseError | NotFoundError> {
         const parentResult = this.getCommentById(commentId);
         if (parentResult.isErr()) return err(parentResult.error);
@@ -188,7 +189,7 @@ export class CommentService {
 
         const insertResult = this.db.execute(
             `INSERT INTO comments (id, session_id, snapshot_id, reply_to_id, file_path, line_start, line_end, side, author, content, status)
-             VALUES ($id, $sessionId, $snapshotId, $replyToId, $filePath, $lineStart, $lineEnd, $side, $author, $content, 'sent')`,
+             VALUES ($id, $sessionId, $snapshotId, $replyToId, $filePath, $lineStart, $lineEnd, $side, $author, $content, $status)`,
             {
                 $id: id,
                 $sessionId: parent.session_id,
@@ -200,6 +201,7 @@ export class CommentService {
                 $side: parent.side,
                 $author: author,
                 $content: content,
+                $status: status,
             },
         );
         if (insertResult.isErr()) return err(insertResult.error);
@@ -337,6 +339,12 @@ export class CommentService {
         );
         if (updateResult.isErr()) return err(updateResult.error);
 
+        // Cascade resolve: also resolve all replies
+        this.db.execute(
+            "UPDATE comments SET status = 'resolved', resolved_at = datetime('now') WHERE reply_to_id = $id AND status != 'resolved'",
+            { $id: id },
+        );
+
         const readResult = this.db.queryOne<CommentRow>('SELECT * FROM comments WHERE id = $id', { $id: id });
         if (readResult.isErr()) return err(readResult.error);
         if (!readResult.value) return err(notFound('Comment not found after resolving'));
@@ -374,6 +382,14 @@ export class CommentService {
 
             const result = this.db.execute(query, params);
             if (result.isErr()) return err(result.error);
+
+            // Cascade resolve: also resolve replies of resolved parents
+            this.db.execute(
+                `UPDATE comments SET status = 'resolved', resolved_at = datetime('now')
+                 WHERE session_id = $sessionId AND status != 'resolved'
+                   AND reply_to_id IN (SELECT id FROM comments WHERE session_id = $sessionId AND status = 'resolved' AND reply_to_id IS NULL)`,
+                { $sessionId: sessionId },
+            );
 
             this.sse.broadcast(sessionId, {
                 type: 'comment-update',

@@ -1,4 +1,4 @@
-import type { Comment } from '@agent-code-reviewer/shared';
+import type { Comment, CommentThread } from '@agent-code-reviewer/shared';
 import {
     ChangeDetectionStrategy,
     Component,
@@ -9,21 +9,25 @@ import {
     signal,
     viewChild,
 } from '@angular/core';
+import { rxResource } from '@angular/core/rxjs-interop';
 import { NgIcon } from '@ng-icons/core';
-import type { DiffLineAnnotation, FileDiffMetadata } from '@pierre/diffs';
-import { parsePatchFiles } from '@pierre/diffs';
+import { of } from 'rxjs';
+import type { DiffLineAnnotation, FileContents, FileDiffMetadata } from '@pierre/diffs';
+import { parseDiffFromFile, parsePatchFiles } from '@pierre/diffs';
+import { ApiClient } from '../../../core/services/api-client';
 import { ThemeSwitcher } from '../../../core/services/theme-switcher';
 import { UiPreferences } from '../../../core/services/ui-preferences';
 import { CommentStore } from '../../../core/stores/comment-store';
 import { SessionStore } from '../../../core/stores/session-store';
 import type { AnnotationMeta } from './annotation-meta';
 import { AcrFileDiff } from './file-diff';
+import { InlineComment } from './inline-comment';
 import { InlineCommentForm } from './inline-comment-form';
 
 @Component({
     selector: 'acr-diff-viewer',
     changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [AcrFileDiff, InlineCommentForm, NgIcon],
+    imports: [AcrFileDiff, InlineCommentForm, NgIcon, InlineComment],
     host: { class: 'flex flex-col flex-1 overflow-hidden' },
     template: `
         @if (!store.currentDiff()) {
@@ -34,7 +38,7 @@ import { InlineCommentForm } from './inline-comment-form';
             <div class="p-4 opacity-50">No files changed</div>
         } @else {
             <div class="flex items-center gap-2 px-4 py-2 border-b border-base-300">
-                <span class="font-mono text-xs truncate flex-1">{{ activeMetadata().name }}</span>
+                <span class="font-mono text-xs truncate flex-1">{{ activeMetadata()?.name }}</span>
                 <div class="flex items-center">
                     <button class="btn btn-xs btn-ghost" aria-label="Previous file" (click)="store.prevFile()">
                         <ng-icon name="lucideChevronLeft" class="size-4" />
@@ -81,6 +85,16 @@ import { InlineCommentForm } from './inline-comment-form';
                 />
             }
 
+            @for (thread of fileLevelComments(); track thread.comment.id) {
+                <acr-inline-comment
+                    class="mx-4 my-1"
+                    [thread]="thread"
+                    [sessionId]="store.currentSession()!.id"
+                    (commentDeleted)="onFileLevelCommentDeleted($event)"
+                    (commentResolved)="onFileLevelCommentResolved($event)"
+                />
+            }
+
             @if (activeMetadata(); as meta) {
                 <acr-file-diff
                     [metadata]="meta"
@@ -101,6 +115,7 @@ export class DiffViewer {
     protected readonly store = inject(SessionStore);
     readonly #prefs = inject(UiPreferences);
     readonly #themeSwitcher = inject(ThemeSwitcher);
+    readonly #apiClient = inject(ApiClient);
     protected readonly diffStyle = this.#prefs.diffStyle;
     protected readonly resolvedTheme = this.#themeSwitcher.resolvedTheme;
 
@@ -118,7 +133,40 @@ export class DiffViewer {
         return parsePatchFiles(diff.raw_diff)[0]?.files ?? [];
     });
 
-    protected readonly activeMetadata = computed(() => this.parsedFiles()[this.store.activeFileIndex()] ?? null);
+    readonly #baseMetadata = computed(() => this.parsedFiles()[this.store.activeFileIndex()] ?? null);
+
+    readonly #fileContentResource = rxResource({
+        params: () => {
+            const meta = this.#baseMetadata();
+            const snapshotId = this.store.activeSnapshotId();
+            if (!meta || !snapshotId) return undefined;
+            return { snapshotId, filePath: meta.name };
+        },
+        stream: ({ params }) => {
+            if (!params) return of(null);
+            return this.#apiClient.getFileContent(params.snapshotId, params.filePath);
+        },
+    });
+
+    protected readonly activeMetadata = computed<FileDiffMetadata | null>(() => {
+        const base = this.#baseMetadata();
+        if (!base) return null;
+        const content = this.#fileContentResource.value();
+        if (!content?.oldContent && !content?.newContent) return base;
+        const oldFile: FileContents = { name: base.prevName ?? base.name, contents: content.oldContent ?? '' };
+        const newFile: FileContents = { name: base.name, contents: content.newContent ?? '' };
+        return parseDiffFromFile(oldFile, newFile);
+    });
+
+    protected readonly fileLevelComments = computed(() => {
+        const meta = this.activeMetadata();
+        if (!meta) return [];
+        const activeSnapId = this.store.activeSnapshotId();
+        return this.#commentStore.comments().filter((t) => {
+            const c = t.comment;
+            return c.file_path === meta.name && c.line_start == null && c.snapshot_id === activeSnapId;
+        });
+    });
 
     protected readonly annotations = computed<DiffLineAnnotation<AnnotationMeta>[]>(() => {
         const meta = this.activeMetadata();
@@ -128,7 +176,7 @@ export class DiffViewer {
         const comments = this.#commentStore.comments();
         const result: DiffLineAnnotation<AnnotationMeta>[] = [];
 
-        // Build per-thread comment annotations (scoped to active snapshot)
+        // Build per-thread comment annotations (scoped to active snapshot, line-level only)
         const activeSnapId = this.store.activeSnapshotId();
         for (const thread of comments) {
             const c = thread.comment;
@@ -260,6 +308,14 @@ export class DiffViewer {
 
     protected onFileLevelFormCancelled(): void {
         this.#fileLevelForm.set(null);
+    }
+
+    protected onFileLevelCommentDeleted(thread: CommentThread): void {
+        this.#commentStore.deleteComment(thread.comment.id);
+    }
+
+    protected onFileLevelCommentResolved(thread: CommentThread): void {
+        this.#commentStore.resolveComment(thread.comment.id);
     }
 
     protected setDiffStyle(style: 'unified' | 'split'): void {

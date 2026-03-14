@@ -6,7 +6,8 @@ export function registerMarkResolved(server: McpServer, client: ApiClient): void
     server.registerTool(
         'mark_comment_resolved',
         {
-            description: 'Mark a sent review comment as resolved',
+            description:
+                'Resolve a review comment and all its replies. Resolve when you\'ve addressed the feedback and are about to commit. Check for new user replies first.',
             inputSchema: {
                 comment_id: z.string().describe('The comment ID to resolve'),
             },

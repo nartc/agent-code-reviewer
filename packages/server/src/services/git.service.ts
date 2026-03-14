@@ -151,6 +151,32 @@ export class GitService {
         );
     }
 
+    fetchOrigin(path: string): ResultAsync<void, never> {
+        return ResultAsync.fromPromise(
+            simpleGit(path).fetch('origin').then(() => undefined),
+            () => undefined,
+        ).orElse(() => okAsync(undefined));
+    }
+
+    getFileContent(repoPath: string, ref: string, filePath: string): ResultAsync<string | null, GitError> {
+        return ResultAsync.fromPromise(
+            simpleGit(repoPath)
+                .show([`${ref}:${filePath}`])
+                .then((content) => content),
+            () => null,
+        ).orElse(() => okAsync(null));
+    }
+
+    resolveBaseBranchRef(path: string, baseBranch: string): ResultAsync<string, never> {
+        const originRef = `origin/${baseBranch}`;
+        return ResultAsync.fromPromise(
+            simpleGit(path)
+                .raw(['rev-parse', '--verify', originRef])
+                .then(() => originRef),
+            () => null,
+        ).orElse(() => okAsync(baseBranch));
+    }
+
     async *scanForRepos(roots: string[], maxDepth: number): AsyncGenerator<ScannedRepo> {
         for (const root of roots) {
             yield* this.walkForRepos(root, maxDepth, 0);

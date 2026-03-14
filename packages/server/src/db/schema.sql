@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS snapshots (
     raw_diff TEXT NOT NULL,
     files_summary TEXT NOT NULL,
     head_commit TEXT,
-    trigger TEXT NOT NULL CHECK(trigger IN ('manual', 'fs_watch', 'initial')),
+    trigger TEXT NOT NULL CHECK(trigger IN ('manual', 'fs_watch', 'initial', 'mcp')),
     changed_files TEXT,
     has_review_comments INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))

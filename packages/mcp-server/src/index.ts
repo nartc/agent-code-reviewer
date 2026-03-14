@@ -1,8 +1,10 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { ApiClient } from './api-client.js';
+import { registerCaptureSnapshot } from './tools/capture-snapshot.js';
 import { registerCheckComments } from './tools/check-comments.js';
 import { registerGetDetails } from './tools/get-details.js';
+import { registerImportPrComments } from './tools/import-pr-comments.js';
 import { registerMarkResolved } from './tools/mark-resolved.js';
 import { registerReplyToComment } from './tools/reply-to-comment.js';
 
@@ -17,10 +19,12 @@ async function main(): Promise<void> {
         version: '1.0.0',
     });
 
+    registerCaptureSnapshot(server, client);
     registerCheckComments(server, client);
     registerGetDetails(server, client);
     registerReplyToComment(server, client);
     registerMarkResolved(server, client);
+    registerImportPrComments(server, client);
 
     const transport = new StdioServerTransport();
     await server.connect(transport);

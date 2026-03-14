@@ -1,4 +1,4 @@
-export type SnapshotTrigger = 'manual' | 'fs_watch' | 'initial';
+export type SnapshotTrigger = 'manual' | 'fs_watch' | 'initial' | 'mcp';
 
 export interface FileSummary {
     path: string;

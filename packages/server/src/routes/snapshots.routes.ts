@@ -2,9 +2,11 @@ import type { FileSummary, Snapshot, SnapshotSummary } from '@agent-code-reviewe
 import { listSnapshotsQuerySchema, notFound } from '@agent-code-reviewer/shared';
 import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
+import { z } from 'zod';
 import { err, ok } from 'neverthrow';
 import { asyncResultToResponse, resultToResponse } from '../lib/result-to-response.js';
 import type { DbService } from '../services/db.service.js';
+import type { GitService } from '../services/git.service.js';
 import type { SessionService } from '../services/session.service.js';
 import type { WatcherService } from '../services/watcher.service.js';
 import { idParamSchema } from './params.js';
@@ -41,10 +43,15 @@ function castSnapshot(row: SnapshotRow): Snapshot {
     };
 }
 
+const fileContentQuerySchema = z.object({
+    file: z.string().min(1),
+});
+
 export function createSnapshotRoutes(
     dbService: DbService,
     watcherService: WatcherService,
     sessionService: SessionService,
+    gitService: GitService,
 ): Hono {
     const app = new Hono();
 
@@ -105,6 +112,46 @@ export function createSnapshotRoutes(
         const repoPath = sessionResult.value.repo.path;
         return asyncResultToResponse(c, watcherService.captureSnapshot(id, repoPath, 'manual'), 201);
     });
+
+    // GET /snapshots/:id/file-content?file=path/to/file — Get old+new file contents for expansion
+    app.get(
+        '/snapshots/:id/file-content',
+        zValidator('param', idParamSchema),
+        zValidator('query', fileContentQuerySchema),
+        async (c) => {
+            const { id } = c.req.valid('param');
+            const { file } = c.req.valid('query');
+
+            const snapshotResult = dbService.queryOne<SnapshotRow>(
+                'SELECT * FROM snapshots WHERE id = $id',
+                { $id: id },
+            );
+            if (snapshotResult.isErr()) return resultToResponse(c, snapshotResult);
+            if (!snapshotResult.value) return c.json({ error: { code: 'NOT_FOUND', message: 'Snapshot not found' } }, 404);
+
+            const snapshot = snapshotResult.value;
+            const sessionResult = sessionService.getSession(snapshot.session_id);
+            if (sessionResult.isErr()) return resultToResponse(c, sessionResult);
+
+            const session = sessionResult.value;
+            const repoPath = session.repo.path;
+            const baseBranch = session.base_branch ?? session.repo.base_branch;
+
+            const resolvedRefResult = await gitService.resolveBaseBranchRef(repoPath, baseBranch);
+            const baseRef = resolvedRefResult.isOk() ? resolvedRefResult.value : baseBranch;
+            const headRef = snapshot.head_commit ?? 'HEAD';
+
+            const [oldResult, newResult] = await Promise.all([
+                gitService.getFileContent(repoPath, baseRef, file),
+                gitService.getFileContent(repoPath, headRef, file),
+            ]);
+
+            return c.json({
+                oldContent: oldResult.isOk() ? oldResult.value : null,
+                newContent: newResult.isOk() ? newResult.value : null,
+            });
+        },
+    );
 
     return app;
 }

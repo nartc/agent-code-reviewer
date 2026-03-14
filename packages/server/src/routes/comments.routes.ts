@@ -129,7 +129,7 @@ export function createCommentRoutes(commentService: CommentService, transportSer
     app.post('/:id/reply', zValidator('param', idParamSchema), zValidator('json', replyToCommentSchema), (c) => {
         const { id } = c.req.valid('param');
         const { content } = c.req.valid('json');
-        return resultToResponse(c, commentService.createReply(id, content, 'user'), 201);
+        return resultToResponse(c, commentService.createReply(id, content, 'user', 'draft'), 201);
     });
 
     return app;

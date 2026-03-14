@@ -134,9 +134,12 @@ export class CommentPanel {
 
     protected readonly isViewingLatest = this.#sessionStore.isViewingLatest;
 
-    protected readonly draftsByFile = computed(() =>
-        groupBy(this.#commentStore.draftComments(), (t) => t.comment.file_path),
-    );
+    protected readonly draftsByFile = computed(() => {
+        const threads = this.#commentStore.comments().filter(
+            (t) => t.comment.status === 'draft' || t.replies.some((r) => r.status === 'draft'),
+        );
+        return groupBy(threads, (t) => t.comment.file_path);
+    });
 
     protected readonly snapshotComments = computed(() => {
         const snapId = this.snapshotId();
@@ -156,11 +159,11 @@ export class CommentPanel {
         return [...sent, ...resolved].filter((t) => t.comment.snapshot_id === snapId);
     });
 
-    protected readonly hasDrafts = computed(() => this.#commentStore.draftComments().length > 0);
+    protected readonly hasDrafts = computed(() => this.#commentStore.allDraftIds().length > 0);
     protected readonly hasLatestContent = computed(() => this.hasDrafts() || this.latestSubmittedComments().length > 0);
 
     protected sendAllDrafts(): void {
-        const ids = this.#commentStore.draftComments().map((t) => t.comment.id);
+        const ids = this.#commentStore.allDraftIds();
         if (ids.length > 0) {
             this.sendRequested.emit(ids);
         }

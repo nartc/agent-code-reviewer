@@ -25,6 +25,14 @@ export class CommentStore {
     readonly sentComments = computed(() => this.comments().filter((t) => t.comment.status === 'sent'));
     readonly resolvedComments = computed(() => this.comments().filter((t) => t.comment.status === 'resolved'));
 
+    readonly draftReplyIds = computed(() =>
+        this.comments().flatMap((t) => t.replies.filter((r) => r.status === 'draft').map((r) => r.id)),
+    );
+    readonly allDraftIds = computed(() => {
+        const rootIds = this.draftComments().map((t) => t.comment.id);
+        return [...rootIds, ...this.draftReplyIds()];
+    });
+
     loadComments(params: ListCommentsParams): void {
         this.#isLoading.set(true);
         this.#api.listComments(params).subscribe({
