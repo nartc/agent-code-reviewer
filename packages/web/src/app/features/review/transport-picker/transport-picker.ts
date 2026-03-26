@@ -96,9 +96,9 @@ export class TransportPicker {
     protected readonly showPreview = signal(false);
 
     protected readonly previewText = computed(() => {
-        const drafts = this.commentStore.draftComments();
-        if (drafts.length === 0) return '';
-        const payloads: CommentPayload[] = drafts.map((t) => ({
+        const threads = this.commentStore.threadsWithDrafts();
+        if (threads.length === 0) return '';
+        const payloads: CommentPayload[] = threads.map((t) => ({
             id: t.comment.id,
             file_path: t.comment.file_path,
             line_start: t.comment.line_start,

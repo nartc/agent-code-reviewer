@@ -58,8 +58,8 @@ console.log(
             mcp: {
                 'agent-code-reviewer': {
                     type: 'local',
-                    command: `node ${MCP_ENTRY}`,
-                    env: { SERVER_URL },
+                    command: ['node', MCP_ENTRY],
+                    environment: { SERVER_URL },
                 },
             },
         },

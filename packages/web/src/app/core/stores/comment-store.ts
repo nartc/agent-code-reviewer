@@ -25,6 +25,13 @@ export class CommentStore {
     readonly sentComments = computed(() => this.comments().filter((t) => t.comment.status === 'sent'));
     readonly resolvedComments = computed(() => this.comments().filter((t) => t.comment.status === 'resolved'));
 
+    /** Threads with any draft content: draft parent OR sent/resolved parent with draft replies */
+    readonly threadsWithDrafts = computed(() =>
+        this.comments().filter(
+            (t) => t.comment.status === 'draft' || t.replies.some((r) => r.status === 'draft'),
+        ),
+    );
+
     readonly draftReplyIds = computed(() =>
         this.comments().flatMap((t) => t.replies.filter((r) => r.status === 'draft').map((r) => r.id)),
     );

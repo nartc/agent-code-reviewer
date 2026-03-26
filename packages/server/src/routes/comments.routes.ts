@@ -71,14 +71,25 @@ export function createCommentRoutes(commentService: CommentService, transportSer
         }
         const sentComments = markResult.value;
         const replyMap: Record<string, Comment[]> = {};
+        const parentIds = new Set<string>();
         for (const c of sentComments) {
             if (c.reply_to_id) {
                 (replyMap[c.reply_to_id] ??= []).push(c);
+                parentIds.add(c.reply_to_id);
             }
         }
-        const payloads: CommentPayload[] = sentComments
-            .filter((c) => c.reply_to_id === null)
-            .map((c) => buildPayload(c, replyMap[c.id] ?? []));
+        // Include parents that were already sent (not in sentComments) but have new draft replies
+        const parents = sentComments.filter((c) => c.reply_to_id === null);
+        const existingParentIds = new Set(parents.map((c) => c.id));
+        for (const pid of parentIds) {
+            if (!existingParentIds.has(pid)) {
+                const parentResult = commentService.getCommentById(pid);
+                if (parentResult.isOk() && parentResult.value) {
+                    parents.push(parentResult.value);
+                }
+            }
+        }
+        const payloads: CommentPayload[] = parents.map((c) => buildPayload(c, replyMap[c.id] ?? []));
         const sendResult = await transportService.send(transport_type, target_id, payloads, { snapshot_id });
         if (sendResult.isErr()) {
             return resultToResponse(c, sendResult);

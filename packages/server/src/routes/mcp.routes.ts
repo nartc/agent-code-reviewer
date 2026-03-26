@@ -168,7 +168,7 @@ export function createMcpRoutes(
             );
 
         if (!snapshotResult.ok) {
-            return c.json({ error: { code: 'INTERNAL_ERROR', message: String(snapshotResult.error) } }, 500);
+            return c.json({ error: { code: snapshotResult.error.type, message: snapshotResult.error.message } }, 500);
         }
 
         return c.json({ snapshot: snapshotResult.snapshot });
