@@ -41,5 +41,6 @@
             "outputs": ["{projectRoot}/out-tsc/**/*.d.ts", "{projectRoot}/out-tsc/**/*.tsbuildinfo"],
             "cache": true
         }
-    }
+    },
+    "analytics": true
 }
