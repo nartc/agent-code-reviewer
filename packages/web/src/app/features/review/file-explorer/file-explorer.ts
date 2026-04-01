@@ -5,12 +5,15 @@ import {
     computed,
     effect,
     ElementRef,
+    inject,
     input,
     output,
     signal,
     viewChildren,
 } from '@angular/core';
 import { NgIcon } from '@ng-icons/core';
+import { CommentStore } from '../../../core/stores/comment-store';
+import { SessionStore } from '../../../core/stores/session-store';
 import { buildFileTree, flattenTree } from './build-file-tree';
 
 @Component({
@@ -55,16 +58,21 @@ import { buildFileTree, flattenTree } from './build-file-tree';
                                 <span class="badge badge-xs" [class]="statusClass(entry.node.file!.status)">
                                     {{ statusLetter(entry.node.file!.status) }}
                                 </span>
-                                <span class="truncate flex-1">{{ entry.node.name }}</span>
+                                @if (priorCommentsSet().has(entry.node.file!.path)) {
+                                    <span class="badge badge-xs badge-info shrink-0" title="Has comments from other snapshots">
+                                        <ng-icon name="lucideMessageCircle" class="size-2.5" />
+                                    </span>
+                                }
                                 @if (isChanged(entry.node.file!.path)) {
                                     <span class="badge badge-xs badge-accent" title="Changed in this snapshot">●</span>
                                 }
                                 @if (entry.node.file!.additions > 0) {
-                                    <span class="text-success">+{{ entry.node.file!.additions }}</span>
+                                    <span class="text-success shrink-0">+{{ entry.node.file!.additions }}</span>
                                 }
                                 @if (entry.node.file!.deletions > 0) {
-                                    <span class="text-error">-{{ entry.node.file!.deletions }}</span>
+                                    <span class="text-error shrink-0">-{{ entry.node.file!.deletions }}</span>
                                 }
+                                <span class="truncate flex-1">{{ entry.node.name }}</span>
                             </button>
                         }
                     </li>
@@ -78,6 +86,9 @@ export class FileExplorer {
     readonly activeFileIndex = input.required<number>();
     readonly changedFiles = input<string[]>([]);
     readonly fileSelected = output<number>();
+
+    readonly #commentStore = inject(CommentStore);
+    readonly #sessionStore = inject(SessionStore);
 
     readonly collapsedPaths = signal<Set<string>>(new Set());
     private readonly fileEntryEls = viewChildren<ElementRef<HTMLElement>>('fileEntry');
@@ -129,6 +140,24 @@ export class FileExplorer {
             this.fileSelected.emit(idx);
         }
     }
+
+    protected readonly priorCommentsSet = computed(() => {
+        const activeSnapId = this.#sessionStore.activeSnapshotId();
+        const snapshots = this.#sessionStore.snapshots();
+        const activeIdx = snapshots.findIndex((s) => s.id === activeSnapId);
+        // Snapshots are DESC (newest first) — immediate previous is activeIdx + 1
+        const prevSnap = activeIdx >= 0 ? snapshots[activeIdx + 1] : undefined;
+        if (!prevSnap) return new Set<string>();
+
+        const comments = this.#commentStore.comments();
+        const paths = new Set<string>();
+        for (const thread of comments) {
+            if (thread.comment.snapshot_id === prevSnap.id) {
+                paths.add(thread.comment.file_path);
+            }
+        }
+        return paths;
+    });
 
     protected isChanged(filePath: string): boolean {
         return this.changedFiles().includes(filePath);

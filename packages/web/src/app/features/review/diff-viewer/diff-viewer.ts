@@ -23,11 +23,12 @@ import type { AnnotationMeta } from './annotation-meta';
 import { AcrFileDiff } from './file-diff';
 import { InlineComment } from './inline-comment';
 import { InlineCommentForm } from './inline-comment-form';
+import { PriorComments, type PriorSnapshotComments } from './prior-comments';
 
 @Component({
     selector: 'acr-diff-viewer',
     changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [AcrFileDiff, InlineCommentForm, NgIcon, InlineComment],
+    imports: [AcrFileDiff, InlineCommentForm, NgIcon, InlineComment, PriorComments],
     host: { class: 'flex flex-col flex-1 overflow-hidden' },
     template: `
         @if (!store.currentDiff()) {
@@ -92,6 +93,14 @@ import { InlineCommentForm } from './inline-comment-form';
                     [sessionId]="store.currentSession()!.id"
                     (commentDeleted)="onFileLevelCommentDeleted($event)"
                     (commentResolved)="onFileLevelCommentResolved($event)"
+                />
+            }
+
+            @if (priorCommentGroups().length > 0) {
+                <acr-prior-comments
+                    [groups]="priorCommentGroups()"
+                    [totalCount]="priorCommentCount()"
+                    (snapshotClicked)="onPriorSnapshotClicked($event)"
                 />
             }
 
@@ -201,6 +210,43 @@ export class DiffViewer {
 
         return result;
     });
+
+    protected readonly priorCommentGroups = computed<PriorSnapshotComments[]>(() => {
+        const meta = this.activeMetadata();
+        if (!meta) return [];
+        const activeSnapId = this.store.activeSnapshotId();
+        const allComments = this.#commentStore.comments();
+        const snapshots = this.store.snapshots();
+
+        // Group threads for this file from other snapshots
+        const bySnapshot = new Map<string, CommentThread[]>();
+        for (const thread of allComments) {
+            const c = thread.comment;
+            if (c.file_path !== meta.name || c.snapshot_id === activeSnapId) continue;
+            let list = bySnapshot.get(c.snapshot_id);
+            if (!list) {
+                list = [];
+                bySnapshot.set(c.snapshot_id, list);
+            }
+            list.push(thread);
+        }
+
+        if (bySnapshot.size === 0) return [];
+
+        // Order groups by snapshot position (newest first, matching snapshots order)
+        const result: PriorSnapshotComments[] = [];
+        for (const snap of snapshots) {
+            const threads = bySnapshot.get(snap.id);
+            if (threads) {
+                result.push({ snapshot: snap, threads });
+            }
+        }
+        return result;
+    });
+
+    protected readonly priorCommentCount = computed(() =>
+        this.priorCommentGroups().reduce((sum, g) => sum + g.threads.length, 0),
+    );
 
     constructor() {
         // Clear active form when file changes
@@ -316,6 +362,10 @@ export class DiffViewer {
 
     protected onFileLevelCommentResolved(thread: CommentThread): void {
         this.#commentStore.resolveComment(thread.comment.id);
+    }
+
+    protected onPriorSnapshotClicked(snapshotId: string): void {
+        this.store.setActiveSnapshot(snapshotId);
     }
 
     protected setDiffStyle(style: 'unified' | 'split'): void {
