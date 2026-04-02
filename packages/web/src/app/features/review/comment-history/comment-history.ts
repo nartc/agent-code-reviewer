@@ -13,6 +13,7 @@ import {
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { NgIcon } from '@ng-icons/core';
+import { ApiClient } from '../../../core/services/api-client';
 import { CommentStore } from '../../../core/stores/comment-store';
 import { CommentListItem } from '../comment-panel/comment-list-item';
 
@@ -37,7 +38,7 @@ function groupBy<T>(items: T[], keyFn: (item: T) => string): Record<string, T[]>
                 Back to review
             </a>
             <h1 class="text-lg font-bold flex-1">Comment History</h1>
-            @if (totalUnresolved() > 0) {
+            @if (totalUnresolved() > 0 && canMutate()) {
                 <button class="btn btn-xs btn-warning" (click)="showGlobalConfirm()">
                     <ng-icon name="lucideCheckCheck" class="size-3" />
                     Resolve all ({{ totalUnresolved() }})
@@ -76,7 +77,7 @@ function groupBy<T>(items: T[], keyFn: (item: T) => string): Record<string, T[]>
                                     {{ group.snapshotId | slice: 0 : 8 }}
                                 </span>
                                 <span class="text-xs opacity-50 flex-1">{{ group.comments.length }} comments</span>
-                                @if (group.unresolvedCount > 0) {
+                                @if (group.unresolvedCount > 0 && canMutate()) {
                                     <button
                                         class="btn btn-xs btn-ghost"
                                         (click)="showSnapshotConfirm(group.snapshotId, group.unresolvedCount)"
@@ -99,7 +100,8 @@ function groupBy<T>(items: T[], keyFn: (item: T) => string): Record<string, T[]>
                                 @for (thread of group.comments; track thread.comment.id) {
                                     <acr-comment-list-item
                                         [thread]="thread"
-                                        [showActions]="true"
+                                        [showActions]="canMutate()"
+                                        [canMutate]="canMutate()"
                                         (commentClicked)="onCommentClicked(group.snapshotId, $event)"
                                         (commentResolved)="onResolve($event)"
                                     />
@@ -131,12 +133,14 @@ export class CommentHistory {
     readonly sessionId = input.required<string>();
     readonly snapshot = input<string>();
 
+    readonly #api = inject(ApiClient);
     readonly #commentStore = inject(CommentStore);
     readonly #router = inject(Router);
     readonly snapshotGroupEls = viewChildren<ElementRef<HTMLElement>>('snapshotGroup');
 
     protected readonly filter = signal<'all' | 'unresolved' | 'resolved'>('all');
     protected readonly confirmState = signal<{ snapshotId?: string; count: number } | null>(null);
+    protected readonly canMutate = signal(true);
 
     protected readonly filteredComments = computed(() => {
         const all = this.#commentStore.comments();
@@ -166,6 +170,14 @@ export class CommentHistory {
             const sessionId = this.sessionId();
             if (sessionId) {
                 this.#commentStore.loadComments({ session_id: sessionId });
+                this.#api.getSession(sessionId).subscribe({
+                    next: (session) => {
+                        this.canMutate.set(session.status !== 'completed');
+                    },
+                    error: () => {
+                        this.canMutate.set(true);
+                    },
+                });
             }
         });
 
@@ -191,6 +203,7 @@ export class CommentHistory {
     }
 
     protected executeBulkResolve(): void {
+        if (!this.canMutate()) return;
         const state = this.confirmState();
         if (!state) return;
         this.#commentStore.bulkResolve({
@@ -210,6 +223,7 @@ export class CommentHistory {
     }
 
     protected onResolve(thread: CommentThread): void {
+        if (!this.canMutate()) return;
         this.#commentStore.resolveComment(thread.comment.id);
     }
 }

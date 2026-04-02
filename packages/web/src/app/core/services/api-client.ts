@@ -1,5 +1,7 @@
 import type {
     Comment,
+    CompleteSessionRequest,
+    CompleteSessionResponse,
     CreateCommentInput,
     CreateRepoRequest,
     CreateRepoResponse,
@@ -58,9 +60,9 @@ export class ApiClient {
         return this.#http.delete<void>(`/api/repos/${id}`);
     }
 
-    listSessions(repoId: string): Observable<ListSessionsResponse> {
+    listSessions(repoId: string, status: 'active' | 'completed' | 'all' = 'all'): Observable<ListSessionsResponse> {
         return this.#http.get<ListSessionsResponse>('/api/sessions', {
-            params: new HttpParams().set('repo_id', repoId),
+            params: new HttpParams().set('repo_id', repoId).set('status', status),
         });
     }
 
@@ -84,6 +86,10 @@ export class ApiClient {
         return this.#http.delete<{ message: string }>(`/api/sessions/${sessionId}/watch`);
     }
 
+    completeSession(sessionId: string, body: CompleteSessionRequest): Observable<CompleteSessionResponse> {
+        return this.#http.post<CompleteSessionResponse>(`/api/sessions/${sessionId}/complete`, body);
+    }
+
     listSnapshots(sessionId: string, params?: ListSnapshotsParams): Observable<ListSnapshotsResponse> {
         let httpParams = new HttpParams();
         if (params?.limit) httpParams = httpParams.set('limit', params.limit);
@@ -95,7 +101,10 @@ export class ApiClient {
         return this.#http.get<SnapshotDiffResponse>(`/api/snapshots/${snapshotId}/diff`);
     }
 
-    getFileContent(snapshotId: string, filePath: string): Observable<{ oldContent: string | null; newContent: string | null }> {
+    getFileContent(
+        snapshotId: string,
+        filePath: string,
+    ): Observable<{ oldContent: string | null; newContent: string | null }> {
         return this.#http.get<{ oldContent: string | null; newContent: string | null }>(
             `/api/snapshots/${snapshotId}/file-content`,
             { params: { file: filePath } },

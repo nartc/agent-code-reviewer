@@ -63,6 +63,9 @@ describe('SessionService', () => {
             const session = expectOk(result);
             expect(session.repo_id).toBe(repoId);
             expect(session.branch).toBe('feature/x');
+            expect(session.status).toBe('active');
+            expect(session.completed_at).toBeNull();
+            expect(session.completion_reason).toBeNull();
             expect(session.is_watching).toBe(false);
             expect(session.base_branch).toBeNull();
         });
@@ -136,13 +139,10 @@ describe('SessionService', () => {
         it('filters by repoId', async () => {
             // Create a second repo
             const repoId2 = generateId();
-            dbService.execute(
-                "INSERT INTO repos (id, name, path, base_branch) VALUES ($id, 'repo2', $path, 'main')",
-                {
-                    $id: repoId2,
-                    $path: '/home/user/repo2',
-                },
-            );
+            dbService.execute("INSERT INTO repos (id, name, path, base_branch) VALUES ($id, 'repo2', $path, 'main')", {
+                $id: repoId2,
+                $path: '/home/user/repo2',
+            });
 
             // Create sessions for both repos
             await service.getOrCreateSession(repoId, '/home/user/test-repo');
@@ -174,6 +174,66 @@ describe('SessionService', () => {
         it('returns empty array for empty DB', () => {
             const result = service.listSessions();
             expect(expectOk(result)).toEqual([]);
+        });
+
+        it('filters by status', async () => {
+            const active = await service.getOrCreateSession(repoId, '/home/user/test-repo');
+            const activeId = expectOk(active).id;
+
+            const completed = service.completeSession(activeId, { force: true, reason: 'done' });
+            expect(expectOk(completed).session.status).toBe('completed');
+
+            const activeAfterComplete = await service.getOrCreateSession(repoId, '/home/user/test-repo');
+            expect(expectOk(activeAfterComplete).status).toBe('active');
+
+            const activeList = service.listSessions(repoId, 'active');
+            const completedList = service.listSessions(repoId, 'completed');
+
+            expect(expectOk(activeList)).toHaveLength(1);
+            expect(expectOk(completedList)).toHaveLength(1);
+        });
+    });
+
+    describe('completeSession', () => {
+        it('blocks completion when draft comments exist unless forced', async () => {
+            const session = await service.getOrCreateSession(repoId, '/home/user/test-repo');
+            const sessionId = expectOk(session).id;
+            const snapshotId = generateId();
+
+            dbService.execute(
+                "INSERT INTO snapshots (id, session_id, raw_diff, files_summary, trigger) VALUES ($id, $sessionId, 'diff', '[]', 'manual')",
+                { $id: snapshotId, $sessionId: sessionId },
+            );
+            dbService.execute(
+                `INSERT INTO comments (id, session_id, snapshot_id, file_path, author, content, status)
+                 VALUES ($id, $sessionId, $snapshotId, 'src/a.ts', 'user', 'draft comment', 'draft')`,
+                { $id: generateId(), $sessionId: sessionId, $snapshotId: snapshotId },
+            );
+
+            const blocked = service.completeSession(sessionId, { force: false, reason: 'done' });
+            expect(blocked.isOk()).toBe(true);
+            expect(expectOk(blocked).blocked).toBe(true);
+            expect(expectOk(blocked).summary.draft_count).toBe(1);
+
+            const forced = service.completeSession(sessionId, { force: true, reason: 'done' });
+            expect(forced.isOk()).toBe(true);
+            expect(expectOk(forced).blocked).toBe(false);
+            expect(expectOk(forced).session.status).toBe('completed');
+            expect(expectOk(forced).session.completion_reason).toBe('done');
+        });
+
+        it('allows creating a new active session on same repo+branch after completion', async () => {
+            const first = await service.getOrCreateSession(repoId, '/home/user/test-repo');
+            const firstSession = expectOk(first);
+
+            const completed = service.completeSession(firstSession.id, { force: true, reason: 'completed' });
+            expect(expectOk(completed).session.status).toBe('completed');
+
+            const second = await service.getOrCreateSession(repoId, '/home/user/test-repo');
+            const secondSession = expectOk(second);
+
+            expect(secondSession.id).not.toBe(firstSession.id);
+            expect(secondSession.status).toBe('active');
         });
     });
 

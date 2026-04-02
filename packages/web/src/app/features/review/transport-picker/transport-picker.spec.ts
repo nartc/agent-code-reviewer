@@ -1,5 +1,5 @@
 import type { CommentThread, Target, TransportStatus, TransportType } from '@agent-code-reviewer/shared';
-import { signal } from '@angular/core';
+import { computed, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { CommentStore } from '../../../core/stores/comment-store';
 import { TransportStore } from '../../../core/stores/transport-store';
@@ -114,7 +114,13 @@ describe('TransportPicker', () => {
             imports: [TransportPicker],
             providers: [
                 { provide: TransportStore, useValue: mockStore },
-                { provide: CommentStore, useValue: { draftComments } as unknown as CommentStore },
+                {
+                    provide: CommentStore,
+                    useValue: {
+                        draftComments,
+                        threadsWithDrafts: computed(() => draftComments()),
+                    } as unknown as CommentStore,
+                },
             ],
         }).compileComponents();
 

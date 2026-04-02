@@ -29,28 +29,54 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
             </div>
         } @else if (sessionsResource.error()) {
             <p class="p-2 text-xs text-error">Failed to load sessions</p>
-        } @else if (filteredSessions().length === 0) {
+        } @else if (filteredActiveSessions().length === 0 && filteredCompletedSessions().length === 0) {
             <p class="p-2 text-xs opacity-50">
                 {{ filterText() ? 'No matching sessions' : 'No sessions' }}
             </p>
         } @else {
-            <ul class="menu menu-sm flex-1 overflow-auto">
-                @for (session of filteredSessions(); track session.id) {
-                    <li>
-                        <button
-                            class="flex items-center gap-2"
-                            [class.active]="session.id === currentSessionId()"
-                            (click)="sessionSelected.emit(session.id)"
-                        >
-                            <span class="truncate flex-1 text-left">{{ session.branch }}</span>
-                            <acr-notification-dot [visible]="session.is_watching" />
-                            <span class="text-xs opacity-50 whitespace-nowrap">
-                                {{ session.created_at | relativeTime }}
-                            </span>
-                        </button>
-                    </li>
+            <div class="flex-1 overflow-auto">
+                @if (filteredActiveSessions().length > 0) {
+                    <div class="px-2 py-1 text-[11px] font-semibold opacity-60">Active</div>
+                    <ul class="menu menu-sm">
+                        @for (session of filteredActiveSessions(); track session.id) {
+                            <li>
+                                <button
+                                    class="flex items-center gap-2"
+                                    [class.active]="session.id === currentSessionId()"
+                                    (click)="sessionSelected.emit(session.id)"
+                                >
+                                    <span class="truncate flex-1 text-left">{{ session.branch }}</span>
+                                    <acr-notification-dot [visible]="session.is_watching" />
+                                    <span class="text-xs opacity-50 whitespace-nowrap">
+                                        {{ session.created_at | relativeTime }}
+                                    </span>
+                                </button>
+                            </li>
+                        }
+                    </ul>
                 }
-            </ul>
+
+                @if (filteredCompletedSessions().length > 0) {
+                    <div class="px-2 py-1 text-[11px] font-semibold opacity-60 mt-2">Completed</div>
+                    <ul class="menu menu-sm">
+                        @for (session of filteredCompletedSessions(); track session.id) {
+                            <li>
+                                <button
+                                    class="flex items-center gap-2"
+                                    [class.active]="session.id === currentSessionId()"
+                                    (click)="sessionSelected.emit(session.id)"
+                                >
+                                    <span class="truncate flex-1 text-left opacity-70">{{ session.branch }}</span>
+                                    <span class="badge badge-ghost badge-xs">completed</span>
+                                    <span class="text-xs opacity-50 whitespace-nowrap">
+                                        {{ session.completed_at ?? session.created_at | relativeTime }}
+                                    </span>
+                                </button>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
         }
     `,
 })
@@ -66,7 +92,7 @@ export class SessionSidebar {
     protected readonly sessionsResource = rxResource<Session[], string>({
         params: () => this.repoId(),
         stream: ({ params: repoId }) =>
-            this.#api.listSessions(repoId).pipe(map((r: ListSessionsResponse) => r.sessions)),
+            this.#api.listSessions(repoId, 'all').pipe(map((r: ListSessionsResponse) => r.sessions)),
         defaultValue: [],
     });
 
@@ -76,4 +102,12 @@ export class SessionSidebar {
         if (!text) return sessions;
         return sessions.filter((s) => s.branch.toLowerCase().includes(text));
     });
+
+    protected readonly filteredActiveSessions = computed(() =>
+        this.filteredSessions().filter((session) => session.status === 'active'),
+    );
+
+    protected readonly filteredCompletedSessions = computed(() =>
+        this.filteredSessions().filter((session) => session.status === 'completed'),
+    );
 }

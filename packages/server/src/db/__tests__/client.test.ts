@@ -26,7 +26,7 @@ describe('Database Client', () => {
             db.close();
         });
 
-        it('creates all 8 indexes', async () => {
+        it('creates all 9 indexes', async () => {
             const result = await initInMemoryDatabase();
 
             const db = expectOk(result);
@@ -42,6 +42,7 @@ describe('Database Client', () => {
                 'idx_comments_snapshot',
                 'idx_comments_status',
                 'idx_sessions_repo',
+                'idx_sessions_repo_branch_active',
                 'idx_snapshots_created',
                 'idx_snapshots_session',
             ]);
@@ -67,7 +68,7 @@ describe('Database Client', () => {
             const db = expectOk(result);
             const version = db.exec("SELECT value FROM app_config WHERE key = 'schema_version'");
 
-            expect(version[0].values[0][0]).toBe('2');
+            expect(version[0].values[0][0]).toBe('3');
 
             db.close();
         });

@@ -31,8 +31,16 @@ export const createSessionSchema = z.object({
     repo_id: z.string().min(1),
     path: z.string().min(1),
 });
+export const listSessionsQuerySchema = z.object({
+    repo_id: z.string().min(1).optional(),
+    status: z.enum(['active', 'completed', 'all']).optional(),
+});
 export const updateSessionSchema = z.object({
     base_branch: z.string().min(1).optional(),
+});
+export const completeSessionSchema = z.object({
+    force: z.boolean().optional(),
+    reason: z.string().trim().min(1).optional(),
 });
 
 // --- Sessions ---
@@ -41,9 +49,21 @@ export interface CreateSessionResponse {
     session: Session;
     snapshot: Snapshot;
 }
+export type ListSessionsQuery = z.infer<typeof listSessionsQuerySchema>;
 export type UpdateSessionRequest = z.infer<typeof updateSessionSchema>;
 export interface ListSessionsResponse {
     sessions: Session[];
+}
+export type CompleteSessionRequest = z.infer<typeof completeSessionSchema>;
+export interface SessionCompletionSummary {
+    draft_count: number;
+    unresolved_sent_count: number;
+    watcher_active: boolean;
+}
+export interface CompleteSessionResponse {
+    session: Session;
+    summary: SessionCompletionSummary;
+    forced: boolean;
 }
 
 // --- Snapshot query schemas ---

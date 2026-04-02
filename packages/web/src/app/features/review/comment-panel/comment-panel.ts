@@ -29,7 +29,7 @@ function groupBy<T>(items: T[], keyFn: (item: T) => string): Record<string, T[]>
                 <button
                     class="btn btn-xs btn-primary"
                     title="Send all draft comments"
-                    [disabled]="!hasDrafts() || !canSend()"
+                    [disabled]="!hasDrafts() || !canSend() || !canMutate()"
                     (click)="sendAllDrafts()"
                 >
                     <ng-icon name="lucideSend" class="size-3" />
@@ -45,7 +45,8 @@ function groupBy<T>(items: T[], keyFn: (item: T) => string): Record<string, T[]>
                             <acr-comment-list-item
                                 class="block mt-1"
                                 [thread]="thread"
-                                [showActions]="true"
+                                [showActions]="canMutate()"
+                                [canMutate]="canMutate()"
                                 [showFileHeader]="false"
                                 [showStatus]="false"
                                 (commentClicked)="onCommentClicked($event)"
@@ -63,7 +64,8 @@ function groupBy<T>(items: T[], keyFn: (item: T) => string): Record<string, T[]>
                         <acr-comment-list-item
                             class="block mt-1"
                             [thread]="thread"
-                            [showActions]="true"
+                            [showActions]="canMutate()"
+                            [canMutate]="canMutate()"
                             (commentClicked)="onCommentClicked($event)"
                             (commentResolved)="onCommentResolvedFromListItem($event)"
                         />
@@ -100,7 +102,8 @@ function groupBy<T>(items: T[], keyFn: (item: T) => string): Record<string, T[]>
                         <acr-comment-list-item
                             class="block mt-1 first:mt-0"
                             [thread]="thread"
-                            [showActions]="true"
+                            [showActions]="canMutate()"
+                            [canMutate]="canMutate()"
                             (commentClicked)="onCommentClicked($event)"
                             (commentResolved)="onCommentResolvedFromListItem($event)"
                         />
@@ -110,7 +113,7 @@ function groupBy<T>(items: T[], keyFn: (item: T) => string): Record<string, T[]>
                 }
             </div>
 
-            @if (unresolvedCount() > 0) {
+            @if (unresolvedCount() > 0 && canMutate()) {
                 <div class="p-2 border-t border-base-300">
                     <button class="btn btn-xs btn-ghost w-full" (click)="markAllResolved()">
                         <ng-icon name="lucideCheckCheck" class="size-3" />
@@ -125,6 +128,7 @@ export class CommentPanel {
     readonly sessionId = input.required<string>();
     readonly snapshotId = input.required<string>();
     readonly canSend = input(true);
+    readonly canMutate = input(true);
 
     readonly sendRequested = output<string[]>();
     readonly commentClicked = output<{ filePath: string; lineStart: number | null; side: string }>();
@@ -135,9 +139,9 @@ export class CommentPanel {
     protected readonly isViewingLatest = this.#sessionStore.isViewingLatest;
 
     protected readonly draftsByFile = computed(() => {
-        const threads = this.#commentStore.comments().filter(
-            (t) => t.comment.status === 'draft' || t.replies.some((r) => r.status === 'draft'),
-        );
+        const threads = this.#commentStore
+            .comments()
+            .filter((t) => t.comment.status === 'draft' || t.replies.some((r) => r.status === 'draft'));
         return groupBy(threads, (t) => t.comment.file_path);
     });
 
@@ -174,14 +178,17 @@ export class CommentPanel {
     }
 
     protected onCommentDeletedFromListItem(thread: CommentThread): void {
+        if (!this.canMutate()) return;
         this.#commentStore.deleteComment(thread.comment.id);
     }
 
     protected onCommentResolvedFromListItem(thread: CommentThread): void {
+        if (!this.canMutate()) return;
         this.#commentStore.resolveComment(thread.comment.id);
     }
 
     protected markAllResolved(): void {
+        if (!this.canMutate()) return;
         const unresolved = this.snapshotComments().filter((t) => t.comment.status === 'sent');
         for (const thread of unresolved) {
             this.#commentStore.resolveComment(thread.comment.id);

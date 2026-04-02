@@ -80,6 +80,7 @@ export class SessionStore {
     readonly totalFiles = computed(() => this.files().length);
     readonly isConnected = this.#isConnected.asReadonly();
     readonly isWatching = this.#isWatching.asReadonly();
+    readonly isCompleted = computed(() => this.currentSession()?.status === 'completed');
     readonly scrollTarget = this.#scrollTarget.asReadonly();
 
     constructor() {
@@ -131,6 +132,19 @@ export class SessionStore {
                 this.#commentStore.onSseCommentUpdate(event.data.session_id);
             } else if (event.type === 'watcher-status') {
                 this.#isWatching.set(event.data.is_watching);
+            } else if (event.type === 'session-status') {
+                this.#sessionResource.update((session) => {
+                    if (!session || session.id !== event.data.session_id) return session;
+                    return {
+                        ...session,
+                        status: event.data.status,
+                        completed_at: event.data.completed_at,
+                        is_watching: event.data.status === 'completed' ? false : session.is_watching,
+                    };
+                });
+                if (event.data.status === 'completed') {
+                    this.#isWatching.set(false);
+                }
             }
         });
 

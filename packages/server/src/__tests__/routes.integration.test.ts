@@ -6,10 +6,10 @@ import { initInMemoryDatabase } from '../db/client.js';
 import { CommentService } from '../services/comment.service.js';
 import { DbService } from '../services/db.service.js';
 import { GitService } from '../services/git.service.js';
+import { PrImportService } from '../services/pr-import.service.js';
 import { RepoService } from '../services/repo.service.js';
 import { SessionService } from '../services/session.service.js';
 import { SseService } from '../services/sse.service.js';
-import { PrImportService } from '../services/pr-import.service.js';
 import { TransportService } from '../services/transport.service.js';
 import type { WatcherService } from '../services/watcher.service.js';
 import type { Transport } from '../transport/transport.interface.js';
@@ -30,6 +30,7 @@ let dbService: DbService;
 let gitService: GitService;
 let mockTransport: Transport;
 let sseService: SseService;
+let watcherServiceMock: WatcherService;
 let snapCounter = 0;
 
 beforeEach(async () => {
@@ -67,7 +68,7 @@ beforeEach(async () => {
     const sessionService = new SessionService(dbService, gitService);
     const commentService = new CommentService(dbService, sseService);
 
-    const watcherService = {
+    watcherServiceMock = {
         startWatching: vi.fn().mockReturnValue(okAsync(undefined)),
         stopWatching: vi.fn().mockReturnValue(okAsync(undefined)),
         captureSnapshot: vi.fn().mockImplementation((sessionId: string, _repoPath: string, trigger: string) => {
@@ -115,7 +116,7 @@ beforeEach(async () => {
     app = createApp({
         dbService,
         sseService,
-        watcherService,
+        watcherService: watcherServiceMock,
         repoService,
         sessionService,
         commentService,
@@ -309,9 +310,192 @@ describe('Session Routes', () => {
         expect(res.status).toBe(200);
     });
 
+    it('POST /api/sessions/:id/complete → 409 with blockers when not forced', async () => {
+        const createRes = await app.request('/api/sessions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ repo_id: repoId, path: '/test/repo' }),
+        });
+        const created = (await createRes.json()) as any;
+
+        // draft blocker
+        await app.request('/api/comments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                session_id: created.session.id,
+                snapshot_id: created.snapshot.id,
+                file_path: 'src/app.ts',
+                content: 'draft blocker',
+            }),
+        });
+
+        // unresolved sent blocker
+        const sentCreate = await app.request('/api/comments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                session_id: created.session.id,
+                snapshot_id: created.snapshot.id,
+                file_path: 'src/app.ts',
+                content: 'sent blocker',
+            }),
+        });
+        const sentComment = (await sentCreate.json()) as any;
+        await app.request('/api/comments/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                comment_ids: [sentComment.id],
+                target_id: 'test-target',
+                transport_type: 'clipboard',
+            }),
+        });
+
+        // watcher blocker
+        dbService.execute('UPDATE sessions SET is_watching = 1 WHERE id = $id', { $id: created.session.id });
+
+        const completeRes = await app.request(`/api/sessions/${created.session.id}/complete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reason: 'done' }),
+        });
+
+        expect(completeRes.status).toBe(409);
+        const body = (await completeRes.json()) as any;
+        expect(body.error.code).toBe('SESSION_COMPLETION_BLOCKED');
+        expect(body.blockers).toEqual(
+            expect.objectContaining({
+                draft_count: 1,
+                unresolved_sent_count: 1,
+                watcher_active: true,
+            }),
+        );
+    });
+
+    it('POST /api/sessions/:id/complete force-completes and stops watcher', async () => {
+        const createRes = await app.request('/api/sessions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ repo_id: repoId, path: '/test/repo' }),
+        });
+        const created = (await createRes.json()) as any;
+
+        dbService.execute('UPDATE sessions SET is_watching = 1 WHERE id = $id', { $id: created.session.id });
+
+        const completeRes = await app.request(`/api/sessions/${created.session.id}/complete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ force: true, reason: 'review complete' }),
+        });
+
+        expect(completeRes.status).toBe(200);
+        const body = (await completeRes.json()) as any;
+        expect(body.session.status).toBe('completed');
+        expect(body.session.completion_reason).toBe('review complete');
+        expect(body.summary.watcher_active).toBe(true);
+        expect((watcherServiceMock.stopWatching as any).mock.calls.length).toBeGreaterThan(0);
+    });
+
+    it('POST /api/sessions creates a new active session after completion', async () => {
+        const firstRes = await app.request('/api/sessions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ repo_id: repoId, path: '/test/repo' }),
+        });
+        const first = (await firstRes.json()) as any;
+
+        await app.request(`/api/sessions/${first.session.id}/complete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ force: true, reason: 'done' }),
+        });
+
+        const secondRes = await app.request('/api/sessions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ repo_id: repoId, path: '/test/repo' }),
+        });
+        const second = (await secondRes.json()) as any;
+
+        expect(secondRes.status).toBe(201);
+        expect(second.session.id).not.toBe(first.session.id);
+        expect(second.session.status).toBe('active');
+    });
+
     it('GET /api/sessions/nonexistent → 404', async () => {
         const res = await app.request('/api/sessions/nonexistent');
         expect(res.status).toBe(404);
+    });
+});
+
+describe('Completed Session Guards', () => {
+    let repoId: string;
+    let sessionId: string;
+    let snapshotId: string;
+
+    beforeEach(async () => {
+        const repoRes = await app.request('/api/repos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: '/test/repo-guards' }),
+        });
+        const repo = (await repoRes.json()) as any;
+        repoId = repo.repo.id;
+
+        const sessionRes = await app.request('/api/sessions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ repo_id: repoId, path: '/test/repo-guards' }),
+        });
+        const session = (await sessionRes.json()) as any;
+        sessionId = session.session.id;
+        snapshotId = session.snapshot.id;
+
+        await app.request(`/api/sessions/${sessionId}/complete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ force: true, reason: 'done' }),
+        });
+    });
+
+    it('blocks new comment creation', async () => {
+        const res = await app.request('/api/comments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                session_id: sessionId,
+                snapshot_id: snapshotId,
+                file_path: 'src/app.ts',
+                content: 'should fail',
+            }),
+        });
+
+        expect(res.status).toBe(409);
+        const body = (await res.json()) as any;
+        expect(body.error.code).toBe('SESSION_COMPLETED');
+    });
+
+    it('blocks manual snapshot capture', async () => {
+        const res = await app.request(`/api/sessions/${sessionId}/snapshots`, {
+            method: 'POST',
+        });
+
+        expect(res.status).toBe(409);
+        const body = (await res.json()) as any;
+        expect(body.error.code).toBe('SESSION_COMPLETED');
+    });
+
+    it('MCP capture-snapshot requires an active session', async () => {
+        const res = await app.request('/api/mcp/capture-snapshot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ repo_path: '/test/repo-guards' }),
+        });
+
+        expect(res.status).toBe(404);
+        const body = (await res.json()) as any;
+        expect(body.error.code).toBe('NO_ACTIVE_SESSION');
     });
 });
 

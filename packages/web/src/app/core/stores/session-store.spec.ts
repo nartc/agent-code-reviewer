@@ -3,7 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { of } from 'rxjs';
+import { Subject, of } from 'rxjs';
 import { ApiClient } from '../services/api-client';
 import { SseConnection } from '../services/sse-connection';
 import { SessionStore } from './session-store';
@@ -13,6 +13,9 @@ const mockSession: SessionWithRepo = {
     repo_id: 'r1',
     branch: 'main',
     base_branch: null,
+    status: 'active',
+    completed_at: null,
+    completion_reason: null,
     is_watching: false,
     created_at: '2025-01-01',
     repo: { id: 'r1', remote_url: null, name: 'test', path: '/test', base_branch: 'main', created_at: '2025-01-01' },
@@ -74,14 +77,16 @@ describe('SessionStore', () => {
     let httpMock: HttpTestingController;
     let apiSpy: { getSession: ReturnType<typeof vi.fn>; listSnapshots: ReturnType<typeof vi.fn> };
     let sseSpy: { connect: ReturnType<typeof vi.fn>; disconnect: ReturnType<typeof vi.fn> };
+    let sseEvents$: Subject<any>;
 
     beforeEach(() => {
         apiSpy = {
             getSession: vi.fn().mockReturnValue(of(mockSession)),
             listSnapshots: vi.fn().mockReturnValue(of({ snapshots: mockSnapshots })),
         };
+        sseEvents$ = new Subject();
         sseSpy = {
-            connect: vi.fn().mockReturnValue(of()),
+            connect: vi.fn().mockReturnValue(sseEvents$),
             disconnect: vi.fn(),
         };
 
@@ -193,5 +198,20 @@ describe('SessionStore', () => {
     it('computed totalFiles returns files length', async () => {
         await loadSessionAndFlush();
         expect(store.totalFiles()).toBe(3);
+    });
+
+    it('applies session-status SSE updates (completed)', async () => {
+        await loadSessionAndFlush();
+        expect(store.isCompleted()).toBe(false);
+
+        sseEvents$.next({
+            type: 'session-status',
+            data: { session_id: 's1', status: 'completed', completed_at: '2026-01-01T00:00:00Z' },
+        });
+        TestBed.tick();
+
+        expect(store.isCompleted()).toBe(true);
+        expect(store.currentSession()?.status).toBe('completed');
+        expect(store.currentSession()?.completed_at).toBe('2026-01-01T00:00:00Z');
     });
 });

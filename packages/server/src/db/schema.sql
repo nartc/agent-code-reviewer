@@ -15,9 +15,11 @@ CREATE TABLE IF NOT EXISTS sessions (
     repo_id TEXT NOT NULL REFERENCES repos(id) ON DELETE CASCADE,
     branch TEXT NOT NULL,
     base_branch TEXT,
+    status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'completed')),
+    completed_at TEXT,
+    completion_reason TEXT,
     is_watching INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    UNIQUE(repo_id, branch)
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS snapshots (
@@ -63,6 +65,7 @@ CREATE TABLE IF NOT EXISTS app_config (
 );
 
 CREATE INDEX IF NOT EXISTS idx_sessions_repo ON sessions(repo_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sessions_repo_branch_active ON sessions(repo_id, branch) WHERE status = 'active';
 CREATE INDEX IF NOT EXISTS idx_snapshots_session ON snapshots(session_id);
 CREATE INDEX IF NOT EXISTS idx_snapshots_created ON snapshots(session_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_comments_session ON comments(session_id);

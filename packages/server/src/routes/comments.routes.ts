@@ -2,14 +2,18 @@ import type { Comment, CommentPayload, CommentStatus } from '@agent-code-reviewe
 import {
     createCommentSchema,
     listCommentsQuerySchema,
+    notFound,
     replyToCommentSchema,
     sendCommentsSchema,
     updateCommentSchema,
+    validation,
 } from '@agent-code-reviewer/shared';
 import { zValidator } from '@hono/zod-validator';
-import { Hono } from 'hono';
+import { type Context, Hono } from 'hono';
+import { err } from 'neverthrow';
 import { resultToResponse } from '../lib/result-to-response.js';
 import type { CommentService } from '../services/comment.service.js';
+import type { SessionService } from '../services/session.service.js';
 import type { TransportService } from '../services/transport.service.js';
 import { idParamSchema } from './params.js';
 
@@ -27,8 +31,31 @@ function buildPayload(comment: Comment, replies: Comment[] = []): CommentPayload
     };
 }
 
-export function createCommentRoutes(commentService: CommentService, transportService: TransportService): Hono {
+function completedSessionResponse(c: Context): Response {
+    return c.json(
+        {
+            error: {
+                code: 'SESSION_COMPLETED',
+                message: 'Session is completed and read-only',
+            },
+        },
+        409,
+    );
+}
+
+export function createCommentRoutes(
+    commentService: CommentService,
+    transportService: TransportService,
+    sessionService: SessionService,
+): Hono {
     const app = new Hono();
+
+    const ensureSessionWritable = (c: any, sessionId: string): Response | null => {
+        const sessionResult = sessionService.getSession(sessionId);
+        if (sessionResult.isErr()) return resultToResponse(c, sessionResult);
+        if (sessionResult.value.status === 'completed') return completedSessionResponse(c);
+        return null;
+    };
 
     // GET / — Query comments (flexible)
     app.get('/', zValidator('query', listCommentsQuerySchema), (c) => {
@@ -59,12 +86,31 @@ export function createCommentRoutes(commentService: CommentService, transportSer
     // POST / — Create comment
     app.post('/', zValidator('json', createCommentSchema), (c) => {
         const input = c.req.valid('json');
+        const guard = ensureSessionWritable(c, input.session_id);
+        if (guard) return guard;
         return resultToResponse(c, commentService.create(input), 201);
     });
 
     // POST /send — Mark sent + deliver (MUST be before /:id routes)
     app.post('/send', zValidator('json', sendCommentsSchema), async (c) => {
         const { comment_ids, target_id, transport_type, snapshot_id } = c.req.valid('json');
+
+        const sessionIds = new Set<string>();
+        for (const commentId of comment_ids) {
+            const commentResult = commentService.getCommentById(commentId);
+            if (commentResult.isErr()) return resultToResponse(c, commentResult);
+            if (!commentResult.value) return resultToResponse(c, err(notFound('Comment not found')));
+            sessionIds.add(commentResult.value.session_id);
+        }
+
+        if (sessionIds.size > 1) {
+            return resultToResponse(c, err(validation('All comments in a send request must belong to one session')));
+        }
+
+        const sessionId = [...sessionIds][0];
+        const guard = ensureSessionWritable(c, sessionId);
+        if (guard) return guard;
+
         const markResult = commentService.markSent(comment_ids);
         if (markResult.isErr()) {
             return resultToResponse(c, markResult);
@@ -106,6 +152,10 @@ export function createCommentRoutes(commentService: CommentService, transportSer
         if (!body.session_id) {
             return c.json({ error: 'session_id is required' }, 400);
         }
+
+        const guard = ensureSessionWritable(c, body.session_id);
+        if (guard) return guard;
+
         const result = commentService.bulkResolve(body.session_id, body.snapshot_id, body.comment_ids);
         if (result.isErr()) {
             return resultToResponse(c, result);
@@ -117,12 +167,28 @@ export function createCommentRoutes(commentService: CommentService, transportSer
     app.patch('/:id', zValidator('param', idParamSchema), zValidator('json', updateCommentSchema), (c) => {
         const { id } = c.req.valid('param');
         const { content } = c.req.valid('json');
+
+        const existing = commentService.getCommentById(id);
+        if (existing.isErr()) return resultToResponse(c, existing);
+        if (!existing.value) return resultToResponse(c, err(notFound('Comment not found')));
+
+        const guard = ensureSessionWritable(c, existing.value.session_id);
+        if (guard) return guard;
+
         return resultToResponse(c, commentService.update(id, content));
     });
 
     // DELETE /:id — Delete draft
     app.delete('/:id', zValidator('param', idParamSchema), (c) => {
         const { id } = c.req.valid('param');
+
+        const existing = commentService.getCommentById(id);
+        if (existing.isErr()) return resultToResponse(c, existing);
+        if (!existing.value) return resultToResponse(c, err(notFound('Comment not found')));
+
+        const guard = ensureSessionWritable(c, existing.value.session_id);
+        if (guard) return guard;
+
         const result = commentService.delete(id);
         if (result.isErr()) {
             return resultToResponse(c, result);
@@ -133,6 +199,14 @@ export function createCommentRoutes(commentService: CommentService, transportSer
     // POST /:id/resolve — Resolve comment
     app.post('/:id/resolve', zValidator('param', idParamSchema), (c) => {
         const { id } = c.req.valid('param');
+
+        const existing = commentService.getCommentById(id);
+        if (existing.isErr()) return resultToResponse(c, existing);
+        if (!existing.value) return resultToResponse(c, err(notFound('Comment not found')));
+
+        const guard = ensureSessionWritable(c, existing.value.session_id);
+        if (guard) return guard;
+
         return resultToResponse(c, commentService.resolve(id));
     });
 
@@ -140,6 +214,14 @@ export function createCommentRoutes(commentService: CommentService, transportSer
     app.post('/:id/reply', zValidator('param', idParamSchema), zValidator('json', replyToCommentSchema), (c) => {
         const { id } = c.req.valid('param');
         const { content } = c.req.valid('json');
+
+        const existing = commentService.getCommentById(id);
+        if (existing.isErr()) return resultToResponse(c, existing);
+        if (!existing.value) return resultToResponse(c, err(notFound('Parent comment not found')));
+
+        const guard = ensureSessionWritable(c, existing.value.session_id);
+        if (guard) return guard;
+
         return resultToResponse(c, commentService.createReply(id, content, 'user', 'draft'), 201);
     });
 

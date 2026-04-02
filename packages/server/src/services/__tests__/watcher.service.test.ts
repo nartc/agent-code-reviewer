@@ -26,9 +26,9 @@ function createMockGitService(overrides: Partial<GitService> = {}): GitService {
         listBranches: vi.fn() as any,
         scanForRepos: vi.fn() as any,
         fetchOrigin: vi.fn().mockReturnValue(okAsync(undefined)) as any,
-        resolveBaseBranchRef: vi.fn().mockImplementation((_path: string, baseBranch: string) =>
-            okAsync(baseBranch),
-        ) as any,
+        resolveBaseBranchRef: vi
+            .fn()
+            .mockImplementation((_path: string, baseBranch: string) => okAsync(baseBranch)) as any,
         ...overrides,
     } as GitService;
 }
@@ -125,6 +125,15 @@ describe('WatcherService', () => {
 
             expect(result.isErr()).toBe(true);
             expect(expectErr(result).type).toBe('NOT_FOUND');
+        });
+
+        it('fails for completed sessions', async () => {
+            const complete = sessionService.completeSession(sessionId, { force: true, reason: 'done' });
+            expect(complete.isOk()).toBe(true);
+
+            const result = await service.startWatching(sessionId, '/repo');
+            expect(result.isErr()).toBe(true);
+            expect(expectErr(result).type).toBe('VALIDATION');
         });
     });
 
@@ -321,6 +330,15 @@ describe('WatcherService', () => {
 
             await service.captureSnapshot(sessionId, '/repo', 'manual');
             expect(gitService.resolveBaseBranchRef).toHaveBeenCalledWith('/repo', 'main');
+        });
+
+        it('rejects snapshot capture for completed session', async () => {
+            const complete = sessionService.completeSession(sessionId, { force: true, reason: 'done' });
+            expect(complete.isOk()).toBe(true);
+
+            const result = await service.captureSnapshot(sessionId, '/repo', 'manual');
+            expect(result.isErr()).toBe(true);
+            expect(expectErr(result).type).toBe('VALIDATION');
         });
     });
 

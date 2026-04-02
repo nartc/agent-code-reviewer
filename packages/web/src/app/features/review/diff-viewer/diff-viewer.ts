@@ -11,9 +11,9 @@ import {
 } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { NgIcon } from '@ng-icons/core';
-import { of } from 'rxjs';
 import type { DiffLineAnnotation, FileContents, FileDiffMetadata } from '@pierre/diffs';
 import { parseDiffFromFile, parsePatchFiles } from '@pierre/diffs';
+import { of } from 'rxjs';
 import { ApiClient } from '../../../core/services/api-client';
 import { ThemeSwitcher } from '../../../core/services/theme-switcher';
 import { UiPreferences } from '../../../core/services/ui-preferences';
@@ -65,7 +65,7 @@ import { PriorComments, type PriorSnapshotComments } from './prior-comments';
                     Split
                 </button>
                 <div class="flex-1"></div>
-                @if (store.isViewingLatest()) {
+                @if (canMutate()) {
                     <button class="btn btn-xs btn-outline" title="Add a file-level comment" (click)="onFileComment()">
                         <ng-icon name="lucideMessageSquare" class="size-3" />
                         Comment on file
@@ -91,6 +91,7 @@ import { PriorComments, type PriorSnapshotComments } from './prior-comments';
                     class="mx-4 my-1"
                     [thread]="thread"
                     [sessionId]="store.currentSession()!.id"
+                    [readonly]="!canMutate()"
                     (commentDeleted)="onFileLevelCommentDeleted($event)"
                     (commentResolved)="onFileLevelCommentResolved($event)"
                 />
@@ -110,7 +111,7 @@ import { PriorComments, type PriorSnapshotComments } from './prior-comments';
                     [diffStyle]="diffStyle()"
                     [themeType]="resolvedTheme()"
                     [lineAnnotations]="annotations()"
-                    [enableComments]="store.isViewingLatest()"
+                    [enableComments]="canMutate()"
                     (lineNumberClicked)="onLineNumberClick($event)"
                     (lineRangeSelected)="onLineRangeSelected($event)"
                     (formSaved)="onFormSaved($event)"
@@ -135,6 +136,7 @@ export class DiffViewer {
     readonly #fileLevelForm = signal<Extract<AnnotationMeta, { type: 'form' }> | null>(null);
     #rangeJustSelected = false;
     protected readonly fileLevelForm = this.#fileLevelForm.asReadonly();
+    protected readonly canMutate = computed(() => this.store.isViewingLatest() && !this.store.isCompleted());
 
     protected readonly parsedFiles = computed<FileDiffMetadata[]>(() => {
         const diff = this.store.currentDiff();
@@ -277,7 +279,7 @@ export class DiffViewer {
     }
 
     protected onLineNumberClick(event: { lineNumber: number; side: 'old' | 'new' }): void {
-        if (!this.store.isViewingLatest()) return;
+        if (!this.canMutate()) return;
         // Skip if onLineRangeSelected already handled this interaction (multi-line drag)
         if (this.#rangeJustSelected) return;
 
@@ -297,7 +299,7 @@ export class DiffViewer {
     }
 
     protected onLineRangeSelected(event: { lineStart: number; lineEnd: number; side: 'old' | 'new' }): void {
-        if (!this.store.isViewingLatest()) return;
+        if (!this.canMutate()) return;
         const snapshotId = this.store.activeSnapshotId();
         const sessionId = this.store.currentSession()?.id;
         const meta = this.activeMetadata();
@@ -322,7 +324,7 @@ export class DiffViewer {
     }
 
     protected onFileComment(): void {
-        if (!this.store.isViewingLatest()) return;
+        if (!this.canMutate()) return;
         const snapshotId = this.store.activeSnapshotId();
         const sessionId = this.store.currentSession()?.id;
         const meta = this.activeMetadata();
@@ -357,10 +359,12 @@ export class DiffViewer {
     }
 
     protected onFileLevelCommentDeleted(thread: CommentThread): void {
+        if (!this.canMutate()) return;
         this.#commentStore.deleteComment(thread.comment.id);
     }
 
     protected onFileLevelCommentResolved(thread: CommentThread): void {
+        if (!this.canMutate()) return;
         this.#commentStore.resolveComment(thread.comment.id);
     }
 

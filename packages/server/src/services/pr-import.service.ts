@@ -20,10 +20,9 @@ export class PrImportService {
     importPr(input: ImportPrCommentsRequest): Result<ImportPrCommentsResponse, DatabaseError> {
         return this.db.transaction(() => {
             // 1. Repo — find or create
-            const repoResult = this.db.queryOne<{ id: string }>(
-                'SELECT id FROM repos WHERE path = $path',
-                { $path: input.repo_path },
-            );
+            const repoResult = this.db.queryOne<{ id: string }>('SELECT id FROM repos WHERE path = $path', {
+                $path: input.repo_path,
+            });
             if (repoResult.isErr()) return err(repoResult.error);
 
             let repoId: string;
@@ -44,9 +43,9 @@ export class PrImportService {
                 if (insertRepo.isErr()) return err(insertRepo.error);
             }
 
-            // 2. Session — find by repo_id + branch, or create
+            // 2. Session — find active by repo_id + branch, or create
             const existingSession = this.db.queryOne<{ id: string }>(
-                'SELECT id FROM sessions WHERE repo_id = $repoId AND branch = $branch',
+                "SELECT id FROM sessions WHERE repo_id = $repoId AND branch = $branch AND status = 'active'",
                 { $repoId: repoId, $branch: input.branch },
             );
             if (existingSession.isErr()) return err(existingSession.error);
@@ -109,9 +108,10 @@ export class PrImportService {
                 // Always point reply_to_id at the root comment (flat threading)
                 let replyToId: string | null = null;
                 if (comment.in_reply_to_id) {
-                    replyToId = ghIdToRootLocalId.get(comment.in_reply_to_id)
-                        ?? ghIdToLocalId.get(comment.in_reply_to_id)
-                        ?? null;
+                    replyToId =
+                        ghIdToRootLocalId.get(comment.in_reply_to_id) ??
+                        ghIdToLocalId.get(comment.in_reply_to_id) ??
+                        null;
                 }
                 // Track the root for this comment's thread
                 ghIdToRootLocalId.set(comment.id, replyToId ?? commentId);

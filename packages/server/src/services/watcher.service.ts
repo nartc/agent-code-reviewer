@@ -1,5 +1,6 @@
 import {
     generateId,
+    validation,
     watcherError,
     type DatabaseError,
     type FileSummary,
@@ -7,6 +8,7 @@ import {
     type NotFoundError,
     type Snapshot,
     type SnapshotTrigger,
+    type ValidationError,
     type WatcherError,
 } from '@agent-code-reviewer/shared';
 import { ResultAsync, errAsync, okAsync } from 'neverthrow';
@@ -114,9 +116,13 @@ export class WatcherService {
     startWatching(
         sessionId: string,
         repoPath: string,
-    ): ResultAsync<void, WatcherError | DatabaseError | NotFoundError> {
+    ): ResultAsync<void, WatcherError | DatabaseError | NotFoundError | ValidationError> {
         const sessionResult = this.sessionService.getSession(sessionId);
         if (sessionResult.isErr()) return errAsync(sessionResult.error);
+
+        if (sessionResult.value.status === 'completed') {
+            return errAsync(validation('Session is completed and read-only'));
+        }
 
         if (this.activeWatchers[sessionId]) return okAsync(undefined);
 
@@ -188,9 +194,13 @@ export class WatcherService {
         sessionId: string,
         repoPath: string,
         trigger: SnapshotTrigger,
-    ): ResultAsync<Snapshot, GitError | DatabaseError | NotFoundError> {
+    ): ResultAsync<Snapshot, GitError | DatabaseError | NotFoundError | ValidationError> {
         const sessionResult = this.sessionService.getSession(sessionId);
         if (sessionResult.isErr()) return errAsync(sessionResult.error);
+
+        if (sessionResult.value.status === 'completed') {
+            return errAsync(validation('Session is completed and read-only'));
+        }
 
         const session = sessionResult.value;
         const baseBranch = session.base_branch ?? session.repo.base_branch;
@@ -200,72 +210,72 @@ export class WatcherService {
             .andThen(() => this.gitService.resolveBaseBranchRef(repoPath, baseBranch))
             .andThen((resolvedRef) => this.gitService.getDiff(repoPath, resolvedRef))
             .andThen(({ rawDiff, files }) => {
-            const prevResult = this.dbService.queryOne<SnapshotRow>(
-                'SELECT id, session_id, raw_diff, files_summary, head_commit, trigger, changed_files, has_review_comments, created_at FROM snapshots WHERE session_id = $sessionId ORDER BY created_at DESC LIMIT 1',
-                { $sessionId: sessionId },
-            );
-            if (prevResult.isErr()) return errAsync(prevResult.error);
-
-            const previousFiles: FileSummary[] = prevResult.value ? JSON.parse(prevResult.value.files_summary) : [];
-            const previousRawDiff = prevResult.value?.raw_diff ?? '';
-
-            const changedFiles = computeChangedFiles(files, previousFiles, rawDiff, previousRawDiff);
-
-            return this.gitService.getHeadCommit(repoPath).andThen((headCommit) => {
-                // Skip snapshot if HEAD hasn't changed since last snapshot
-                if (prevResult.value && prevResult.value.head_commit === headCommit) {
-                    const prev = prevResult.value;
-                    return okAsync({
-                        id: prev.id,
-                        session_id: prev.session_id,
-                        raw_diff: prev.raw_diff,
-                        files_summary: JSON.parse(prev.files_summary) as FileSummary[],
-                        head_commit: prev.head_commit,
-                        trigger: prev.trigger as SnapshotTrigger,
-                        changed_files: prev.changed_files ? JSON.parse(prev.changed_files) : null,
-                        has_review_comments: Boolean(prev.has_review_comments),
-                        created_at: prev.created_at,
-                    } satisfies Snapshot);
-                }
-
-                const snapshotId = generateId();
-
-                const insertResult = this.dbService.execute(
-                    `INSERT INTO snapshots (id, session_id, raw_diff, files_summary, head_commit, trigger, changed_files, has_review_comments)
-					 VALUES ($id, $sessionId, $rawDiff, $filesSummary, $headCommit, $trigger, $changedFiles, 0)`,
-                    {
-                        $id: snapshotId,
-                        $sessionId: sessionId,
-                        $rawDiff: rawDiff,
-                        $filesSummary: JSON.stringify(files),
-                        $headCommit: headCommit,
-                        $trigger: trigger,
-                        $changedFiles: changedFiles.length > 0 ? JSON.stringify(changedFiles) : null,
-                    },
+                const prevResult = this.dbService.queryOne<SnapshotRow>(
+                    'SELECT id, session_id, raw_diff, files_summary, head_commit, trigger, changed_files, has_review_comments, created_at FROM snapshots WHERE session_id = $sessionId ORDER BY created_at DESC LIMIT 1',
+                    { $sessionId: sessionId },
                 );
-                if (insertResult.isErr()) return errAsync(insertResult.error);
+                if (prevResult.isErr()) return errAsync(prevResult.error);
 
-                const snapshot: Snapshot = {
-                    id: snapshotId,
-                    session_id: sessionId,
-                    raw_diff: rawDiff,
-                    files_summary: files,
-                    head_commit: headCommit,
-                    trigger,
-                    changed_files: changedFiles.length > 0 ? changedFiles : null,
-                    has_review_comments: false,
-                    created_at: new Date().toISOString(),
-                };
+                const previousFiles: FileSummary[] = prevResult.value ? JSON.parse(prevResult.value.files_summary) : [];
+                const previousRawDiff = prevResult.value?.raw_diff ?? '';
 
-                const { raw_diff: _, ...snapshotSummary }: Snapshot & { raw_diff: string } = snapshot;
-                this.sseService.broadcast(sessionId, {
-                    type: 'snapshot',
-                    data: snapshotSummary,
+                const changedFiles = computeChangedFiles(files, previousFiles, rawDiff, previousRawDiff);
+
+                return this.gitService.getHeadCommit(repoPath).andThen((headCommit) => {
+                    // Skip snapshot if HEAD hasn't changed since last snapshot
+                    if (prevResult.value && prevResult.value.head_commit === headCommit) {
+                        const prev = prevResult.value;
+                        return okAsync({
+                            id: prev.id,
+                            session_id: prev.session_id,
+                            raw_diff: prev.raw_diff,
+                            files_summary: JSON.parse(prev.files_summary) as FileSummary[],
+                            head_commit: prev.head_commit,
+                            trigger: prev.trigger as SnapshotTrigger,
+                            changed_files: prev.changed_files ? JSON.parse(prev.changed_files) : null,
+                            has_review_comments: Boolean(prev.has_review_comments),
+                            created_at: prev.created_at,
+                        } satisfies Snapshot);
+                    }
+
+                    const snapshotId = generateId();
+
+                    const insertResult = this.dbService.execute(
+                        `INSERT INTO snapshots (id, session_id, raw_diff, files_summary, head_commit, trigger, changed_files, has_review_comments)
+					 VALUES ($id, $sessionId, $rawDiff, $filesSummary, $headCommit, $trigger, $changedFiles, 0)`,
+                        {
+                            $id: snapshotId,
+                            $sessionId: sessionId,
+                            $rawDiff: rawDiff,
+                            $filesSummary: JSON.stringify(files),
+                            $headCommit: headCommit,
+                            $trigger: trigger,
+                            $changedFiles: changedFiles.length > 0 ? JSON.stringify(changedFiles) : null,
+                        },
+                    );
+                    if (insertResult.isErr()) return errAsync(insertResult.error);
+
+                    const snapshot: Snapshot = {
+                        id: snapshotId,
+                        session_id: sessionId,
+                        raw_diff: rawDiff,
+                        files_summary: files,
+                        head_commit: headCommit,
+                        trigger,
+                        changed_files: changedFiles.length > 0 ? changedFiles : null,
+                        has_review_comments: false,
+                        created_at: new Date().toISOString(),
+                    };
+
+                    const { raw_diff: _, ...snapshotSummary }: Snapshot & { raw_diff: string } = snapshot;
+                    this.sseService.broadcast(sessionId, {
+                        type: 'snapshot',
+                        data: snapshotSummary,
+                    });
+
+                    return okAsync(snapshot);
                 });
-
-                return okAsync(snapshot);
             });
-        });
     }
 
     isWatching(sessionId: string): boolean {

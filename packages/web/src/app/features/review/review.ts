@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { NgIcon } from '@ng-icons/core';
 import { ApiClient } from '../../core/services/api-client';
@@ -38,6 +39,9 @@ import { TransportPicker } from './transport-picker/transport-picker';
             <header class="flex items-center gap-3 px-4 py-2 border-b border-base-300">
                 <h1 class="text-lg font-bold">{{ session.repo.name }}</h1>
                 <span class="badge badge-neutral badge-sm">{{ session.branch }}</span>
+                <span class="badge badge-sm" [class.badge-success]="!isCompleted()" [class.badge-ghost]="isCompleted()">
+                    {{ isCompleted() ? 'completed' : 'active' }}
+                </span>
                 <span class="text-xs opacity-50 font-mono truncate flex-1">{{ session.repo.path }}</span>
                 <span
                     class="badge badge-xs"
@@ -48,6 +52,7 @@ import { TransportPicker } from './transport-picker/transport-picker';
                     class="btn btn-xs"
                     [class.btn-primary]="!isWatching()"
                     [class.btn-ghost]="isWatching()"
+                    [disabled]="isCompleted()"
                     (click)="toggleWatcher()"
                 >
                     <ng-icon [name]="isWatching() ? 'lucideEyeOff' : 'lucideEye'" class="size-3.5" />
@@ -56,10 +61,17 @@ import { TransportPicker } from './transport-picker/transport-picker';
                 <button
                     class="btn btn-xs btn-ghost"
                     title="Capture snapshot"
+                    [disabled]="isCompleted()"
                     (click)="refreshSnapshots()"
                 >
                     <ng-icon name="lucideRefreshCw" class="size-3.5" />
                 </button>
+                @if (!isCompleted()) {
+                    <button class="btn btn-xs btn-warning" (click)="openCompleteDialog()">
+                        <ng-icon name="lucideCheckCheck" class="size-3.5" />
+                        Complete Session
+                    </button>
+                }
             </header>
 
             <acr-snapshot-timeline
@@ -130,12 +142,77 @@ import { TransportPicker } from './transport-picker/transport-picker';
                             [sessionId]="sessionId()"
                             [snapshotId]="snapId"
                             [canSend]="canSend()"
+                            [canMutate]="canMutate()"
                             (sendRequested)="onSendComments($event)"
                             (commentClicked)="onCommentClicked($event)"
                         />
                     }
                 </div>
             </div>
+
+            @if (showCompleteModal()) {
+                <div class="modal modal-open">
+                    <div class="modal-box">
+                        <h3 class="font-bold text-lg">Complete session?</h3>
+                        <p class="py-2 text-sm opacity-70">
+                            Completed sessions become read-only. You can still view all snapshots and comments.
+                        </p>
+
+                        @if (completionBlockers(); as blockers) {
+                            <div class="alert alert-warning text-sm my-2">
+                                <div>
+                                    <p>Completion blocked:</p>
+                                    <ul class="list-disc ml-5">
+                                        @if (blockers.draft_count > 0) {
+                                            <li>{{ blockers.draft_count }} draft comment(s)</li>
+                                        }
+                                        @if (blockers.unresolved_sent_count > 0) {
+                                            <li>{{ blockers.unresolved_sent_count }} unresolved comment thread(s)</li>
+                                        }
+                                        @if (blockers.watcher_active) {
+                                            <li>watcher is still active</li>
+                                        }
+                                    </ul>
+                                </div>
+                            </div>
+                        }
+
+                        <label class="label" for="completion-reason">
+                            <span class="label-text">Reason (optional)</span>
+                        </label>
+                        <textarea
+                            id="completion-reason"
+                            class="textarea textarea-bordered w-full"
+                            rows="3"
+                            placeholder="e.g. all feedback addressed"
+                            [value]="completionReason()"
+                            (input)="completionReason.set($any($event.target).value)"
+                        ></textarea>
+
+                        <div class="modal-action">
+                            <button class="btn btn-ghost" (click)="closeCompleteDialog()">Cancel</button>
+                            @if (completionBlockers()) {
+                                <button
+                                    class="btn btn-error"
+                                    [disabled]="isCompleting()"
+                                    (click)="completeSession(true)"
+                                >
+                                    Force Complete
+                                </button>
+                            } @else {
+                                <button
+                                    class="btn btn-warning"
+                                    [disabled]="isCompleting()"
+                                    (click)="completeSession(false)"
+                                >
+                                    Complete
+                                </button>
+                            }
+                        </div>
+                    </div>
+                    <div class="modal-backdrop" (click)="closeCompleteDialog()"></div>
+                </div>
+            }
 
             @if (toastMessage(); as toast) {
                 <div class="toast toast-end toast-bottom">
@@ -171,11 +248,24 @@ export class Review {
     protected readonly rightWidth = this.#prefs.panelRightWidth;
     protected readonly sidebarCollapsed = this.#prefs.sidebarCollapsed;
     protected readonly isWatching = this.store.isWatching;
+    protected readonly isCompleted = this.store.isCompleted;
     protected readonly isSending = signal(false);
+    protected readonly isCompleting = signal(false);
+    protected readonly showCompleteModal = signal(false);
+    protected readonly completionReason = signal('');
+    protected readonly completionBlockers = signal<{
+        draft_count: number;
+        unresolved_sent_count: number;
+        watcher_active: boolean;
+    } | null>(null);
     protected readonly toastMessage = signal<{ type: 'success' | 'error'; text: string } | null>(null);
+    protected readonly canMutate = computed(() => !this.isCompleted());
 
     protected readonly canSend = () =>
-        !!this.#transportStore.activeTransport() && !!this.#transportStore.lastTargetId() && !this.isSending();
+        !!this.#transportStore.activeTransport() &&
+        !!this.#transportStore.lastTargetId() &&
+        !this.isSending() &&
+        !this.isCompleted();
 
     constructor() {
         effect(() => {
@@ -217,6 +307,7 @@ export class Review {
     }
 
     protected refreshSnapshots(): void {
+        if (this.isCompleted()) return;
         this.#api.captureSnapshot(this.sessionId()).subscribe({
             error: (err) => {
                 console.error('Failed to capture snapshot:', err);
@@ -225,12 +316,62 @@ export class Review {
     }
 
     protected toggleWatcher(): void {
+        if (this.isCompleted()) return;
         const id = this.sessionId();
         if (this.isWatching()) {
             this.#api.stopWatching(id).subscribe();
         } else {
             this.#api.startWatching(id).subscribe();
         }
+    }
+
+    protected openCompleteDialog(): void {
+        if (this.isCompleted()) return;
+        this.completionBlockers.set(null);
+        this.showCompleteModal.set(true);
+    }
+
+    protected closeCompleteDialog(): void {
+        if (this.isCompleting()) return;
+        this.showCompleteModal.set(false);
+        this.completionReason.set('');
+        this.completionBlockers.set(null);
+    }
+
+    protected completeSession(force: boolean): void {
+        if (this.isCompleted() || this.isCompleting()) return;
+
+        this.isCompleting.set(true);
+        const trimmedReason = this.completionReason().trim();
+
+        this.#api
+            .completeSession(this.sessionId(), {
+                force,
+                reason: trimmedReason.length > 0 ? trimmedReason : undefined,
+            })
+            .subscribe({
+                next: () => {
+                    this.isCompleting.set(false);
+                    this.closeCompleteDialog();
+                    this.showToast('success', force ? 'Session force-completed' : 'Session completed');
+                },
+                error: (err: unknown) => {
+                    this.isCompleting.set(false);
+
+                    if (err instanceof HttpErrorResponse && err.status === 409) {
+                        const blockers = err.error?.blockers;
+                        if (blockers) {
+                            this.completionBlockers.set(blockers);
+                            return;
+                        }
+                    }
+
+                    this.showToast(
+                        'error',
+                        `Failed to complete session: ${err instanceof Error ? err.message : 'Unknown error'}`,
+                    );
+                },
+            });
     }
 
     protected onJumpToLatest(): void {
@@ -263,6 +404,7 @@ export class Review {
     }
 
     protected onSendComments(commentIds: string[]): void {
+        if (this.isCompleted()) return;
         const transport = this.#transportStore.activeTransport();
         const targetId = this.#transportStore.lastTargetId();
         if (!transport || !targetId) return;

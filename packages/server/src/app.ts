@@ -53,10 +53,19 @@ export function createApp(deps: AppDependencies): Hono {
     app.route('/api/sse', createSseRoutes(deps.sseService));
 
     // API routes
-    app.route('/api/mcp', createMcpRoutes(deps.repoService, deps.sessionService, deps.commentService, deps.prImportService, deps.watcherService));
+    app.route(
+        '/api/mcp',
+        createMcpRoutes(
+            deps.repoService,
+            deps.sessionService,
+            deps.commentService,
+            deps.prImportService,
+            deps.watcherService,
+        ),
+    );
     app.route('/api/repos', createRepoRoutes(deps.repoService));
-    app.route('/api/sessions', createSessionRoutes(deps.sessionService, deps.watcherService));
-    app.route('/api/comments', createCommentRoutes(deps.commentService, deps.transportService));
+    app.route('/api/sessions', createSessionRoutes(deps.sessionService, deps.watcherService, deps.sseService));
+    app.route('/api/comments', createCommentRoutes(deps.commentService, deps.transportService, deps.sessionService));
     app.route('/api/transport', createTransportRoutes(deps.transportService));
     app.route('/api/git', createGitRoutes(deps.gitService, deps.config));
 

@@ -2,8 +2,8 @@ import type { FileSummary, Snapshot, SnapshotSummary } from '@agent-code-reviewe
 import { listSnapshotsQuerySchema, notFound } from '@agent-code-reviewer/shared';
 import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
-import { z } from 'zod';
 import { err, ok } from 'neverthrow';
+import { z } from 'zod';
 import { asyncResultToResponse, resultToResponse } from '../lib/result-to-response.js';
 import type { DbService } from '../services/db.service.js';
 import type { GitService } from '../services/git.service.js';
@@ -109,6 +109,17 @@ export function createSnapshotRoutes(
         if (sessionResult.isErr()) {
             return resultToResponse(c, sessionResult);
         }
+        if (sessionResult.value.status === 'completed') {
+            return c.json(
+                {
+                    error: {
+                        code: 'SESSION_COMPLETED',
+                        message: 'Session is completed and read-only',
+                    },
+                },
+                409,
+            );
+        }
         const repoPath = sessionResult.value.repo.path;
         return asyncResultToResponse(c, watcherService.captureSnapshot(id, repoPath, 'manual'), 201);
     });
@@ -122,12 +133,12 @@ export function createSnapshotRoutes(
             const { id } = c.req.valid('param');
             const { file } = c.req.valid('query');
 
-            const snapshotResult = dbService.queryOne<SnapshotRow>(
-                'SELECT * FROM snapshots WHERE id = $id',
-                { $id: id },
-            );
+            const snapshotResult = dbService.queryOne<SnapshotRow>('SELECT * FROM snapshots WHERE id = $id', {
+                $id: id,
+            });
             if (snapshotResult.isErr()) return resultToResponse(c, snapshotResult);
-            if (!snapshotResult.value) return c.json({ error: { code: 'NOT_FOUND', message: 'Snapshot not found' } }, 404);
+            if (!snapshotResult.value)
+                return c.json({ error: { code: 'NOT_FOUND', message: 'Snapshot not found' } }, 404);
 
             const snapshot = snapshotResult.value;
             const sessionResult = sessionService.getSession(snapshot.session_id);

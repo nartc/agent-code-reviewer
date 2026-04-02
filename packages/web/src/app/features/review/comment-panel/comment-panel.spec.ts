@@ -1,5 +1,5 @@
 import type { CommentThread } from '@agent-code-reviewer/shared';
-import { Component, signal } from '@angular/core';
+import { Component, computed, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { CommentStore } from '../../../core/stores/comment-store';
@@ -53,15 +53,17 @@ describe('CommentPanel', () => {
     let fixture: ComponentFixture<TestHost>;
     let host: TestHost;
     let el: HTMLElement;
-    let draftComments: ReturnType<typeof signal<CommentThread[]>>;
+    let comments: ReturnType<typeof signal<CommentThread[]>>;
 
     beforeEach(async () => {
-        draftComments = signal<CommentThread[]>([]);
+        comments = signal<CommentThread[]>([]);
 
         const mockCommentStore = {
-            draftComments,
+            comments,
+            draftComments: computed(() => comments().filter((t) => t.comment.status === 'draft')),
             sentComments: signal([]),
             resolvedComments: signal([]),
+            allDraftIds: computed(() => comments().map((t) => t.comment.id)),
             updateComment: vi.fn(),
             deleteComment: vi.fn(),
             resolveComment: vi.fn(),
@@ -97,7 +99,7 @@ describe('CommentPanel', () => {
     });
 
     it('send button disabled when canSend is false', async () => {
-        draftComments.set([makeDraft('c1', 'src/a.ts'), makeDraft('c2', 'src/b.ts')]);
+        comments.set([makeDraft('c1', 'src/a.ts'), makeDraft('c2', 'src/b.ts')]);
         host.canSend.set(false);
         fixture.detectChanges();
         await fixture.whenStable();
@@ -106,7 +108,7 @@ describe('CommentPanel', () => {
     });
 
     it('send button enabled when drafts exist and canSend is true', async () => {
-        draftComments.set([makeDraft('c1', 'src/a.ts'), makeDraft('c2', 'src/b.ts')]);
+        comments.set([makeDraft('c1', 'src/a.ts'), makeDraft('c2', 'src/b.ts')]);
         host.canSend.set(true);
         fixture.detectChanges();
         await fixture.whenStable();
@@ -115,7 +117,7 @@ describe('CommentPanel', () => {
     });
 
     it('sendAllDrafts emits draft comment IDs', async () => {
-        draftComments.set([makeDraft('c1', 'src/a.ts'), makeDraft('c2', 'src/b.ts'), makeDraft('c3', 'src/c.ts')]);
+        comments.set([makeDraft('c1', 'src/a.ts'), makeDraft('c2', 'src/b.ts'), makeDraft('c3', 'src/c.ts')]);
         host.canSend.set(true);
         fixture.detectChanges();
         await fixture.whenStable();

@@ -61,6 +61,15 @@ describe('ApiClient', () => {
         req.flush({ session: {} });
     });
 
+    it('listSessions makes GET /api/sessions with repo_id and status', () => {
+        api.listSessions('r1', 'all').subscribe();
+        const req = httpMock.expectOne((r) => r.url === '/api/sessions');
+        expect(req.request.method).toBe('GET');
+        expect(req.request.params.get('repo_id')).toBe('r1');
+        expect(req.request.params.get('status')).toBe('all');
+        req.flush({ sessions: [] });
+    });
+
     it('createSession makes POST /api/sessions', () => {
         const body = { repo_id: 'r1', path: '/test' };
         api.createSession(body).subscribe();
@@ -89,6 +98,18 @@ describe('ApiClient', () => {
         const req = httpMock.expectOne('/api/sessions/s1/watch');
         expect(req.request.method).toBe('DELETE');
         req.flush({ message: 'ok' });
+    });
+
+    it('completeSession makes POST /api/sessions/:id/complete', () => {
+        api.completeSession('s1', { force: true, reason: 'done' }).subscribe();
+        const req = httpMock.expectOne('/api/sessions/s1/complete');
+        expect(req.request.method).toBe('POST');
+        expect(req.request.body).toEqual({ force: true, reason: 'done' });
+        req.flush({
+            session: {},
+            summary: { draft_count: 0, unresolved_sent_count: 0, watcher_active: false },
+            forced: true,
+        });
     });
 
     it('listSnapshots makes GET with query params', () => {

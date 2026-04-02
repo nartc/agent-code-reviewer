@@ -29,7 +29,10 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
                         </span>
                         @if (c.line_start != null) {
                             <span class="badge badge-xs badge-ghost">
-                                L{{ c.line_start }}@if (c.line_end != null && c.line_end !== c.line_start) {-{{ c.line_end }}}
+                                L{{ c.line_start }}
+                                @if (c.line_end != null && c.line_end !== c.line_start) {
+                                    -{{ c.line_end }}
+                                }
                             </span>
                         }
                     }
@@ -103,11 +106,19 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
                                     <span class="badge badge-xs badge-outline badge-warning">draft</span>
                                 }
                                 <span class="truncate opacity-70">{{ reply.content }}</span>
-                                @if (reply.status === 'draft') {
-                                    <button class="btn btn-xs btn-ghost btn-square" title="Edit reply" (click)="startEditReply(reply); $event.stopPropagation()">
+                                @if (reply.status === 'draft' && canMutate()) {
+                                    <button
+                                        class="btn btn-xs btn-ghost btn-square"
+                                        title="Edit reply"
+                                        (click)="startEditReply(reply); $event.stopPropagation()"
+                                    >
                                         <ng-icon name="lucidePencil" class="size-2.5" />
                                     </button>
-                                    <button class="btn btn-xs btn-ghost btn-square text-error" title="Delete reply" (click)="deleteReply(reply.id); $event.stopPropagation()">
+                                    <button
+                                        class="btn btn-xs btn-ghost btn-square text-error"
+                                        title="Delete reply"
+                                        (click)="deleteReply(reply.id); $event.stopPropagation()"
+                                    >
                                         <ng-icon name="lucideTrash2" class="size-2.5" />
                                     </button>
                                 }
@@ -163,21 +174,13 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
                                     <ng-icon name="lucideCheck" class="size-3" />
                                     Resolve
                                 </button>
-                                <button
-                                    class="btn btn-xs btn-ghost"
-                                    title="Reply"
-                                    (click)="showReplyForm.set(true)"
-                                >
+                                <button class="btn btn-xs btn-ghost" title="Reply" (click)="showReplyForm.set(true)">
                                     <ng-icon name="lucideReply" class="size-3" />
                                     Reply
                                 </button>
                             }
                             @case ('resolved') {
-                                <button
-                                    class="btn btn-xs btn-ghost"
-                                    title="Reply"
-                                    (click)="showReplyForm.set(true)"
-                                >
+                                <button class="btn btn-xs btn-ghost" title="Reply" (click)="showReplyForm.set(true)">
                                     <ng-icon name="lucideReply" class="size-3" />
                                     Reply
                                 </button>
@@ -218,6 +221,7 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
 export class CommentListItem {
     readonly thread = input.required<CommentThread>();
     readonly showActions = input(false);
+    readonly canMutate = input(true);
     readonly showFileHeader = input(true);
     readonly showStatus = input(true);
 
@@ -253,6 +257,7 @@ export class CommentListItem {
     }
 
     protected startEdit(): void {
+        if (!this.canMutate()) return;
         this.editContent.set(this.thread().comment.content);
         this.editing.set(true);
     }
@@ -263,6 +268,7 @@ export class CommentListItem {
     }
 
     protected saveEdit(): void {
+        if (!this.canMutate()) return;
         const content = this.editContent().trim();
         if (!content) return;
         this.#commentStore.updateComment(this.thread().comment.id, { content });
@@ -271,6 +277,7 @@ export class CommentListItem {
     }
 
     protected startEditReply(reply: Comment): void {
+        if (!this.canMutate()) return;
         this.editContent.set(reply.content);
         this.editingReplyId.set(reply.id);
     }
@@ -281,6 +288,7 @@ export class CommentListItem {
     }
 
     protected saveEditReply(replyId: string): void {
+        if (!this.canMutate()) return;
         const content = this.editContent().trim();
         if (!content) return;
         this.#commentStore.updateComment(replyId, { content });
@@ -289,6 +297,7 @@ export class CommentListItem {
     }
 
     protected deleteReply(replyId: string): void {
+        if (!this.canMutate()) return;
         this.#commentStore.deleteComment(replyId);
     }
 
@@ -298,6 +307,7 @@ export class CommentListItem {
     }
 
     protected submitReply(): void {
+        if (!this.canMutate()) return;
         const content = this.replyContent().trim();
         if (!content) return;
         this.#commentStore.createReply(this.thread().comment.id, { content });

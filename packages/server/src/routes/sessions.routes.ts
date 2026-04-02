@@ -1,21 +1,32 @@
-import { createSessionSchema, updateSessionSchema, validation } from '@agent-code-reviewer/shared';
+import {
+    completeSessionSchema,
+    createSessionSchema,
+    listSessionsQuerySchema,
+    updateSessionSchema,
+    validation,
+} from '@agent-code-reviewer/shared';
 import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
 import { err } from 'neverthrow';
 import { asyncResultToResponse, resultToResponse } from '../lib/result-to-response.js';
 import type { SessionService } from '../services/session.service.js';
+import type { SseService } from '../services/sse.service.js';
 import type { WatcherService } from '../services/watcher.service.js';
 import { idParamSchema } from './params.js';
 
-export function createSessionRoutes(sessionService: SessionService, watcherService: WatcherService): Hono {
+export function createSessionRoutes(
+    sessionService: SessionService,
+    watcherService: WatcherService,
+    sseService: SseService,
+): Hono {
     const app = new Hono();
 
-    // GET / — List sessions (optionally filtered by repo_id)
-    app.get('/', (c) => {
-        const repoId = c.req.query('repo_id');
+    // GET / — List sessions (repo_id + status filters)
+    app.get('/', zValidator('query', listSessionsQuerySchema), (c) => {
+        const { repo_id, status } = c.req.valid('query');
         return resultToResponse(
             c,
-            sessionService.listSessions(repoId).map((sessions) => ({ sessions })),
+            sessionService.listSessions(repo_id, status ?? 'all').map((sessions) => ({ sessions })),
         );
     });
 
@@ -46,12 +57,80 @@ export function createSessionRoutes(sessionService: SessionService, watcherServi
         return resultToResponse(c, sessionService.updateBaseBranch(id, body.base_branch));
     });
 
+    // POST /:id/complete — Complete session (with optional force)
+    app.post(
+        '/:id/complete',
+        zValidator('param', idParamSchema),
+        zValidator('json', completeSessionSchema),
+        async (c) => {
+            const { id } = c.req.valid('param');
+            const { force, reason } = c.req.valid('json');
+
+            const completionResult = sessionService.completeSession(id, { force, reason });
+            if (completionResult.isErr()) {
+                return resultToResponse(c, completionResult);
+            }
+
+            const completion = completionResult.value;
+            if (completion.blocked) {
+                return c.json(
+                    {
+                        error: {
+                            code: 'SESSION_COMPLETION_BLOCKED',
+                            message: 'Session completion blocked by unresolved work',
+                        },
+                        blockers: completion.summary,
+                    },
+                    409,
+                );
+            }
+
+            if (completion.summary.watcher_active) {
+                await watcherService.stopWatching(id).match(
+                    () => undefined,
+                    (error) => {
+                        console.warn('[sessions.complete] failed to stop watcher for completed session', {
+                            sessionId: id,
+                            error,
+                        });
+                    },
+                );
+            }
+
+            sseService.broadcast(id, {
+                type: 'session-status',
+                data: {
+                    session_id: id,
+                    status: completion.session.status,
+                    completed_at: completion.session.completed_at,
+                },
+            });
+
+            return c.json({
+                session: completion.session,
+                summary: completion.summary,
+                forced: completion.forced,
+            });
+        },
+    );
+
     // POST /:id/watch — Start file watcher
     app.post('/:id/watch', zValidator('param', idParamSchema), async (c) => {
         const { id } = c.req.valid('param');
         const sessionResult = sessionService.getSession(id);
         if (sessionResult.isErr()) {
             return resultToResponse(c, sessionResult);
+        }
+        if (sessionResult.value.status === 'completed') {
+            return c.json(
+                {
+                    error: {
+                        code: 'SESSION_COMPLETED',
+                        message: 'Session is completed and read-only',
+                    },
+                },
+                409,
+            );
         }
         const repoPath = sessionResult.value.repo.path;
         return asyncResultToResponse(

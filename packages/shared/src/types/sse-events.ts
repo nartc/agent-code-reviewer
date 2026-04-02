@@ -1,3 +1,4 @@
+import type { SessionStatus } from './session.js';
 import type { SnapshotSummary } from './snapshot.js';
 
 export type SseEvent =
@@ -12,4 +13,12 @@ export type SseEvent =
           };
       }
     | { type: 'watcher-status'; data: { session_id: string; is_watching: boolean } }
+    | {
+          type: 'session-status';
+          data: {
+              session_id: string;
+              status: SessionStatus;
+              completed_at: string | null;
+          };
+      }
     | { type: 'heartbeat'; data: { timestamp: string } };

@@ -56,12 +56,20 @@ export function createMcpRoutes(
             return c.json({ error: { code: 'NOT_FOUND', message: 'Repo not found' } }, 404);
         }
 
-        const sessionsResult = sessionService.listSessions(foundRepo.id);
+        const sessionsResult = sessionService.listSessions(foundRepo.id, 'active');
         if (sessionsResult.isErr()) return resultToResponse(c, sessionsResult);
 
         const sessions = sessionsResult.value;
         if (sessions.length === 0) {
-            return c.json({ threads: [], repo_name: foundRepo.name });
+            return c.json(
+                {
+                    error: {
+                        code: 'NO_ACTIVE_SESSION',
+                        message: 'No active session found for repo. Start a new review session from the web UI.',
+                    },
+                },
+                404,
+            );
         }
 
         const latestSession = sessions[0];
@@ -103,12 +111,38 @@ export function createMcpRoutes(
     app.post('/comments/:id/reply', zValidator('param', idParamSchema), zValidator('json', replyBodySchema), (c) => {
         const { id } = c.req.valid('param');
         const { content } = c.req.valid('json');
+
+        const existing = commentService.getCommentById(id);
+        if (existing.isErr()) return resultToResponse(c, existing);
+        if (!existing.value) {
+            return c.json({ error: { code: 'NOT_FOUND', message: 'Comment not found' } }, 404);
+        }
+
+        const sessionResult = sessionService.getSession(existing.value.session_id);
+        if (sessionResult.isErr()) return resultToResponse(c, sessionResult);
+        if (sessionResult.value.status === 'completed') {
+            return c.json({ error: { code: 'SESSION_COMPLETED', message: 'Session is completed and read-only' } }, 409);
+        }
+
         return resultToResponse(c, commentService.createReply(id, content, 'agent'), 201);
     });
 
     // POST /comments/:id/resolve
     app.post('/comments/:id/resolve', zValidator('param', idParamSchema), (c) => {
         const { id } = c.req.valid('param');
+
+        const existing = commentService.getCommentById(id);
+        if (existing.isErr()) return resultToResponse(c, existing);
+        if (!existing.value) {
+            return c.json({ error: { code: 'NOT_FOUND', message: 'Comment not found' } }, 404);
+        }
+
+        const sessionResult = sessionService.getSession(existing.value.session_id);
+        if (sessionResult.isErr()) return resultToResponse(c, sessionResult);
+        if (sessionResult.value.status === 'completed') {
+            return c.json({ error: { code: 'SESSION_COMPLETED', message: 'Session is completed and read-only' } }, 409);
+        }
+
         return resultToResponse(c, commentService.resolve(id));
     });
 
@@ -142,30 +176,36 @@ export function createMcpRoutes(
             return c.json({ error: { code: 'NOT_FOUND', message: 'Repo not found' } }, 404);
         }
 
-        const sessionsResult = sessionService.listSessions(foundRepo.id);
+        const sessionsResult = sessionService.listSessions(foundRepo.id, 'active');
         if (sessionsResult.isErr()) return resultToResponse(c, sessionsResult);
 
         const sessions = sessionsResult.value;
         if (sessions.length === 0) {
-            return c.json({ error: { code: 'NOT_FOUND', message: 'No sessions found for repo' } }, 404);
+            return c.json(
+                {
+                    error: {
+                        code: 'NO_ACTIVE_SESSION',
+                        message: 'No active session found for repo. Start a new review session from the web UI.',
+                    },
+                },
+                404,
+            );
         }
 
         const latestSession = sessions[0];
-        const snapshotResult = await watcherService
-            .captureSnapshot(latestSession.id, foundRepo.path, 'mcp')
-            .match(
-                (snapshot) => ({
-                    ok: true as const,
-                    snapshot: {
-                        id: snapshot.id,
-                        head_commit: snapshot.head_commit,
-                        trigger: snapshot.trigger,
-                        files_count: snapshot.files_summary.length,
-                        created_at: snapshot.created_at,
-                    },
-                }),
-                (error) => ({ ok: false as const, error }),
-            );
+        const snapshotResult = await watcherService.captureSnapshot(latestSession.id, foundRepo.path, 'mcp').match(
+            (snapshot) => ({
+                ok: true as const,
+                snapshot: {
+                    id: snapshot.id,
+                    head_commit: snapshot.head_commit,
+                    trigger: snapshot.trigger,
+                    files_count: snapshot.files_summary.length,
+                    created_at: snapshot.created_at,
+                },
+            }),
+            (error) => ({ ok: false as const, error }),
+        );
 
         if (!snapshotResult.ok) {
             return c.json({ error: { code: snapshotResult.error.type, message: snapshotResult.error.message } }, 500);

@@ -69,7 +69,7 @@ describe('SseConnection', () => {
         expect(events[0].data).toEqual(data);
     });
 
-    it('parses all 5 event types', () => {
+    it('parses all 6 event types', () => {
         const events: SseEvent[] = [];
         service.connect('s1').subscribe((e) => events.push(e));
         const es = MockEventSource.instances[0];
@@ -78,6 +78,11 @@ describe('SseConnection', () => {
         es.simulateEvent('snapshot', { id: 'snap1', session_id: 's1' });
         es.simulateEvent('comment-update', { session_id: 's1', comment_id: 'c1', action: 'created' });
         es.simulateEvent('watcher-status', { session_id: 's1', is_watching: true });
+        es.simulateEvent('session-status', {
+            session_id: 's1',
+            status: 'completed',
+            completed_at: '2026-01-01T00:00:00Z',
+        });
         es.simulateEvent('heartbeat', { timestamp: '2025-01-01T00:00:00Z' });
 
         expect(events.map((e) => e.type)).toEqual([
@@ -85,6 +90,7 @@ describe('SseConnection', () => {
             'snapshot',
             'comment-update',
             'watcher-status',
+            'session-status',
             'heartbeat',
         ]);
     });

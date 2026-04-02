@@ -2,7 +2,14 @@ import type { SseEvent } from '@agent-code-reviewer/shared';
 import { Injectable } from '@angular/core';
 import { Observable, share } from 'rxjs';
 
-const SSE_EVENT_TYPES = ['connected', 'snapshot', 'comment-update', 'watcher-status', 'heartbeat'] as const;
+const SSE_EVENT_TYPES = [
+    'connected',
+    'snapshot',
+    'comment-update',
+    'watcher-status',
+    'session-status',
+    'heartbeat',
+] as const;
 
 @Injectable({ providedIn: 'root' })
 export class SseConnection {

@@ -68,11 +68,12 @@ export async function initInMemoryDatabase(): Promise<Result<Database, AppError>
 export function runMigrations(db: Database): void {
     // Check current schema version
     const result = db.exec("SELECT value FROM app_config WHERE key = 'schema_version'");
-    const currentVersion = result.length > 0 ? result[0].values[0][0] : null;
+    let currentVersion = result.length > 0 ? String(result[0].values[0][0]) : null;
 
     if (currentVersion === null) {
         // Fresh DB — schema.sql already ran above, just record version
-        db.run("INSERT INTO app_config (key, value) VALUES ('schema_version', '2')");
+        db.run("INSERT INTO app_config (key, value) VALUES ('schema_version', '3')");
+        currentVersion = '3';
     }
 
     if (currentVersion === '1') {
@@ -131,5 +132,48 @@ export function runMigrations(db: Database): void {
         }
 
         db.run("UPDATE app_config SET value = '2' WHERE key = 'schema_version'");
+        currentVersion = '2';
+    }
+
+    if (currentVersion === '2') {
+        // Add session lifecycle columns and remove UNIQUE(repo_id, branch) so historical
+        // completed sessions can coexist with one active session per repo+branch.
+        db.run('PRAGMA foreign_keys = OFF');
+        db.run('BEGIN');
+
+        try {
+            db.run(`CREATE TABLE sessions_new (
+                id TEXT PRIMARY KEY,
+                repo_id TEXT NOT NULL REFERENCES repos(id) ON DELETE CASCADE,
+                branch TEXT NOT NULL,
+                base_branch TEXT,
+                status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'completed')),
+                completed_at TEXT,
+                completion_reason TEXT,
+                is_watching INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )`);
+
+            db.run(`INSERT INTO sessions_new (id, repo_id, branch, base_branch, status, completed_at, completion_reason, is_watching, created_at)
+                SELECT id, repo_id, branch, base_branch, 'active', NULL, NULL, is_watching, created_at
+                FROM sessions`);
+
+            db.run('DROP TABLE sessions');
+            db.run('ALTER TABLE sessions_new RENAME TO sessions');
+
+            db.run('CREATE INDEX IF NOT EXISTS idx_sessions_repo ON sessions(repo_id)');
+            db.run(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_sessions_repo_branch_active ON sessions(repo_id, branch) WHERE status = 'active'",
+            );
+
+            db.run("UPDATE app_config SET value = '3' WHERE key = 'schema_version'");
+            db.run('COMMIT');
+            currentVersion = '3';
+        } catch (e) {
+            db.run('ROLLBACK');
+            throw e;
+        } finally {
+            db.run('PRAGMA foreign_keys = ON');
+        }
     }
 }

@@ -27,7 +27,10 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
                 <span class="opacity-50">{{ c.created_at | relativeTime }}</span>
                 @if (c.line_start != null) {
                     <span class="badge badge-xs badge-ghost">
-                        L{{ c.line_start }}@if (c.line_end != null && c.line_end !== c.line_start) {-{{ c.line_end }}}
+                        L{{ c.line_start }}
+                        @if (c.line_end != null && c.line_end !== c.line_start) {
+                            -{{ c.line_end }}
+                        }
                     </span>
                 }
                 <span
@@ -105,7 +108,9 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
                                                 (input)="editContent.set($any($event.target).value)"
                                             ></textarea>
                                             <div class="flex justify-end gap-1 mt-0.5">
-                                                <button class="btn btn-xs btn-ghost" (click)="cancelEditReply()">Cancel</button>
+                                                <button class="btn btn-xs btn-ghost" (click)="cancelEditReply()">
+                                                    Cancel
+                                                </button>
                                                 <button
                                                     class="btn btn-xs btn-primary"
                                                     [disabled]="!editContent().trim()"
@@ -118,10 +123,18 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
                                             <p class="whitespace-pre-wrap">{{ reply.content }}</p>
                                             @if (reply.status === 'draft') {
                                                 <div class="flex justify-end gap-1 mt-0.5">
-                                                    <button class="btn btn-xs btn-ghost" (click)="startEditReply(reply)">
+                                                    <button
+                                                        class="btn btn-xs btn-ghost"
+                                                        [disabled]="readonly()"
+                                                        (click)="startEditReply(reply)"
+                                                    >
                                                         <ng-icon name="lucidePencil" class="size-2.5" />
                                                     </button>
-                                                    <button class="btn btn-xs btn-ghost text-error" (click)="deleteReply(reply.id)">
+                                                    <button
+                                                        class="btn btn-xs btn-ghost text-error"
+                                                        [disabled]="readonly()"
+                                                        (click)="deleteReply(reply.id)"
+                                                    >
                                                         <ng-icon name="lucideTrash2" class="size-2.5" />
                                                     </button>
                                                 </div>
@@ -141,13 +154,19 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
             <div class="flex justify-end gap-1 mt-1 shrink-0">
                 @switch (c.status) {
                     @case ('draft') {
-                        <button class="btn btn-xs btn-ghost" title="Edit comment" (click)="startEdit()">
+                        <button
+                            class="btn btn-xs btn-ghost"
+                            title="Edit comment"
+                            [disabled]="readonly()"
+                            (click)="startEdit()"
+                        >
                             <ng-icon name="lucidePencil" class="size-3" />
                             Edit
                         </button>
                         <button
                             class="btn btn-xs btn-ghost text-error"
                             title="Delete comment"
+                            [disabled]="readonly()"
                             (click)="commentDeleted.emit(thread())"
                         >
                             <ng-icon name="lucideTrash2" class="size-3" />
@@ -158,6 +177,7 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
                         <button
                             class="btn btn-xs btn-ghost"
                             title="Mark as resolved"
+                            [disabled]="readonly()"
                             (click)="commentResolved.emit(thread())"
                         >
                             <ng-icon name="lucideCheck" class="size-3" />
@@ -166,6 +186,7 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
                         <button
                             class="btn btn-xs btn-ghost"
                             title="Reply"
+                            [disabled]="readonly()"
                             (click)="showReplyForm.set(true)"
                         >
                             <ng-icon name="lucideReply" class="size-3" />
@@ -176,6 +197,7 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
                         <button
                             class="btn btn-xs btn-ghost"
                             title="Reply"
+                            [disabled]="readonly()"
                             (click)="showReplyForm.set(true)"
                         >
                             <ng-icon name="lucideReply" class="size-3" />
@@ -201,7 +223,7 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
                         </button>
                         <button
                             class="btn btn-xs btn-primary"
-                            [disabled]="!replyContent().trim()"
+                            [disabled]="readonly() || !replyContent().trim()"
                             (click)="submitReply()"
                         >
                             <ng-icon name="lucideReply" class="size-3" />
@@ -216,6 +238,7 @@ import { RelativeTime } from '../../../shared/pipes/relative-time';
 export class InlineComment {
     readonly thread = input.required<CommentThread>();
     readonly sessionId = input.required<string>();
+    readonly readonly = input(false);
 
     readonly commentDeleted = output<CommentThread>();
     readonly commentResolved = output<CommentThread>();
@@ -245,6 +268,7 @@ export class InlineComment {
     }
 
     protected startEdit(): void {
+        if (this.readonly()) return;
         this.editContent.set(this.thread().comment.content);
         this.editing.set(true);
     }
@@ -255,6 +279,7 @@ export class InlineComment {
     }
 
     protected saveEdit(): void {
+        if (this.readonly()) return;
         const content = this.editContent().trim();
         if (!content) return;
         this.#commentStore.updateComment(this.thread().comment.id, { content });
@@ -263,6 +288,7 @@ export class InlineComment {
     }
 
     protected startEditReply(reply: Comment): void {
+        if (this.readonly()) return;
         this.editContent.set(reply.content);
         this.editingReplyId.set(reply.id);
     }
@@ -273,6 +299,7 @@ export class InlineComment {
     }
 
     protected saveEditReply(replyId: string): void {
+        if (this.readonly()) return;
         const content = this.editContent().trim();
         if (!content) return;
         this.#commentStore.updateComment(replyId, { content });
@@ -281,6 +308,7 @@ export class InlineComment {
     }
 
     protected deleteReply(replyId: string): void {
+        if (this.readonly()) return;
         this.#commentStore.deleteComment(replyId);
     }
 
@@ -290,6 +318,7 @@ export class InlineComment {
     }
 
     protected submitReply(): void {
+        if (this.readonly()) return;
         const content = this.replyContent().trim();
         if (!content) return;
         this.#commentStore.createReply(this.thread().comment.id, { content });
