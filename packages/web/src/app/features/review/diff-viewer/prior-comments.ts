@@ -79,7 +79,7 @@ export interface PriorSnapshotComments {
                                         </span>
                                     </div>
 
-                                    <p class="whitespace-pre-wrap line-clamp-3">{{ thread.comment.content }}</p>
+                                    <p class="whitespace-pre-wrap">{{ thread.comment.content }}</p>
 
                                     @if (thread.replies.length > 0) {
                                         <div class="ml-3 mt-1.5 space-y-1 border-l-2 border-base-300 pl-2">
@@ -103,7 +103,7 @@ export interface PriorSnapshotComments {
                                                             reply.created_at | relativeTime
                                                         }}</span>
                                                     </div>
-                                                    <p class="whitespace-pre-wrap line-clamp-2">{{ reply.content }}</p>
+                                                    <p class="whitespace-pre-wrap">{{ reply.content }}</p>
                                                 </div>
                                             }
                                         </div>

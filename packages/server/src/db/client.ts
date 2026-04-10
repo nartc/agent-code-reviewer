@@ -24,6 +24,14 @@ export async function initDatabase(dbPath: string): Promise<Result<Database, App
             db = new SQL.Database();
         }
 
+        // Existing DBs on schema v1/v2 can fail when applying latest schema directly
+        // (e.g. partial indexes referencing columns introduced in later versions).
+        // Run migrations first for known legacy versions, then apply latest schema.
+        const existingVersion = readSchemaVersion(db);
+        if (existingVersion === '1' || existingVersion === '2') {
+            runMigrations(db);
+        }
+
         // Run schema
         const schemaPath = fileURLToPath(new URL('./schema.sql', import.meta.url));
         const schema = readFileSync(schemaPath, 'utf-8');
@@ -66,14 +74,18 @@ export async function initInMemoryDatabase(): Promise<Result<Database, AppError>
 }
 
 export function runMigrations(db: Database): void {
+    db.run(`CREATE TABLE IF NOT EXISTS app_config (
+        key TEXT PRIMARY KEY,
+        value TEXT
+    )`);
+
     // Check current schema version
-    const result = db.exec("SELECT value FROM app_config WHERE key = 'schema_version'");
-    let currentVersion = result.length > 0 ? String(result[0].values[0][0]) : null;
+    let currentVersion = readSchemaVersion(db);
 
     if (currentVersion === null) {
         // Fresh DB — schema.sql already ran above, just record version
-        db.run("INSERT INTO app_config (key, value) VALUES ('schema_version', '3')");
-        currentVersion = '3';
+        db.run("INSERT INTO app_config (key, value) VALUES ('schema_version', '4')");
+        currentVersion = '4';
     }
 
     if (currentVersion === '1') {
@@ -176,4 +188,57 @@ export function runMigrations(db: Database): void {
             db.run('PRAGMA foreign_keys = ON');
         }
     }
+
+    if (currentVersion === '3') {
+        // Rebuild snapshots table to allow 'mcp' trigger value.
+        db.run('PRAGMA foreign_keys = OFF');
+        db.run('BEGIN');
+
+        try {
+            db.run(`CREATE TABLE snapshots_new (
+                id TEXT PRIMARY KEY,
+                session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+                raw_diff TEXT NOT NULL,
+                files_summary TEXT NOT NULL,
+                head_commit TEXT,
+                trigger TEXT NOT NULL CHECK(trigger IN ('manual', 'fs_watch', 'initial', 'mcp')),
+                changed_files TEXT,
+                has_review_comments INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )`);
+
+            db.run(`INSERT INTO snapshots_new (id, session_id, raw_diff, files_summary, head_commit, trigger, changed_files, has_review_comments, created_at)
+                SELECT id, session_id, raw_diff, files_summary, head_commit, trigger, changed_files, has_review_comments, created_at
+                FROM snapshots`);
+
+            db.run('DROP TABLE snapshots');
+            db.run('ALTER TABLE snapshots_new RENAME TO snapshots');
+
+            db.run('CREATE INDEX IF NOT EXISTS idx_snapshots_session ON snapshots(session_id)');
+            db.run('CREATE INDEX IF NOT EXISTS idx_snapshots_created ON snapshots(session_id, created_at)');
+
+            db.run("UPDATE app_config SET value = '4' WHERE key = 'schema_version'");
+            db.run('COMMIT');
+            currentVersion = '4';
+        } catch (e) {
+            db.run('ROLLBACK');
+            throw e;
+        } finally {
+            db.run('PRAGMA foreign_keys = ON');
+        }
+    }
+}
+
+function readSchemaVersion(db: Database): string | null {
+    const hasAppConfig = db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='app_config'");
+    if (hasAppConfig.length === 0 || hasAppConfig[0].values.length === 0) {
+        return null;
+    }
+
+    const result = db.exec("SELECT value FROM app_config WHERE key = 'schema_version'");
+    if (result.length === 0 || result[0].values.length === 0) {
+        return null;
+    }
+
+    return String(result[0].values[0][0]);
 }
