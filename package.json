@@ -7,11 +7,11 @@
     },
     "private": true,
     "devDependencies": {
-        "@nx/js": "22.6.1",
+        "@nx/js": "22.6.5",
         "@swc-node/register": "~1.11.1",
         "@swc/core": "~1.15.21",
         "@swc/helpers": "~0.5.19",
-        "nx": "22.6.1",
+        "nx": "22.6.5",
         "prettier": "^3.8.1",
         "prettier-plugin-organize-imports": "^4.3.0",
         "tslib": "^2.8.1",
