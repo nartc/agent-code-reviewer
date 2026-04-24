@@ -10,18 +10,18 @@
     },
     "dependencies": {
         "@agent-code-reviewer/shared": "workspace:*",
-        "@hono/node-server": "^1.19.11",
+        "@hono/node-server": "^2.0.0",
         "@hono/zod-validator": "^0.7.6",
-        "hono": "^4.12.9",
-        "nanoid": "^5.1.7",
+        "hono": "^4.12.15",
+        "nanoid": "^5.1.9",
         "neverthrow": "^8.2.0",
-        "simple-git": "^3.33.0",
+        "simple-git": "^3.36.0",
         "sql.js": "^1.14.1",
         "zod": "^4.3.6"
     },
     "devDependencies": {
-        "@types/node": "^25.5.0",
-        "vitest": "^4.1.1"
+        "@types/node": "^25.6.0",
+        "vitest": "^4.1.5"
     },
     "nx": {
         "name": "server",
