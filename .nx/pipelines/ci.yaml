@@ -1,16 +1,40 @@
 # yaml-language-server: $schema=https://cloud.nx.app/nx-cloud/static/schemas/workflow.schema.json
+name: CI (Nx Cloud)
+
 triggers:
   pull-requests:
     event: PR
-    branches: ['main']
+    # GitHub's unfiltered pull_request runs for every target branch.
+    types: [opened, synchronize, reopened]
   pushes:
     event: PUSH
     branches: ['main']
 
+# Configure the reusable initialization steps in linux-medium-js before they run:
+# Checkout, Install Node, and Install Node Modules (pnpm install --frozen-lockfile).
+# Corepack reads pnpm's version from package.json#packageManager.
+env:
+  CI: 'true'
+  NODE_VERSION: '20'
+  GIT_CHECKOUT_DEPTH: '0'
+  GIT_FILTER: 'tree:0'
+  # Do not retry the dependency-install command (the old pipeline did not).
+  NX_CLOUD_INPUT_max_retries: '1'
+
 workflows:
   main:
     runs-on: linux-medium-js
+    # Nx Cloud's maximum; GitHub Actions previously used its 360-minute default.
+    timeout-minutes: 60
     steps:
-      - name: Run affected tasks
-        script: |
-          pnpm exec nx affected -t lint test build
+      - name: Verify checkout and toolchain
+        run: |
+          set -eu
+          test "$(git rev-parse --is-shallow-repository)" = false
+          node -e "if (process.versions.node.split('.')[0] !== '20') process.exit(1)"
+          test "pnpm@$(pnpm --version)" = "$(node -p 'require("./package.json").packageManager')"
+          git rev-parse HEAD
+          node --version
+          pnpm --version
+      - name: Run all CI targets
+        run: pnpm nx run-many -t lint test build typecheck
